@@ -12,9 +12,7 @@ A security-focused, desktop-ready Arch Linux derivative.
 > The ISO, checksum, and detached signature are hosted on our own
 > infrastructure and mirrored through SourceForge's global network.
 
-- **Primary (mirror network):** [https://cerberix.org/#download](https://cerberix.org/#download)
-- **SourceForge files:** [sourceforge.net/projects/cerberix-linux/files/](https://sourceforge.net/projects/cerberix-linux/files/)
-- **Direct from origin:** [cerberix.org/download/cerberix-linux-0.1.0-x86_64.iso](https://cerberix.org/download/cerberix-linux-0.1.0-x86_64.iso)
+- **ISO download:** [sourceforge.net/projects/cerberix-linux/files/](https://sourceforge.net/projects/cerberix-linux/files/)
 - **Signing key:** [cerberix.org/gpg.asc](https://cerberix.org/gpg.asc)
 
 ### Verify
