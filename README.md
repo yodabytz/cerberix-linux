@@ -1,6 +1,6 @@
 # Cerberix Linux
 
-[![Download Cerberix Linux](https://img.shields.io/sourceforge/dt/cerberix-linux.svg)](https://sourceforge.net/projects/cerberix-linux/files/latest/download)
+[![Download from SourceForge](https://img.shields.io/badge/download-sourceforge-orange.svg)](https://sourceforge.net/projects/cerberix-linux/files/latest/download)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 A security-focused, desktop-ready Arch Linux derivative.
