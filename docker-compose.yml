@@ -1,0 +1,159 @@
+# ============================================================
+# Cerberix Firewall — Docker Compose (Development/Testing)
+# ============================================================
+#
+# Prerequisites:
+#   docker network create --driver bridge --subnet 10.99.0.0/24 cerberix-wan
+#   docker network create --driver bridge --subnet 192.168.1.0/24 \
+#       --gateway 192.168.1.1 -o com.docker.network.bridge.name=br-lan cerberix-lan
+#
+# Usage:
+#   docker compose up -d
+#   docker compose logs -f cerberix
+#
+# ============================================================
+
+services:
+  cerberix:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: cerberix-linux:0.3.0
+    container_name: cerberix-gw
+    hostname: cerberix
+    restart: unless-stopped
+
+    # Required for nftables, routing, and raw socket access
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+      # SYS_MODULE removed — security risk (kernel module loading)
+      # WireGuard module should be loaded on host before container start
+
+    sysctls:
+      - net.ipv4.ip_forward=1
+      - net.ipv4.conf.all.rp_filter=1
+      - net.ipv4.conf.default.rp_filter=1
+      - net.ipv4.icmp_echo_ignore_broadcasts=1
+      - net.ipv4.conf.all.accept_redirects=0
+      - net.ipv4.conf.all.send_redirects=0
+      - net.ipv4.conf.all.accept_source_route=0
+      - net.ipv4.conf.all.log_martians=1
+
+    environment:
+      - TZ=UTC
+      - CERBERIX_WAN_IF=eth0
+      - CERBERIX_LAN_IF=eth1
+      - CERBERIX_LAN_SUBNET=192.168.1.0/24
+      - CERBERIX_LAN_IP=192.168.1.1
+      - CERBERIX_DHCP_RANGE_START=192.168.1.100
+      - CERBERIX_DHCP_RANGE_END=192.168.1.200
+      - CERBERIX_DHCP_LEASE=12h
+      - CERBERIX_DNS_UPSTREAM=1.1.1.1,1.0.0.1
+      - CERBERIX_LOG_LEVEL=info
+      # ── AI Threat Engine ─────────────────────────────────
+      - CERBERIX_AI_ENABLED=true
+      - CERBERIX_AI_AUTO_BLOCK=true
+      - CERBERIX_AI_BLOCK_DURATION=3600
+      - CERBERIX_AI_INTERVAL=30
+      - CERBERIX_AI_DEEP_INTERVAL=300
+      - CERBERIX_AI_API_KEY=${CERBERIX_AI_API_KEY:-}
+      # ── WireGuard VPN ───────────────────────────────────
+      - CERBERIX_WG_ENABLED=true
+      - CERBERIX_WG_PORT=51820
+      - CERBERIX_WG_SUBNET=10.100.0.0/24
+      - CERBERIX_WG_SERVER_IP=10.100.0.1
+      # Set to your public IP or domain for remote access:
+      # - CERBERIX_WG_ENDPOINT=your.public.ip:51820
+
+    ports:
+      - "8443:8443"
+      - "51821:51820/udp"
+      - "514:514/udp"
+      - "514:514/tcp"
+
+    volumes:
+      - cerberix-logs:/var/log/cerberix
+      - cerberix-data:/var/lib/cerberix
+      - cerberix-ai:/var/lib/cerberix/ai
+      - cerberix-ssl:/etc/cerberix/ssl
+
+    networks:
+      wan:
+        ipv4_address: 10.99.0.2
+      lan:
+        ipv4_address: 192.168.1.1
+
+  # ── Test LAN client ─────────────────────────────────────
+  lan-client:
+    image: alpine:3.21
+    container_name: cerberix-lan-client
+    hostname: lan-client
+    depends_on:
+      - cerberix
+    command: >
+      sh -c "
+        sleep 3 &&
+        ip route del default 2>/dev/null;
+        ip route add default via 192.168.1.1;
+        echo 'nameserver 192.168.1.1' > /etc/resolv.conf;
+        echo '[LAN Client] Ready — gateway set to 192.168.1.1';
+        tail -f /dev/null
+      "
+    cap_add:
+      - NET_ADMIN
+    networks:
+      lan:
+        ipv4_address: 192.168.1.50
+
+  # ── Web Server (heros.quantumbytz.com) ─────────────────
+  web-server:
+    build:
+      context: servers/web
+    container_name: cerberix-web-srv
+    hostname: heros
+    depends_on:
+      - cerberix
+    restart: unless-stopped
+    networks:
+      lan:
+        ipv4_address: 192.168.1.10
+    volumes:
+      - web-data:/var/lib/mysql
+
+  # ── Gitea + PostgreSQL (post.quantumbytz.com) ───────────
+  post-server:
+    build:
+      context: servers/mail
+    container_name: cerberix-post-srv
+    hostname: post
+    depends_on:
+      - cerberix
+    restart: unless-stopped
+    ports:
+      - "3001:3000"
+      - "2222:22"
+      - "5432:5432"
+    networks:
+      lan:
+        ipv4_address: 192.168.1.20
+    volumes:
+      - post-data:/var/lib/gitea
+      - post-db:/var/lib/postgresql
+
+networks:
+  wan:
+    external: true
+    name: cerberix-wan
+  lan:
+    external: true
+    name: cerberix-lan
+
+volumes:
+  cerberix-logs:
+  cerberix-data:
+  cerberix-ai:
+  cerberix-ssl:
+  web-data:
+  post-data:
+  post-db:

@@ -1,0 +1,6 @@
+Cerberix Firewall 0.3.0 (Hades)
+Build:    container
+Variant:  gateway
+Base:     Alpine Linux 3.21
+Kernel:   inherited from host
+AI:       Cerberix Threat Engine 0.1.0

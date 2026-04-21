@@ -1,0 +1,190 @@
+# Cerberix Linux — XFCE Edition
+
+# Base
+base
+base-devel
+linux
+linux-firmware
+linux-headers
+linux-hardened
+linux-hardened-headers
+mkinitcpio
+grub
+efibootmgr
+networkmanager
+bluez
+bluez-utils
+pipewire
+pipewire-alsa
+pipewire-pulse
+pipewire-jack
+wireplumber
+sudo
+zsh
+bash
+fish
+man-db
+
+# Filesystem
+btrfs-progs
+dosfstools
+e2fsprogs
+ntfs-3g
+gvfs
+gvfs-mtp
+udisks2
+
+# Xorg + XFCE
+xorg-server
+xfce4
+xfce4-goodies
+lightdm
+lightdm-gtk-greeter
+lightdm-gtk-greeter-settings
+
+# Terminals
+xfce4-terminal
+ghostty
+
+# File Manager
+thunar
+thunar-archive-plugin
+thunar-volman
+thunar-media-tags-plugin
+tumbler
+file-roller
+
+# Browser
+firefox
+
+# Mail
+evolution
+
+# Fonts
+ttf-jetbrains-mono-nerd
+noto-fonts
+noto-fonts-emoji
+
+# Theming
+adw-gtk-theme
+papirus-icon-theme
+libappindicator-gtk3
+libayatana-appindicator
+
+# Dock
+plank
+snixembed
+
+# Cerberix Shield / Connect / Firstboot runtime deps
+gtk3
+python-gobject
+libdbusmenu-glib
+libdbusmenu-gtk3
+zenity
+
+# Editors
+vim
+nano
+neovim
+mousepad
+
+# Media
+vlc
+mpv
+parole
+ristretto
+
+# Shell / CLI tooling
+starship
+tmux
+eza
+bat
+fd
+fzf
+ripgrep
+plocate
+lazygit
+pacman-contrib
+
+# Development
+git
+docker
+docker-compose
+python
+python-pip
+python-dasbus
+python-pillow
+nodejs
+npm
+
+# Security (core)
+wireguard-tools
+nftables
+fail2ban
+ufw
+gufw
+firejail
+openssh
+nmap
+tcpdump
+net-tools
+openresolv
+openbsd-netcat
+openvpn
+
+# Security (hardening / IDS)
+apparmor
+arch-audit
+rkhunter
+lynis
+bleachbit
+keepassxc
+gnome-keyring
+# aide — AUR-only, install post-setup via yay
+
+# Security (offensive / audit)
+hydra
+hashcat
+nikto
+radare2
+sqlmap
+proxychains-ng
+
+# Privacy
+tor
+torbrowser-launcher
+
+# Communication
+# hexchat — AUR-only (removed from Arch repos after GTK2 EOL), install post-setup via yay
+
+# System utilities
+htop
+btop
+fastfetch
+cmatrix
+wget
+curl
+rsync
+unzip
+zip
+tree
+jq
+dnsutils
+whois
+mtr
+gparted
+gnome-disk-utility
+cloud-guest-utils
+syslog-ng
+
+# VM Support
+open-vm-tools
+mesa
+vulkan-swrast
+
+# DNS
+dnsmasq
+
+# Chaotic-AUR (third-party prebuilt AUR repo)
+chaotic-keyring
+chaotic-mirrorlist

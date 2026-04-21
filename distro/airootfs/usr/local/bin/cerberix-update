@@ -1,0 +1,28 @@
+#!/bin/bash
+# ============================================================
+# Cerberix Linux — System Update
+# ============================================================
+
+echo ""
+echo "  Cerberix Linux — System Update"
+echo "  =============================="
+echo ""
+
+if [[ $EUID -ne 0 ]]; then
+    exec sudo "$0" "$@"
+fi
+
+echo "[1/3] Updating package database..."
+pacman -Sy --noconfirm
+
+echo ""
+echo "[2/3] Upgrading packages..."
+pacman -Su --noconfirm
+
+echo ""
+echo "[3/3] Cleaning cache..."
+pacman -Sc --noconfirm
+
+echo ""
+echo "  Update complete!"
+echo ""

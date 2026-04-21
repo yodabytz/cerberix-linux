@@ -1,0 +1,218 @@
+#!/bin/bash
+# ============================================================
+# Cerberix Linux — Installer
+# ============================================================
+# Installs Cerberix Linux to disk from the live environment.
+# ============================================================
+
+set -e
+
+BLUE='\033[1;34m'
+GREEN='\033[1;32m'
+RED='\033[1;31m'
+YELLOW='\033[1;33m'
+NC='\033[0m'
+BOLD='\033[1m'
+
+banner() {
+    clear
+    echo -e "${BLUE}"
+    echo "  ============================================"
+    echo "   Cerberix Linux Installer"
+    echo "   Version 0.1.0 (Styx)"
+    echo "  ============================================"
+    echo -e "${NC}"
+}
+
+msg() { echo -e "${GREEN}[*]${NC} $1"; }
+warn() { echo -e "${YELLOW}[!]${NC} $1"; }
+err() { echo -e "${RED}[X]${NC} $1"; }
+
+banner
+
+# Check if running as root
+if [[ $EUID -ne 0 ]]; then
+    err "Run as root: sudo cerberix-install"
+    exit 1
+fi
+
+# Show available disks
+echo -e "${BOLD}Available Disks:${NC}"
+echo ""
+lsblk -d -o NAME,SIZE,MODEL,TYPE | grep disk
+echo ""
+
+read -p "Install to disk (e.g. sda, nvme0n1): " DISK
+[[ -z "$DISK" ]] && exit 1
+
+# Normalize disk path
+if [[ "$DISK" != /dev/* ]]; then
+    DISK="/dev/$DISK"
+fi
+
+if [[ ! -b "$DISK" ]]; then
+    err "Disk $DISK not found"
+    exit 1
+fi
+
+echo ""
+warn "THIS WILL ERASE ALL DATA ON ${DISK}"
+read -p "Type 'yes' to continue: " CONFIRM
+[[ "$CONFIRM" != "yes" ]] && { echo "Aborted."; exit 1; }
+
+echo ""
+read -p "Encrypt disk? (recommended) [y/N]: " ENCRYPT
+
+# Determine partition naming
+if [[ "$DISK" == *nvme* ]] || [[ "$DISK" == *mmcblk* ]]; then
+    PART="${DISK}p"
+else
+    PART="${DISK}"
+fi
+
+msg "Partitioning ${DISK}..."
+
+# Detect UEFI or BIOS
+if [[ -d /sys/firmware/efi ]]; then
+    BOOT_MODE="uefi"
+    parted -s "$DISK" mklabel gpt
+    parted -s "$DISK" mkpart ESP fat32 1MiB 513MiB
+    parted -s "$DISK" set 1 esp on
+    parted -s "$DISK" mkpart primary 513MiB 100%
+    BOOT_PART="${PART}1"
+    ROOT_PART="${PART}2"
+else
+    BOOT_MODE="bios"
+    parted -s "$DISK" mklabel msdos
+    parted -s "$DISK" mkpart primary ext4 1MiB 513MiB
+    parted -s "$DISK" set 1 boot on
+    parted -s "$DISK" mkpart primary ext4 513MiB 100%
+    BOOT_PART="${PART}1"
+    ROOT_PART="${PART}2"
+fi
+
+msg "Formatting..."
+
+if [[ "$BOOT_MODE" == "uefi" ]]; then
+    mkfs.fat -F32 "$BOOT_PART"
+else
+    mkfs.ext4 -q -L CERBERIX_BOOT "$BOOT_PART"
+fi
+
+if [[ "$ENCRYPT" == "y" || "$ENCRYPT" == "Y" ]]; then
+    msg "Setting up disk encryption (LUKS)..."
+    cryptsetup luksFormat --type luks2 "$ROOT_PART"
+    cryptsetup open "$ROOT_PART" cerberix_root
+    mkfs.btrfs -f -L CERBERIX /dev/mapper/cerberix_root
+    ROOT_DEV="/dev/mapper/cerberix_root"
+else
+    mkfs.btrfs -f -L CERBERIX "$ROOT_PART"
+    ROOT_DEV="$ROOT_PART"
+fi
+
+msg "Mounting..."
+mount "$ROOT_DEV" /mnt
+
+# Create btrfs subvolumes
+btrfs subvolume create /mnt/@
+btrfs subvolume create /mnt/@home
+btrfs subvolume create /mnt/@snapshots
+umount /mnt
+
+mount -o subvol=@,compress=zstd,noatime "$ROOT_DEV" /mnt
+mkdir -p /mnt/{home,boot,.snapshots}
+mount -o subvol=@home,compress=zstd,noatime "$ROOT_DEV" /mnt/home
+mount -o subvol=@snapshots,compress=zstd,noatime "$ROOT_DEV" /mnt/.snapshots
+
+if [[ "$BOOT_MODE" == "uefi" ]]; then
+    mkdir -p /mnt/boot/efi
+    mount "$BOOT_PART" /mnt/boot/efi
+else
+    mount "$BOOT_PART" /mnt/boot
+fi
+
+msg "Installing base system..."
+pacstrap -K /mnt base linux linux-firmware linux-headers \
+    networkmanager grub efibootmgr btrfs-progs sudo zsh \
+    hyprland waybar wofi kitty thunar firefox \
+    pipewire pipewire-pulse wireplumber \
+    noto-fonts ttf-jetbrains-mono-nerd \
+    git vim fastfetch btop
+
+msg "Generating fstab..."
+genfstab -U /mnt >> /mnt/etc/fstab
+
+msg "Configuring system..."
+
+# Copy Cerberix branding
+cp /etc/os-release /mnt/etc/os-release
+cp /etc/cerberix-release /mnt/etc/cerberix-release 2>/dev/null || true
+cp /etc/issue /mnt/etc/issue
+
+# Set up user
+echo ""
+read -p "Username: " USERNAME
+[[ -z "$USERNAME" ]] && USERNAME="cerberix"
+
+arch-chroot /mnt /bin/bash <<CHROOT
+# Timezone
+ln -sf /usr/share/zoneinfo/America/New_York /etc/localtime
+hwclock --systohc
+
+# Locale
+echo "en_US.UTF-8 UTF-8" > /etc/locale.gen
+locale-gen
+echo "LANG=en_US.UTF-8" > /etc/locale.conf
+
+# Hostname
+echo "cerberix" > /etc/hostname
+cat > /etc/hosts <<EOF
+127.0.0.1   localhost
+::1         localhost
+127.0.1.1   cerberix.localdomain cerberix
+EOF
+
+# User
+useradd -m -G wheel,video,audio,input,docker -s /bin/zsh ${USERNAME}
+echo "Set password for ${USERNAME}:"
+passwd ${USERNAME}
+
+# Sudo
+echo "%wheel ALL=(ALL:ALL) ALL" > /etc/sudoers.d/wheel
+
+# Boot loader
+if [[ "$BOOT_MODE" == "uefi" ]]; then
+    grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=Cerberix
+else
+    grub-install --target=i386-pc ${DISK}
+fi
+
+# Custom GRUB theme
+sed -i 's/GRUB_DISTRIBUTOR=.*/GRUB_DISTRIBUTOR="Cerberix"/' /etc/default/grub
+sed -i 's/GRUB_TIMEOUT=.*/GRUB_TIMEOUT=3/' /etc/default/grub
+grub-mkconfig -o /boot/grub/grub.cfg
+
+# Enable services
+systemctl enable NetworkManager
+systemctl enable bluetooth
+systemctl enable docker
+systemctl enable ufw
+
+# Remove Arch branding
+rm -f /etc/arch-release 2>/dev/null
+CHROOT
+
+# Copy user configs
+cp -r /etc/skel/.config /mnt/home/${USERNAME}/
+chown -R 1000:1000 /mnt/home/${USERNAME}
+
+msg "Cleaning up..."
+umount -R /mnt
+[[ "$ENCRYPT" == "y" || "$ENCRYPT" == "Y" ]] && cryptsetup close cerberix_root
+
+echo ""
+echo -e "${GREEN}============================================${NC}"
+echo -e "${GREEN} Cerberix Linux installed successfully!${NC}"
+echo -e "${GREEN} Remove the USB/ISO and reboot.${NC}"
+echo -e "${GREEN}============================================${NC}"
+echo ""

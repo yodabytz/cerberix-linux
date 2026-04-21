@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=Cerberix First-Boot Welcome
+Comment=One-time welcome dialog shown on first login
+Exec=/usr/local/bin/cerberix-firstboot
+Icon=/usr/share/cerberix/icons/shield-green.png
+Terminal=false
+X-GNOME-Autostart-enabled=true
+StartupNotify=false
+OnlyShowIn=XFCE;
+X-GNOME-Autostart-Delay=5

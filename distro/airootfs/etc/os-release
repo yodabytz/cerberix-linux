@@ -1,0 +1,10 @@
+NAME="Cerberix Linux"
+ID=cerberix
+ID_LIKE=arch
+VERSION="0.1.0 (Styx)"
+VERSION_ID=0.1.0
+VERSION_CODENAME=styx
+PRETTY_NAME="Cerberix Linux 0.1.0 (Styx)"
+HOME_URL="https://cerberix.io"
+BUG_REPORT_URL="https://github.com/cerberix/cerberix-linux/issues"
+LOGO=cerberix

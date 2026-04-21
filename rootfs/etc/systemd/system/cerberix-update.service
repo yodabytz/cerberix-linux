@@ -1,0 +1,7 @@
+[Unit]
+Description=Cerberix Update Check
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/checkupdates
+# checkupdates exits 2 when no updates are available — not a failure.
+SuccessExitStatus=0 2

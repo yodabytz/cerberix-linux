@@ -1,0 +1,19 @@
+<?xml version="1.1" encoding="UTF-8"?>
+
+<channel name="xfce4-notifyd" version="1.0">
+  <property name="log-max-size-enabled" type="bool" value="true"/>
+  <property name="applications" type="empty">
+    <property name="known_applications" type="array">
+      <value type="string" value="Element"/>
+      <value type="string" value="notify-send"/>
+      <value type="string" value="Xfce volume control"/>
+      <value type="string" value="xfce4-settings-helper"/>
+    </property>
+  </property>
+  <property name="notification-log" type="empty">
+    <property name="enabled" type="bool" value="true"/>
+    <property name="show-menu-item" type="bool" value="true"/>
+    <property name="log-level" type="int" value="0"/>
+  </property>
+  <property name="do-not-disturb" type="bool" value="false"/>
+</channel>

@@ -1,0 +1,24 @@
+# Cerberix rkhunter overrides — merged with /etc/rkhunter.conf
+# These whitelist known-good Arch/Cerberix behavior to avoid false positives.
+
+# /usr/bin/ldd is a bash script on Arch
+SCRIPTWHITELIST=/usr/bin/ldd
+
+# Standard hidden files that exist by default
+ALLOWHIDDENFILE=/etc/.updated
+ALLOWHIDDENFILE=/usr/share/man/man5/.k5identity.5.gz
+ALLOWHIDDENFILE=/usr/share/man/man5/.k5login.5.gz
+
+# OpenSSH no longer supports protocol v1; silence outdated warning
+ALLOW_SSH_PROT_V1=2
+
+# XFCE desktop compositor uses large SHM segments by design
+ALLOWIPCPROC=/usr/bin/xfdesktop
+ALLOWIPCPROC=/usr/bin/ghostty
+
+# Cerberix silent grep/egrep/fgrep shims (suppress deprecation noise)
+SCRIPTWHITELIST=/usr/bin/egrep
+SCRIPTWHITELIST=/usr/bin/fgrep
+SCRIPTWHITELIST=/usr/local/bin/grep
+SCRIPTWHITELIST=/usr/local/bin/egrep
+SCRIPTWHITELIST=/usr/local/bin/fgrep

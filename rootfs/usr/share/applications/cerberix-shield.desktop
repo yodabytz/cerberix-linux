@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=Cerberix Shield
+GenericName=Security Status
+Comment=Cerberix security status indicator
+Exec=/usr/local/bin/cerberix-shield
+Icon=cerberix-shield
+Terminal=false
+Categories=System;Security;Monitor;
+StartupNotify=false
+Keywords=security;shield;cerberix;firewall;status;

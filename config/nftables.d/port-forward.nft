@@ -1,0 +1,22 @@
+# ============================================================
+# Cerberix Firewall — Port Forwarding (DNAT)
+# ============================================================
+# Forward inbound WAN traffic to internal LAN servers
+# ============================================================
+
+table ip port_forward {
+
+    chain prerouting {
+        type nat hook prerouting priority dstnat - 1; policy accept;
+
+        # Web server (heros.quantumbytz.com — 192.168.1.10)
+        iifname $WAN_IF tcp dport 80 dnat to 192.168.1.10:80
+        iifname $WAN_IF tcp dport 443 dnat to 192.168.1.10:443
+
+        # Mail server (post.quantumbytz.com — 192.168.1.20)
+        iifname $WAN_IF tcp dport 25 dnat to 192.168.1.20:25
+        iifname $WAN_IF tcp dport 587 dnat to 192.168.1.20:587
+        iifname $WAN_IF tcp dport 143 dnat to 192.168.1.20:143
+        iifname $WAN_IF tcp dport 993 dnat to 192.168.1.20:993
+    }
+}

@@ -1,0 +1,39 @@
+# ============================================================
+# Cerberix Firewall — Connection Rate Limiting
+# ============================================================
+# Per-IP connection rate limits to prevent DoS and brute force
+# at the network level (complements fail2ban service-level bans)
+# ============================================================
+
+table inet rate_limit {
+
+    # Track new connections per source IP
+    chain rate_input {
+        type filter hook input priority -1; policy accept;
+
+        # Limit new TCP connections per source IP: 30/minute
+        ct state new tcp flags syn \
+            meter conn_rate { ip saddr limit rate over 30/minute burst 10 packets } \
+            log prefix "[CERBERIX RATE LIMIT] " drop
+
+        # Limit new UDP flows per source IP: 60/minute
+        ct state new ip protocol udp \
+            meter udp_rate { ip saddr limit rate over 60/minute burst 20 packets } \
+            drop
+
+        # ICMP flood protection: 10/second per source
+        ip protocol icmp \
+            meter icmp_rate { ip saddr limit rate over 10/second burst 5 packets } \
+            drop
+    }
+
+    # Rate limit forwarded connections
+    chain rate_forward {
+        type filter hook forward priority -1; policy accept;
+
+        # Limit forwarded new connections: 100/minute per source
+        ct state new \
+            meter fwd_rate { ip saddr limit rate over 100/minute burst 30 packets } \
+            log prefix "[CERBERIX RATE FWD] " drop
+    }
+}

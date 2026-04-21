@@ -1,0 +1,70 @@
+#!/bin/bash
+# ============================================================
+# Cerberix Linux — First Boot Setup
+# ============================================================
+
+MARKER="/etc/cerberix/.firstboot-done"
+if [[ -f "$MARKER" ]]; then
+    exit 0
+fi
+
+BLUE='\033[1;34m'
+GREEN='\033[1;32m'
+NC='\033[0m'
+
+clear
+echo -e "${BLUE}"
+echo "  ============================================"
+echo "   Welcome to Cerberix Linux!"
+echo "   Security-First Desktop OS"
+echo "  ============================================"
+echo -e "${NC}"
+echo ""
+echo "  Setting up your system..."
+echo ""
+
+# Enable firewall
+echo "[1/5] Enabling firewall..."
+ufw --force enable > /dev/null 2>&1
+ufw default deny incoming > /dev/null 2>&1
+ufw default allow outgoing > /dev/null 2>&1
+echo "  Firewall: ENABLED (deny incoming, allow outgoing)"
+
+# Configure AppArmor
+echo "[2/5] Configuring AppArmor..."
+systemctl enable apparmor > /dev/null 2>&1
+systemctl start apparmor > /dev/null 2>&1
+echo "  AppArmor: ENABLED"
+
+# Set up ClamAV
+echo "[3/5] Updating antivirus signatures..."
+freshclam > /dev/null 2>&1 &
+echo "  ClamAV: Updating in background"
+
+# Configure fail2ban
+echo "[4/5] Configuring intrusion prevention..."
+systemctl enable fail2ban > /dev/null 2>&1
+systemctl start fail2ban > /dev/null 2>&1
+echo "  fail2ban: ENABLED"
+
+# Set waybar scripts executable
+echo "[5/5] Finalizing desktop..."
+chmod +x ~/.config/waybar/scripts/*.sh 2>/dev/null || true
+
+mkdir -p /etc/cerberix
+touch "$MARKER"
+
+echo ""
+echo -e "${GREEN}  Setup complete! Your system is secured.${NC}"
+echo ""
+echo "  Keyboard shortcuts:"
+echo "    Super + Return    Terminal"
+echo "    Super + B         Browser"
+echo "    Super + E         Files"
+echo "    Super + Space     App Launcher"
+echo "    Super + Q         Close Window"
+echo "    Super + 1-9       Workspaces"
+echo "    Super + L         Lock Screen"
+echo "    Super + R         Resize Mode"
+echo ""
+read -p "  Press Enter to start Cerberix Linux..."

@@ -1,0 +1,16 @@
+# ============================================================
+# Cerberix Firewall — SYN Flood Protection
+# ============================================================
+# Rate-limit new TCP connections to mitigate SYN flood attacks
+# ============================================================
+
+table inet syn_flood {
+    chain syn_filter {
+        type filter hook input priority -1; policy accept;
+
+        # Only match new TCP SYN packets
+        tcp flags syn tcp flags != ack \
+            limit rate over 25/second burst 50 packets \
+            log prefix "[CERBERIX SYN FLOOD] " level warn drop
+    }
+}

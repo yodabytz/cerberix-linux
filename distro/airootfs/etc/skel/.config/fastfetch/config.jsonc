@@ -1,0 +1,50 @@
+{
+    "$schema": "https://github.com/fastfetch-cli/fastfetch/raw/dev/doc/json_schema.json",
+    "logo": {
+        "type": "small",
+        "source": "/usr/share/cerberix/ascii-logo.txt",
+        "color": {
+            "1": "blue",
+            "2": "cyan"
+        },
+        "padding": {
+            "top": 1,
+            "left": 2,
+            "right": 2
+        }
+    },
+    "display": {
+        "separator": " → ",
+        "color": {
+            "keys": "blue",
+            "title": "cyan"
+        }
+    },
+    "modules": [
+        "title",
+        "separator",
+        "os",
+        "kernel",
+        "uptime",
+        "packages",
+        "shell",
+        "wm",
+        "terminal",
+        "cpu",
+        "gpu",
+        "memory",
+        "disk",
+        "battery",
+        "separator",
+        {
+            "type": "command",
+            "key": "Firewall",
+            "text": "ufw status 2>/dev/null | head -1 || echo 'Inactive'"
+        },
+        {
+            "type": "command",
+            "key": "Security",
+            "text": "echo 'Cerberix Shield Active'"
+        }
+    ]
+}

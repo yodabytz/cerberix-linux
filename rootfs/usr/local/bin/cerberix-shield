@@ -1,0 +1,475 @@
+#!/usr/bin/env python3
+"""Cerberix Shield — uses libdbusmenu via gi for menu, raw GIO for SNI"""
+
+import os
+import json
+import signal
+import subprocess
+import threading
+import time
+import gi
+gi.require_version("Gtk", "3.0")
+gi.require_version("Dbusmenu", "0.4")
+gi.require_version("DbusmenuGtk3", "0.4")
+from gi.repository import Gtk, GLib, Gio, Dbusmenu
+
+ICON_DIR = "/usr/share/cerberix/icons"
+
+
+def run_cmd(cmd):
+    try:
+        r = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=15)
+        return r.returncode, (r.stdout + r.stderr).strip()
+    except:
+        return 1, ""
+
+
+def check_firewall():
+    # systemctl is-active needs no sudo → works for the desktop user
+    rc, out = run_cmd("systemctl is-active ufw 2>/dev/null")
+    if out.strip() == "active":
+        return "good", "Active"
+    # Fallback: world-readable config file
+    try:
+        with open("/etc/ufw/ufw.conf") as f:
+            if "ENABLED=yes" in f.read():
+                return "good", "Active"
+    except OSError:
+        pass
+    return "bad", "DISABLED"
+
+def check_apparmor():
+    rc, out = run_cmd("cat /sys/module/apparmor/parameters/enabled 2>/dev/null")
+    return ("good", "Enforcing") if "Y" in out else ("bad", "Not loaded")
+
+def check_vpn():
+    # Match any WireGuard interface (wg0, cerberix-vpn, mullvad-*, …)
+    rc, out = run_cmd("ip -o link show type wireguard 2>/dev/null")
+    return ("good", "Connected") if out.strip() else ("warn", "Disconnected")
+
+def check_updates():
+    rc, out = run_cmd("checkupdates 2>/dev/null | wc -l")
+    try: c = int(out.strip())
+    except: return "warn", "Unknown"
+    if c == 0: return "good", "Up to date"
+    if c < 10: return "warn", f"{c} pending"
+    return "bad", f"{c} pending"
+
+def check_ssh():
+    rc, out = run_cmd("systemctl is-active sshd 2>/dev/null")
+    if "active" not in out: return "good", "Not running"
+    rc, out = run_cmd("grep -r 'MaxAuthTries' /etc/ssh/sshd_config.d/ 2>/dev/null")
+    return ("good", "Hardened") if "3" in out else ("warn", "Not hardened")
+
+def check_mac():
+    rc, out = run_cmd("grep -r 'cloned-mac-address=random' /etc/NetworkManager/conf.d/ 2>/dev/null")
+    return ("good", "Randomized") if "random" in out else ("warn", "Not randomized")
+
+def check_audit():
+    rc, out = run_cmd("systemctl is-active auditd 2>/dev/null")
+    return ("good", "Active") if "active" in out else ("warn", "Not running")
+
+def check_rootkit():
+    rc, out = run_cmd("stat -c '%Y' /var/log/rkhunter.log 2>/dev/null")
+    if rc == 0 and out.strip():
+        try:
+            h = (time.time() - int(out.strip())) / 3600
+            if h < 24: return "good", f"Clean ({int(h)}h)"
+            return "warn", f"{int(h/24)}d ago"
+        except: pass
+    return "warn", "Never scanned"
+
+def check_kernel():
+    rc, out = run_cmd("uname -r")
+    return ("good", out.strip()) if "hardened" in out else ("warn", out.strip())
+
+def check_encryption():
+    rc, out = run_cmd("lsblk -o FSTYPE 2>/dev/null | grep crypt")
+    if out: return "good", "LUKS"
+    rc, vm = run_cmd("systemd-detect-virt 2>/dev/null")
+    if vm and vm.strip() != "none": return "good", f"VM ({vm.strip()})"
+    return "bad", "Not encrypted"
+
+
+CHECKS = [
+    ("Firewall", check_firewall),
+    ("AppArmor", check_apparmor),
+    ("VPN", check_vpn),
+    ("Updates", check_updates),
+    ("SSH", check_ssh),
+    ("MAC", check_mac),
+    ("Audit", check_audit),
+    ("Rootkit", check_rootkit),
+    ("Kernel", check_kernel),
+    ("Encryption", check_encryption),
+]
+
+
+SNI_XML = """
+<node>
+  <interface name="org.kde.StatusNotifierItem">
+    <property name="Category" type="s" access="read"/>
+    <property name="Id" type="s" access="read"/>
+    <property name="Title" type="s" access="read"/>
+    <property name="Status" type="s" access="read"/>
+    <property name="WindowId" type="u" access="read"/>
+    <property name="IconThemePath" type="s" access="read"/>
+    <property name="IconName" type="s" access="read"/>
+    <property name="ToolTip" type="(sa(iiay)ss)" access="read"/>
+    <property name="ItemIsMenu" type="b" access="read"/>
+    <property name="Menu" type="o" access="read"/>
+    <method name="Activate">
+      <arg type="i" direction="in"/>
+      <arg type="i" direction="in"/>
+    </method>
+    <method name="ContextMenu">
+      <arg type="i" direction="in"/>
+      <arg type="i" direction="in"/>
+    </method>
+    <method name="SecondaryActivate">
+      <arg type="i" direction="in"/>
+      <arg type="i" direction="in"/>
+    </method>
+    <method name="Scroll">
+      <arg type="i" direction="in"/>
+      <arg type="s" direction="in"/>
+    </method>
+    <signal name="NewIcon"/>
+    <signal name="NewToolTip"/>
+    <signal name="NewStatus">
+      <arg type="s"/>
+    </signal>
+  </interface>
+</node>
+"""
+
+
+class CerberixShield:
+    def __init__(self):
+        self.results = []
+        self.overall = "good"
+        self.window = None
+        self.detail_widgets = {}
+        self.scan()
+
+        self.pid = os.getpid()
+        self.service_name = f"org.kde.StatusNotifierItem-{self.pid}-1"
+        self.menu_path = "/MenuBar"
+
+        self.connection = Gio.bus_get_sync(Gio.BusType.SESSION, None)
+
+        # Build the menu using libdbusmenu (this exports it on D-Bus automatically)
+        self.dbm_server = Dbusmenu.Server.new(self.menu_path)
+        root = Dbusmenu.Menuitem.new()
+        self.dbm_server.set_root(root)
+        self._build_menu(root)
+
+        # Register SNI
+        node = Gio.DBusNodeInfo.new_for_xml(SNI_XML)
+        iface = node.interfaces[0]
+        self.connection.register_object(
+            "/StatusNotifierItem", iface,
+            self._sni_method, self._sni_get_prop, None)
+
+        # Own bus name
+        Gio.bus_own_name_on_connection(
+            self.connection, self.service_name,
+            Gio.BusNameOwnerFlags.NONE,
+            self._on_name_acquired, None)
+
+        # Periodic updates
+        GLib.timeout_add_seconds(30, self._tick)
+
+    def _on_name_acquired(self, conn, name):
+        self.service_name = name
+        self.connection.signal_subscribe(
+            "org.freedesktop.DBus", "org.freedesktop.DBus",
+            "NameOwnerChanged", "/org/freedesktop/DBus",
+            "org.kde.StatusNotifierWatcher",
+            Gio.DBusSignalFlags.NONE,
+            self._on_watcher_changed, None)
+        self._register_with_watcher()
+
+    def _on_watcher_changed(self, conn, sender, path, iface, signal, params, *_):
+        try:
+            name, old_owner, new_owner = params.unpack()
+        except Exception:
+            return
+        if new_owner:
+            print(f"Watcher owner changed -> {new_owner}, re-registering", flush=True)
+            GLib.timeout_add(1000, self._reregister_once)
+
+    def _reregister_once(self):
+        self._register_with_watcher()
+        return False
+
+    def _register_with_watcher(self):
+        try:
+            self.connection.call_sync(
+                "org.kde.StatusNotifierWatcher",
+                "/StatusNotifierWatcher",
+                "org.kde.StatusNotifierWatcher",
+                "RegisterStatusNotifierItem",
+                GLib.Variant("(s)", (self.service_name,)),
+                None, Gio.DBusCallFlags.NONE, -1, None)
+            print(f"Registered: {self.service_name}", flush=True)
+        except Exception as e:
+            print(f"Register failed: {e}", flush=True)
+
+    def _build_menu(self, root):
+        # Status items
+        self.status_items = []
+        for name, status, detail in self.results:
+            item = Dbusmenu.Menuitem.new()
+            icon = {"good": "✓", "warn": "⚠", "bad": "✗"}.get(status, "?")
+            item.property_set("label", f"{icon} {name}: {detail}")
+            item.property_set_bool("enabled", False)
+            root.child_append(item)
+            self.status_items.append((name, item))
+
+        sep1 = Dbusmenu.Menuitem.new()
+        sep1.property_set("type", "separator")
+        root.child_append(sep1)
+
+        scan_item = Dbusmenu.Menuitem.new()
+        scan_item.property_set("label", "Scan Now")
+        scan_item.connect("item-activated", lambda i, t: self._tick())
+        root.child_append(scan_item)
+
+        details_item = Dbusmenu.Menuitem.new()
+        details_item.property_set("label", "Show Details")
+        details_item.connect("item-activated", lambda i, t: GLib.idle_add(self.show_details))
+        root.child_append(details_item)
+
+        sep2 = Dbusmenu.Menuitem.new()
+        sep2.property_set("type", "separator")
+        root.child_append(sep2)
+
+        vpn_item = Dbusmenu.Menuitem.new()
+        vpn_item.property_set("label", "Toggle VPN")
+        vpn_item.connect("item-activated", lambda i, t: self.toggle_vpn())
+        root.child_append(vpn_item)
+
+        fw_item = Dbusmenu.Menuitem.new()
+        fw_item.property_set("label", "Toggle Firewall")
+        fw_item.connect("item-activated", lambda i, t: self.toggle_fw())
+        root.child_append(fw_item)
+
+        sep3 = Dbusmenu.Menuitem.new()
+        sep3.property_set("type", "separator")
+        root.child_append(sep3)
+
+        rk_item = Dbusmenu.Menuitem.new()
+        rk_item.property_set("label", "Run Rootkit Scan")
+        rk_item.connect("item-activated", lambda i, t: self.run_rk())
+        root.child_append(rk_item)
+
+        ly_item = Dbusmenu.Menuitem.new()
+        ly_item.property_set("label", "Run Security Audit")
+        ly_item.connect("item-activated", lambda i, t: self.run_lynis())
+        root.child_append(ly_item)
+
+        sep4 = Dbusmenu.Menuitem.new()
+        sep4.property_set("type", "separator")
+        root.child_append(sep4)
+
+        quit_item = Dbusmenu.Menuitem.new()
+        quit_item.property_set("label", "Quit")
+        quit_item.connect("item-activated", lambda i, t: Gtk.main_quit())
+        root.child_append(quit_item)
+
+    def _refresh_menu_labels(self):
+        for (name, item), (n, status, detail) in zip(self.status_items, self.results):
+            icon = {"good": "✓", "warn": "⚠", "bad": "✗"}.get(status, "?")
+            item.property_set("label", f"{icon} {name}: {detail}")
+
+    def _sni_get_prop(self, conn, sender, obj_path, iface, prop, *args):
+        icon_name = {"good": "shield-green", "warn": "shield-yellow", "bad": "shield-red"}[self.overall]
+        labels = {"good": "Secure", "warn": "Warnings", "bad": "At Risk"}
+        props = {
+            "Category": GLib.Variant("s", "ApplicationStatus"),
+            "Id": GLib.Variant("s", "cerberix-shield"),
+            "Title": GLib.Variant("s", "Cerberix Shield"),
+            "Status": GLib.Variant("s", "Active"),
+            "WindowId": GLib.Variant("u", 0),
+            "IconThemePath": GLib.Variant("s", ICON_DIR),
+            "IconName": GLib.Variant("s", icon_name),
+            "ToolTip": GLib.Variant("(sa(iiay)ss)", (
+                "", [], "Cerberix Shield",
+                f"Status: {labels[self.overall]}")),
+            "ItemIsMenu": GLib.Variant("b", False),
+            "Menu": GLib.Variant("o", self.menu_path),
+        }
+        return props.get(prop)
+
+    def _sni_method(self, conn, sender, obj_path, iface, method, params, invocation):
+        if method == "Activate":
+            GLib.idle_add(self.show_details)
+        elif method == "SecondaryActivate":
+            self._tick()
+        invocation.return_value(None)
+
+    def scan(self):
+        self.results = []
+        bad = warn = 0
+        for name, fn in CHECKS:
+            try:
+                status, detail = fn()
+            except:
+                status, detail = "warn", "Error"
+            self.results.append((name, status, detail))
+            if status == "bad": bad += 1
+            elif status == "warn": warn += 1
+        self.overall = "bad" if bad else "warn" if warn else "good"
+
+    def _tick(self):
+        def _bg():
+            self.scan()
+            GLib.idle_add(self._update_after_scan)
+        threading.Thread(target=_bg, daemon=True).start()
+        return True
+
+    def _update_after_scan(self):
+        # Update menu labels
+        self._refresh_menu_labels()
+        # Notify panel of new icon
+        self.connection.emit_signal(None, "/StatusNotifierItem",
+            "org.kde.StatusNotifierItem", "NewIcon", None)
+        self.connection.emit_signal(None, "/StatusNotifierItem",
+            "org.kde.StatusNotifierItem", "NewToolTip", None)
+        if self.window:
+            self._update_window()
+
+    def toggle_vpn(self):
+        # Prefer NetworkManager-managed WireGuard connections (no sudo needed).
+        # Falls back to wg-quick for /etc/wireguard-based setups.
+        rc, out = run_cmd("ip -o link show type wireguard 2>/dev/null")
+        if out.strip():
+            # Down: find first active WG NM connection, or fallback to wg-quick down
+            rc, conns = run_cmd(
+                "nmcli -t -f NAME,TYPE,STATE connection show --active | "
+                "awk -F: '$2==\"wireguard\"&&$3==\"activated\"{print $1; exit}'"
+            )
+            if conns.strip():
+                subprocess.Popen(["nmcli", "connection", "down", conns.strip()])
+            else:
+                # wg-quick down against first wg-typed interface name
+                rc, iface = run_cmd(
+                    "ip -o link show type wireguard | awk -F': ' '{print $2}' | head -1"
+                )
+                if iface.strip():
+                    subprocess.Popen(["sudo", "-n", "wg-quick", "down", iface.strip()])
+        else:
+            # Up: try first inactive WG NM connection
+            rc, conns = run_cmd(
+                "nmcli -t -f NAME,TYPE connection show | "
+                "awk -F: '$2==\"wireguard\"{print $1; exit}'"
+            )
+            if conns.strip():
+                subprocess.Popen(["nmcli", "connection", "up", conns.strip()])
+            else:
+                subprocess.Popen(["sudo", "-n", "wg-quick", "up", "wg0"])
+        GLib.timeout_add_seconds(3, lambda: (self._tick(), False)[1])
+
+    def toggle_fw(self):
+        # Active → disable (via pkexec so user gets the polkit auth popup).
+        # Inactive → run cerberix-fw-setup which applies safe defaults + enables.
+        rc, out = run_cmd("systemctl is-active ufw 2>/dev/null")
+        if out.strip() == "active":
+            subprocess.Popen(["pkexec", "/usr/bin/ufw", "disable"])
+        else:
+            subprocess.Popen(["pkexec", "/usr/local/bin/cerberix-fw-setup"])
+        GLib.timeout_add_seconds(3, lambda: (self._tick(), False)[1])
+
+    def run_rk(self):
+        subprocess.Popen(["xfce4-terminal", "-e",
+            "bash -c 'sudo rkhunter --check --sk; read -p \"Press Enter...\"'"])
+
+    def run_lynis(self):
+        subprocess.Popen(["xfce4-terminal", "-e",
+            "bash -c 'sudo lynis audit system; read -p \"Press Enter...\"'"])
+
+
+    def show_details(self):
+        if self.window:
+            self.window.present()
+            return False
+        self.detail_widgets = {}
+        self.window = Gtk.Window(title="Cerberix Shield")
+        self.window.set_default_size(500, 480)
+        self.window.set_position(Gtk.WindowPosition.CENTER)
+        self.window.connect("delete-event", self._hide_window)
+
+        vb = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
+        vb.set_margin_top(20); vb.set_margin_bottom(20)
+        vb.set_margin_start(20); vb.set_margin_end(20)
+
+        t = Gtk.Label()
+        t.set_markup("<big><b>Cerberix Shield</b></big>")
+        vb.pack_start(t, False, False, 0)
+
+        ol = Gtk.Label()
+        self.detail_widgets["overall"] = ol
+        vb.pack_start(ol, False, False, 10)
+
+        for name, status, detail in self.results:
+            hb = Gtk.Box(spacing=10)
+            il = Gtk.Label()
+            il.set_size_request(30, -1)
+            hb.pack_start(il, False, False, 0)
+            nl = Gtk.Label(); nl.set_markup(f"<b>{name}</b>")
+            nl.set_xalign(0); nl.set_size_request(120, -1)
+            hb.pack_start(nl, False, False, 0)
+            dl = Gtk.Label(label=detail); dl.set_xalign(0)
+            hb.pack_start(dl, True, True, 0)
+            self.detail_widgets[name] = (il, dl)
+            vb.pack_start(hb, False, False, 3)
+
+        vb.pack_start(Gtk.Separator(), False, False, 10)
+        bb = Gtk.Box(spacing=8)
+        for lbl, cb in [("Refresh", lambda w: self._tick()),
+                        ("VPN", lambda w: self.toggle_vpn()),
+                        ("Firewall", lambda w: self.toggle_fw()),
+                        ("Close", self._hide_window)]:
+            b = Gtk.Button(label=lbl)
+            b.connect("clicked", cb)
+            bb.pack_start(b, True, True, 0)
+        vb.pack_end(bb, False, False, 0)
+        self.window.add(vb)
+        self.window.show_all()
+        self._update_window()
+        return False
+
+    def _update_window(self):
+        if not self.window: return
+        colors = {"good": "#3fb950", "warn": "#d29922", "bad": "#f85149"}
+        labels = {"good": "SECURE", "warn": "WARNINGS", "bad": "AT RISK"}
+        if "overall" in self.detail_widgets:
+            self.detail_widgets["overall"].set_markup(
+                f'<span foreground="{colors[self.overall]}" size="x-large">'
+                f'<b>{labels[self.overall]}</b></span>')
+        for name, status, detail in self.results:
+            if name in self.detail_widgets:
+                il, dl = self.detail_widgets[name]
+                col = colors[status]
+                icon = {"good": "✓", "warn": "⚠", "bad": "✗"}[status]
+                il.set_markup(f'<span foreground="{col}" size="large"><b>{icon}</b></span>')
+                dl.set_text(detail)
+
+    def _hide_window(self, *args):
+        if self.window:
+            self.window.destroy()
+            self.window = None
+            self.detail_widgets = {}
+        return True
+
+
+def main():
+    signal.signal(signal.SIGINT, signal.SIG_DFL)
+    Gtk.init(None)
+    CerberixShield()
+    Gtk.main()
+
+
+if __name__ == "__main__":
+    main()

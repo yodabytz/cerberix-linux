@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Name=Cerberix Connect
+Comment=Connect to Cerberix Firewall
+Exec=/usr/local/bin/cerberix-connect
+Icon=network-server
+Categories=Network;Security;

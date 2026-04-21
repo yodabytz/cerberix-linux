@@ -1,0 +1,20 @@
+#!/bin/bash
+# Cerberix firewall setup — applies safe defaults then enables UFW.
+# Designed to be invoked via `pkexec cerberix-fw-setup` so the desktop
+# user gets the polkit auth dialog instead of a terminal sudo prompt.
+
+set -e
+
+if [[ $EUID -ne 0 ]]; then
+    echo "cerberix-fw-setup must run as root (use pkexec)" >&2
+    exit 1
+fi
+
+ufw --force reset >/dev/null
+ufw default deny incoming
+ufw default allow outgoing
+ufw allow ssh
+ufw --force enable
+systemctl enable --now ufw >/dev/null 2>&1 || true
+
+echo "Cerberix firewall: deny incoming, allow outgoing, allow ssh. Active."

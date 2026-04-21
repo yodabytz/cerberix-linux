@@ -1,0 +1,37 @@
+# ============================================================
+# Cerberix Firewall — WireGuard VPN Firewall Rules
+# ============================================================
+# Allows WireGuard UDP, restricts VPN client access to
+# LAN subnet and gateway services only.
+# ============================================================
+
+table inet wireguard {
+
+    chain wg_input {
+        type filter hook input priority -2; policy accept;
+
+        # Allow WireGuard UDP from anywhere
+        udp dport 51820 accept
+
+        # Allow VPN clients to reach gateway services only
+        iifname "wg0" tcp dport { 22, 53, 8443 } accept
+        iifname "wg0" udp dport 53 accept
+        iifname "wg0" ip protocol icmp accept
+
+        # Drop all other traffic from VPN to the gateway
+        iifname "wg0" drop
+    }
+
+    chain wg_forward {
+        type filter hook forward priority -2; policy accept;
+
+        # Allow VPN clients -> LAN only (not WAN)
+        iifname "wg0" oifname $LAN_IF accept
+
+        # Allow replies back to VPN
+        oifname "wg0" ct state established,related accept
+
+        # Drop VPN -> WAN direct (force through gateway NAT)
+        iifname "wg0" drop
+    }
+}

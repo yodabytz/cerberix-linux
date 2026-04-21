@@ -1,0 +1,7 @@
+[Unit]
+Description=Cerberix Update Check
+[Timer]
+OnBootSec=5min
+OnUnitActiveSec=6h
+[Install]
+WantedBy=timers.target

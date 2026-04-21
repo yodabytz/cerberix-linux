@@ -1,0 +1,57 @@
+# Cerberix Linux — Starship Prompt
+
+format = """
+[](#58a6ff)\
+$os\
+[](bg:#161b22 fg:#58a6ff)\
+$directory\
+[](fg:#161b22 bg:#21262d)\
+$git_branch\
+$git_status\
+[](fg:#21262d)\
+$fill\
+$cmd_duration\
+$time\
+$line_break\
+$character"""
+
+[os]
+disabled = false
+style = "bg:#58a6ff fg:#0d1117"
+format = "[ $symbol ]($style)"
+
+[os.symbols]
+Linux = ""
+
+[directory]
+style = "bg:#161b22 fg:#58a6ff"
+format = "[ $path ]($style)"
+truncation_length = 3
+truncation_symbol = ".../"
+
+[git_branch]
+symbol = ""
+style = "bg:#21262d fg:#7ee787"
+format = "[ $symbol $branch ]($style)"
+
+[git_status]
+style = "bg:#21262d fg:#d29922"
+format = "[$all_status$ahead_behind ]($style)"
+
+[cmd_duration]
+min_time = 500
+style = "fg:#8b949e"
+format = "[$duration ]($style)"
+
+[time]
+disabled = false
+time_format = "%H:%M"
+style = "fg:#58a6ff"
+format = "[ $time ]($style)"
+
+[character]
+success_symbol = "[](bold #58a6ff)"
+error_symbol = "[](bold #f85149)"
+
+[fill]
+symbol = " "

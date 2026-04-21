@@ -1,0 +1,42 @@
+#!/bin/bash
+# Cerberix First-Boot Welcome — per-user, shown exactly once.
+# Wired via /etc/skel/.config/autostart/cerberix-firstboot.desktop
+
+MARKER="$HOME/.config/cerberix/.firstboot-done"
+[ -f "$MARKER" ] && exit 0
+
+# Only run in a graphical session with zenity available
+[ -z "$DISPLAY" ] && exit 0
+command -v zenity >/dev/null 2>&1 || exit 0
+
+ICON_ARG=""
+[ -f /usr/share/cerberix/icons/shield-green.png ] && \
+    ICON_ARG="--window-icon=/usr/share/cerberix/icons/shield-green.png"
+
+zenity --info $ICON_ARG \
+    --title="Welcome to Cerberix Linux" \
+    --width=460 --height=300 \
+    --text="<b>Welcome to Cerberix Linux</b>
+
+Your system is already hardened on first boot:
+
+  • Firewall (nftables + ufw)  <b>active</b>
+  • Intrusion detection (rkhunter, lynis)  <b>scheduled</b>
+  • File integrity monitoring (AIDE)
+  • Kernel hardening  <b>applied</b>
+  • SSH hardening  <b>applied</b>
+
+<i>Cerberix Shield</i> in your system tray shows security
+status at a glance.
+<i>Cerberix Connect</i> pairs with the firewall appliance
+if you run one (optional).
+
+Run <tt>cerberix-update</tt> when you want to update.
+
+You won't see this dialog again." \
+    2>/dev/null
+
+# Mark done no matter what — never nag again.
+mkdir -p "$(dirname "$MARKER")"
+touch "$MARKER"
+exit 0

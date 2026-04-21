@@ -1,0 +1,237 @@
+#!/usr/bin/env python3
+"""Cerberix Notify — central notification dispatcher.
+Usage: cerberix-notify SUBJECT BODY [SEVERITY]
+Severity: info | warn | error (default: info)
+"""
+import configparser
+import json
+import os
+import socket
+import subprocess
+import sys
+import time
+import urllib.request
+import urllib.parse
+import sqlite3
+import uuid
+import pwd
+
+CFG = "/etc/cerberix/notify.conf"
+LOG = "/var/log/cerberix-notify.log"
+ALERTLOG = "/var/log/cerberix-alerts.log"
+ICONS = {
+    "info":  "/usr/share/cerberix/icons/shield-green.png",
+    "warn":  "/usr/share/cerberix/icons/shield-yellow.png",
+    "error": "/usr/share/cerberix/icons/shield-red.png",
+}
+EMOJI = {"info": "OK", "warn": "!", "error": "X"}
+URGENCY = {"info": "low", "warn": "normal", "error": "critical"}
+
+def log(msg):
+    try:
+        with open(LOG, "a") as f:
+            f.write("%s %s\n" % (time.strftime("%F %T"), msg))
+    except Exception:
+        pass
+
+def record_alert(subject, body, sev):
+    try:
+        with open(ALERTLOG, "a") as f:
+            ts = time.strftime("%F %T")
+            f.write("===== %s [%s] %s =====\n%s\n\n" % (ts, sev.upper(), subject, body))
+    except Exception:
+        pass
+
+def read_cfg():
+    cfg = configparser.ConfigParser()
+    cfg["DEFAULT"] = {"no_desktop": "0"}
+    cfg["telegram"] = {"bot_token": "", "chat_id": ""}
+    cfg["email"] = {"to": "", "from": "cerberix@localhost"}
+    cfg["webhook"] = {"url": ""}
+    if os.path.exists(CFG):
+        cfg.read(CFG)
+    return cfg
+
+def find_logged_in_user():
+    try:
+        out = subprocess.check_output(["loginctl", "list-sessions", "--no-legend"],
+                                      text=True, timeout=5)
+        for line in out.splitlines():
+            parts = line.split()
+            if len(parts) < 3:
+                continue
+            sid = parts[0]
+            info = subprocess.check_output(["loginctl", "show-session", sid],
+                                           text=True, timeout=5)
+            props = dict(l.split("=", 1) for l in info.splitlines() if "=" in l)
+            if props.get("Type") in ("x11", "wayland") and props.get("State") == "active":
+                user = props.get("Name")
+                uid = int(props.get("User", "0"))
+                display = props.get("Display", ":0")
+                try:
+                    pids = subprocess.check_output(["pgrep", "-u", str(uid), "xfce4-session"],
+                                                   text=True, timeout=5).split()
+                    if pids:
+                        with open("/proc/%s/environ" % pids[0], "rb") as f:
+                            env = f.read().split(b"\0")
+                        dbus = None
+                        for e in env:
+                            if e.startswith(b"DBUS_SESSION_BUS_ADDRESS="):
+                                dbus = e.decode().split("=", 1)[1]
+                                break
+                        if dbus:
+                            return (user, uid, dbus, display)
+                except Exception:
+                    continue
+    except Exception as e:
+        log("find_logged_in_user error: %s" % e)
+    return None
+
+def desktop(subject, body, sev):
+    icon = ICONS.get(sev, ICONS["info"])
+    urg = URGENCY.get(sev, "normal")
+    title = "Cerberix Security: %s" % subject
+    if os.geteuid() == 0:
+        sess = find_logged_in_user()
+        if not sess:
+            log("desktop: no active X session, skipping")
+            return
+        user, uid, dbus, display = sess
+        cmd = ["runuser", "-u", user, "--",
+               "env", "DBUS_SESSION_BUS_ADDRESS=%s" % dbus,
+               "DISPLAY=%s" % display, "XDG_RUNTIME_DIR=/run/user/%d" % uid,
+               "notify-send", "-u", urg, "-i", icon, title, body]
+    else:
+        cmd = ["notify-send", "-u", urg, "-i", icon, title, body]
+    try:
+        subprocess.run(cmd, timeout=10, check=False)
+        log("desktop sent: %s" % subject)
+    except Exception as e:
+        log("desktop error: %s" % e)
+
+def telegram(cfg, subject, body, sev):
+    token = cfg["telegram"]["bot_token"].strip()
+    chat = cfg["telegram"]["chat_id"].strip()
+    if not token or not chat:
+        return
+    host = socket.gethostname()
+    ts = time.strftime("%F %T")
+    text = "%s *Cerberix Security: %s*\nHost: `%s`\nTime: `%s`\n\n%s" % (
+        EMOJI.get(sev, ""), subject, host, ts, body)
+    try:
+        data = urllib.parse.urlencode({
+            "chat_id": chat, "text": text, "parse_mode": "Markdown"
+        }).encode()
+        req = urllib.request.Request(
+            "https://api.telegram.org/bot%s/sendMessage" % token, data=data)
+        urllib.request.urlopen(req, timeout=15).read()
+        log("telegram sent: %s" % subject)
+    except Exception as e:
+        log("telegram error: %s" % e)
+
+def email(cfg, subject, body, sev):
+    to = cfg["email"]["to"].strip()
+    if not to:
+        return
+    frm = cfg["email"]["from"].strip() or "cerberix@localhost"
+    host = socket.gethostname()
+    ts = time.strftime("%F %T")
+    subj = "[%s][%s] %s" % (host, sev.upper(), subject)
+    msg = "Host: %s\nSeverity: %s\nTime: %s\n\n%s\n\n--\nCerberix security monitor\n" % (
+        host, sev, ts, body)
+    try:
+        p = subprocess.Popen(["mail", "-s", subj, "-r", frm, to],
+                             stdin=subprocess.PIPE, text=True)
+        p.communicate(msg, timeout=15)
+        log("email sent: %s" % subject)
+    except Exception as e:
+        log("email error: %s" % e)
+
+def webhook(cfg, subject, body, sev):
+    url = cfg["webhook"]["url"].strip()
+    if not url:
+        return
+    host = socket.gethostname()
+    color = {"info": 0x3fb950, "warn": 0xd29922, "error": 0xf85149}.get(sev, 0x58a6ff)
+    payload = {
+        "username": "Cerberix Security",
+        "embeds": [{
+            "title": "%s %s" % (EMOJI.get(sev, ""), subject),
+            "description": body,
+            "color": color,
+            "footer": {"text": "%s - %s" % (host, sev.upper())},
+            "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+        }]
+    }
+    try:
+        req = urllib.request.Request(
+            url, data=json.dumps(payload).encode(),
+            headers={"Content-Type": "application/json"})
+        urllib.request.urlopen(req, timeout=15).read()
+        log("webhook sent: %s" % subject)
+    except Exception as e:
+        log("webhook error: %s" % e)
+
+
+def bell_insert(subject, body, sev):
+    """Write directly into xfce4-notifyd's SQLite log.
+    Workaround for notifyd 0.9.7 which doesn't write its own log.
+    """
+    sess = find_logged_in_user()
+    if not sess:
+        log("bell_insert: no active X session")
+        return
+    user, uid, dbus, display = sess
+    try:
+        home = pwd.getpwuid(uid).pw_dir
+    except Exception:
+        return
+    dbpath = os.path.join(home, ".cache", "xfce4", "notifyd", "log.sqlite")
+    if not os.path.exists(dbpath):
+        log("bell_insert: no log.sqlite at %s" % dbpath)
+        return
+    icon_id = {"info": "dialog-information", "warn": "dialog-warning", "error": "dialog-error"}.get(sev, "dialog-information")
+    try:
+        conn = sqlite3.connect(dbpath, timeout=5)
+        conn.execute(
+            "INSERT INTO notifications (id, timestamp, tz_identifier, app_id, "
+            "app_name, icon_id, summary, body, actions, expire_timeout, is_read) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (str(uuid.uuid4()), int(time.time()),
+             time.tzname[0] if time.tzname else "UTC",
+             "cerberix-notify", "Cerberix Security", icon_id,
+             "Cerberix Security: %s" % subject, body, b"", -1, 0)
+        )
+        conn.commit()
+        conn.close()
+        # Maintain ownership if we wrote as root
+        if os.geteuid() == 0:
+            try:
+                pw = pwd.getpwuid(uid)
+                os.chown(dbpath, uid, pw.pw_gid)
+            except Exception:
+                pass
+        log("bell sent: %s" % subject)
+    except Exception as e:
+        log("bell error: %s" % e)
+
+def main():
+    if len(sys.argv) < 3:
+        print("Usage: cerberix-notify SUBJECT BODY [SEVERITY]", file=sys.stderr)
+        sys.exit(2)
+    subject = sys.argv[1]
+    body = sys.argv[2]
+    sev = sys.argv[3] if len(sys.argv) > 3 else "info"
+    if sev not in ("info", "warn", "error"):
+        sev = "info"
+    record_alert(subject, body, sev)
+    bell_insert(subject, body, sev)
+    cfg = read_cfg()
+    if cfg["DEFAULT"].get("no_desktop", "0") != "1":
+        desktop(subject, body, sev)
+    telegram(cfg, subject, body, sev)
+    email(cfg, subject, body, sev)
+    webhook(cfg, subject, body, sev)
+
+if __name__ == "__main__":
+    main()

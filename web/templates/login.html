@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><title>Cerberix Login</title>
+<link rel="icon" href="/static/img/favicon.ico"><link rel="apple-touch-icon" href="/static/img/apple-touch-icon.png">
+<style>
+body{background:#0d1117;color:#e6edf3;font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0}
+.box{background:#161b22;border:1px solid #30363d;border-radius:8px;padding:40px;width:350px}
+h1{font-size:20px;margin:0 0 20px;text-align:center}
+input{width:100%;padding:10px;margin:8px 0;background:#21262d;border:1px solid #30363d;border-radius:4px;color:#e6edf3;font-size:14px;box-sizing:border-box}
+button{width:100%;padding:10px;margin-top:12px;background:#58a6ff;border:none;border-radius:4px;color:#fff;font-size:14px;cursor:pointer}
+#msg{color:#f85149;margin-top:12px;display:none}
+#ok{color:#3fb950;margin-top:12px;display:none}
+</style></head><body>
+<div class="box">
+<img src="/static/img/cerberix-logo.png" alt="Cerberix" style="width:120px;display:block;margin:0 auto 16px;filter:invert(1)">
+<h1>Cerberix Firewall</h1>
+<div style="text-align:center;font-size:10px;color:#8b949e;margin-top:-16px;margin-bottom:16px;letter-spacing:0.3px">Powered by Cerberix Linux</div>
+<form id="lf">
+<input id="u" placeholder="Username" autocomplete="username">
+<input id="p" type="password" placeholder="Password">
+<button type="submit">Sign In</button>
+</form>
+<div id="msg"></div>
+<div id="ok"></div>
+</div>
+<script src="/static/js/login.js"></script>
+</body></html>

@@ -1,0 +1,6 @@
+# Cerberix AI Threat Engine — Runtime Dependencies
+# Only packages actually imported by the engine
+
+anthropic>=0.42.0
+numpy>=1.26.0
+scikit-learn>=1.4.0

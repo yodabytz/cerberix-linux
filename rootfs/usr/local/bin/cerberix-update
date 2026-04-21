@@ -1,0 +1,61 @@
+#!/bin/bash
+# Cerberix Update — Security-aware system updater
+
+BLUE='\033[1;34m'
+GREEN='\033[1;32m'
+RED='\033[1;31m'
+YELLOW='\033[1;33m'
+NC='\033[0m'
+
+echo -e "${BLUE}"
+echo "  ╔═══════════════════════════════════╗"
+echo "  ║     Cerberix System Update        ║"
+echo "  ╚═══════════════════════════════════╝"
+echo -e "${NC}"
+
+if [[ $EUID -ne 0 ]]; then
+    exec sudo "$0" "$@"
+fi
+
+echo -e "${BLUE}[1/4]${NC} Checking for updates..."
+UPDATES=$(checkupdates 2>/dev/null)
+COUNT=$(echo "$UPDATES" | grep -c "^" 2>/dev/null || echo "0")
+
+if [ "$COUNT" -eq 0 ] || [ -z "$UPDATES" ]; then
+    echo -e "${GREEN}  System is up to date!${NC}"
+    exit 0
+fi
+
+echo -e "  ${YELLOW}${COUNT} packages to update${NC}"
+echo ""
+
+# Check for security-critical packages
+SEC_PKGS="linux openssl openssh curl wget firefox gnupg nftables"
+SEC_UPDATES=""
+for pkg in $SEC_PKGS; do
+    if echo "$UPDATES" | grep -q "^${pkg} "; then
+        SEC_UPDATES="${SEC_UPDATES}  ${RED}⚠ SECURITY:${NC} ${pkg}\n"
+    fi
+done
+
+if [ -n "$SEC_UPDATES" ]; then
+    echo -e "${RED}Security-critical updates:${NC}"
+    echo -e "$SEC_UPDATES"
+fi
+
+echo -e "${BLUE}[2/4]${NC} Updating package database..."
+pacman -Sy --noconfirm > /dev/null 2>&1
+
+echo -e "${BLUE}[3/4]${NC} Upgrading packages..."
+pacman -Su --noconfirm 2>&1 | tail -5
+
+echo -e "${BLUE}[4/4]${NC} Cleaning cache..."
+paccache -r > /dev/null 2>&1
+
+echo ""
+echo -e "${GREEN}  Update complete! ${COUNT} packages upgraded.${NC}"
+
+if echo "$UPDATES" | grep -q "^linux "; then
+    echo -e "${YELLOW}  Kernel was updated — reboot recommended.${NC}"
+fi
+echo ""

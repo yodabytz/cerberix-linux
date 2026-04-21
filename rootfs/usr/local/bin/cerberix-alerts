@@ -1,0 +1,13 @@
+#!/bin/bash
+# cerberix-alerts — view recent security alerts
+LOG=/var/log/cerberix-alerts.log
+[ -f "$LOG" ] || { echo "No alerts yet."; exit 0; }
+if [ "${1:-}" = "-f" ]; then
+    exec tail -f "$LOG"
+elif [ "${1:-}" = "-a" ]; then
+    less "$LOG"
+else
+    echo "Last 5 alerts (use -a for all, -f to follow):"
+    echo ""
+    awk 'BEGIN{RS="\n\n"} END{n=NR} {if (NR>n-5) print $0 "\n"}' "$LOG" | tac | tac
+fi

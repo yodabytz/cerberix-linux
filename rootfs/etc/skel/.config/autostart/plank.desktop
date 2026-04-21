@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Plank
+Comment=Stupidly simple dock
+Exec=/usr/bin/plank
+Icon=plank
+Terminal=false
+X-GNOME-Autostart-enabled=true
+StartupNotify=false
+OnlyShowIn=XFCE;

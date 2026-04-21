@@ -1,0 +1,38 @@
+# ============================================================
+# Cerberix Firewall — Bogon/Martian Filter (WAN Ingress)
+# ============================================================
+# Drop packets with spoofed or non-routable source addresses
+# arriving on the WAN interface.
+# Uses $WAN_IF from main nftables.conf (do not redefine here).
+# ============================================================
+
+table inet bogon_filter {
+
+    set bogon_v4 {
+        type ipv4_addr
+        flags interval
+        elements = {
+            0.0.0.0/8,
+            10.0.0.0/8,
+            100.64.0.0/10,
+            127.0.0.0/8,
+            169.254.0.0/16,
+            172.16.0.0/12,
+            192.0.0.0/24,
+            192.0.2.0/24,
+            192.168.0.0/16,
+            198.18.0.0/15,
+            198.51.100.0/24,
+            203.0.113.0/24,
+            224.0.0.0/4,
+            240.0.0.0/4
+        }
+    }
+
+    chain bogon_input {
+        type filter hook input priority -10; policy accept;
+
+        iifname $WAN_IF ip saddr @bogon_v4 \
+            log prefix "[CERBERIX BOGON] " level warn drop
+    }
+}

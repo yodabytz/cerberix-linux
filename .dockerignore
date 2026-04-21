@@ -1,0 +1,8 @@
+.git
+.gitignore
+*.md
+LICENSE
+docs/
+tests/
+.env*
+.env

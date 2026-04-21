@@ -1,0 +1,8 @@
+#!/bin/sh
+# Cerberix grep shim — suppresses "egrep/fgrep is obsolete" deprecation warnings
+err=$(mktemp)
+/usr/bin/grep "$@" 2>"$err"
+rc=$?
+/usr/bin/grep -v "egrep is obsolete\|fgrep is obsolete\|warning: stray" "$err" >&2 2>/dev/null
+rm -f "$err"
+exit $rc

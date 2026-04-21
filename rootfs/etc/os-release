@@ -1,0 +1,12 @@
+NAME="Cerberix Firewall"
+ID=cerberix
+ID_LIKE=alpine
+VERSION_ID=0.3.0
+VERSION="0.3.0 (Hades)"
+VERSION_CODENAME=hades
+PRETTY_NAME="Cerberix Firewall 0.3.0 (Hades)"
+HOME_URL="https://cerberus.systems"
+BUG_REPORT_URL="https://cerberus.systems/issues"
+SUPPORT_URL="https://cerberus.systems/support"
+CERBERIX_VARIANT="gateway"
+CERBERIX_BUILD_TYPE="container"

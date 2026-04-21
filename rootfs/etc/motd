@@ -1,0 +1,40 @@
+
+                   CERBERIX LINUX
+
+                   #          %
+                  =@+        +@=
+                  @@%*      *@@@
+            ++     @@=@%-##-%@=@@:    +*
+      =      :@@*  +@@-%@@@@@@%:@@*  *@@-      =
+      :@@*   @+@@*  @@@@@@@@@@@@@@  +@@+@   +@@-
+       #@@+*@@:%@@@%.*@@@@@@@@@@@@*.%@@@%:@@*=@@#
+        @@@@@@@@@@*.@@@::%@@@@@::@@@.+@@@@@@@@@@
+       +@@@@@@@@@@%.:@@@@%@@@@%@@@@:.%@@@@@@@@@@+
+       @@@%:.%@@@@**-.+@@@@@@@@@@*.-**@@@@%.:%@@@
+      =@@@%@@@@@@@@@@#..-@@@@@@-..#@@@@@@@@@@%@@@=
+   :@@@@@@@@@@%%@@@@@@=.#@@@@#.=@@@@@@%%@@@@@@@@@@-
+    %@@@@@#:.#@@@@@@@@@%.:##:.%@@@@@@@@@#.:#@@@@@%
+     :##-....-:=%@@@#@@@@+..+@@@@#%@@%=:=....-##:
+              :@%.=@%=@@@@@@@@@@=%@=.%@
+                =@@+:+:@@@@@@@@:+:+@@+
+                  @@@#.:@@@@@@:.#@@@
+                  -@@@=-@@@@-=@@@-
+                   %@@:=@@+:@@%
+                    :@%.**.%@:
+                      *+..+*
+                        :::
+
+  Cerberix Firewall 0.3.0 (Hades) — Firewall Gateway
+  Cerberus Systems — AI-Powered Network Security
+
+  Commands:
+    cerberix-version      Show version info
+    cerberix-ai status    AI engine status
+    cerberix-ai threats   Recent threat events
+    cerberix-ai blocklist Blocked IPs
+    nft list ruleset      Show firewall rules
+    fw                    Alias for nft list ruleset
+    threats               Alias for cerberix-ai threats
+    blocked               Alias for cerberix-ai blocklist
+    leases                Show DHCP leases
+

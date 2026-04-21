@@ -1,0 +1,149 @@
+#!/usr/bin/env python3
+"""
+Cerberix Connect — Desktop client for Cerberix Firewall
+"""
+
+import json
+import os
+import ssl
+import urllib.request
+import gi
+gi.require_version('Gtk', '3.0')
+from gi.repository import Gtk, GLib, Pango
+
+
+class CerberixConnect(Gtk.Window):
+    def __init__(self):
+        super().__init__(title="Cerberix Connect")
+        self.set_default_size(700, 500)
+        self.set_position(Gtk.WindowPosition.CENTER)
+
+        self.config_file = os.path.expanduser("~/.config/cerberix/connect.json")
+        self.config = self.load_config()
+
+        vbox = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
+        vbox.set_margin_top(15)
+        vbox.set_margin_bottom(15)
+        vbox.set_margin_start(15)
+        vbox.set_margin_end(15)
+
+        # Header
+        header = Gtk.Box(spacing=10)
+        title = Gtk.Label()
+        title.set_markup("<big><b>Cerberix Connect</b></big>")
+        header.pack_start(title, False, False, 0)
+
+        self.status_label = Gtk.Label()
+        self.status_label.set_markup('<span foreground="#8b949e">Not connected</span>')
+        header.pack_end(self.status_label, False, False, 0)
+        vbox.pack_start(header, False, False, 0)
+
+        # Connection bar
+        conn_box = Gtk.Box(spacing=8)
+        conn_box.pack_start(Gtk.Label(label="Firewall:"), False, False, 0)
+        self.host_entry = Gtk.Entry()
+        self.host_entry.set_placeholder_text("https://192.168.1.1:8443")
+        self.host_entry.set_text(self.config.get("host", ""))
+        conn_box.pack_start(self.host_entry, True, True, 0)
+        self.token_entry = Gtk.Entry()
+        self.token_entry.set_placeholder_text("API Token")
+        self.token_entry.set_text(self.config.get("token", ""))
+        self.token_entry.set_visibility(False)
+        conn_box.pack_start(self.token_entry, True, True, 0)
+        connect_btn = Gtk.Button(label="Connect")
+        connect_btn.connect("clicked", self.on_connect)
+        conn_box.pack_start(connect_btn, False, False, 0)
+        vbox.pack_start(conn_box, False, False, 0)
+
+        # Notebook for tabs
+        notebook = Gtk.Notebook()
+
+        # Dashboard tab
+        self.dash_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
+        self.dash_box.set_margin_top(10)
+        self.dash_label = Gtk.Label(label="Connect to your Cerberix Firewall to see dashboard")
+        self.dash_box.pack_start(self.dash_label, True, True, 0)
+        notebook.append_page(self.dash_box, Gtk.Label(label="Dashboard"))
+
+        # Threats tab
+        self.threats_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
+        self.threats_label = Gtk.Label(label="No threat data")
+        self.threats_box.pack_start(self.threats_label, True, True, 0)
+        notebook.append_page(self.threats_box, Gtk.Label(label="Threats"))
+
+        # Firewall tab
+        self.fw_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
+        self.fw_label = Gtk.Label(label="No firewall data")
+        self.fw_box.pack_start(self.fw_label, True, True, 0)
+        notebook.append_page(self.fw_box, Gtk.Label(label="Firewall"))
+
+        vbox.pack_start(notebook, True, True, 0)
+        self.add(vbox)
+
+    def load_config(self):
+        try:
+            with open(self.config_file) as f:
+                return json.load(f)
+        except:
+            return {}
+
+    def save_config(self):
+        os.makedirs(os.path.dirname(self.config_file), exist_ok=True)
+        self.config["host"] = self.host_entry.get_text()
+        self.config["token"] = self.token_entry.get_text()
+        with open(self.config_file, "w") as f:
+            json.dump(self.config, f)
+        os.chmod(self.config_file, 0o600)
+
+    def api_call(self, endpoint):
+        host = self.host_entry.get_text().rstrip("/")
+        token = self.token_entry.get_text()
+        url = f"{host}{endpoint}"
+        ctx = ssl.create_default_context()
+        ctx.check_hostname = False
+        ctx.verify_mode = ssl.CERT_NONE
+        req = urllib.request.Request(url, headers={"Authorization": f"Bearer {token}"})
+        resp = urllib.request.urlopen(req, context=ctx, timeout=10)
+        return json.loads(resp.read())
+
+    def on_connect(self, btn):
+        self.save_config()
+        try:
+            data = self.api_call("/api/dashboard")
+            self.status_label.set_markup('<span foreground="#3fb950">Connected</span>')
+            self.update_dashboard(data)
+            GLib.timeout_add_seconds(30, self.refresh)
+        except Exception as e:
+            self.status_label.set_markup(f'<span foreground="#f85149">Error: {str(e)[:40]}</span>')
+
+    def refresh(self):
+        try:
+            data = self.api_call("/api/dashboard")
+            self.update_dashboard(data)
+        except:
+            pass
+        return True
+
+    def update_dashboard(self, data):
+        for child in self.dash_box.get_children():
+            self.dash_box.remove(child)
+
+        info = [
+            f"Uptime: {data.get('uptime', 'N/A')}",
+            f"WAN IP: {data.get('wan_ip', 'N/A')}",
+            f"Active Threats: {data.get('active_threats', 0)}",
+            f"Blocked IPs: {data.get('blocked_ips', 0)}",
+            f"Firewall Rules: {data.get('rule_count', 0)}",
+        ]
+        for line in info:
+            label = Gtk.Label(label=line)
+            label.set_xalign(0)
+            self.dash_box.pack_start(label, False, False, 2)
+        self.dash_box.show_all()
+
+
+if __name__ == "__main__":
+    win = CerberixConnect()
+    win.connect("destroy", Gtk.main_quit)
+    win.show_all()
+    Gtk.main()

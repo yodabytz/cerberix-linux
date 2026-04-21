@@ -1,0 +1,9 @@
+[Unit]
+Description=Cerberix rkhunter rootkit scan with notification
+After=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/cerberix-rkhunter-check
+Nice=10
+IOSchedulingClass=idle

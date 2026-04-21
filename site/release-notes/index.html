@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Release Notes — Cerberix Linux</title>
+  <meta name="description" content="Release history and change log for Cerberix Linux." />
+  <meta name="theme-color" content="#222436" />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="alternate" type="application/rss+xml" title="Cerberix Linux updates" href="/feed.xml" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Cormorant+Garamond:wght@500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/style.css" />
+  <style>
+    .notes-main { max-width: 760px; margin: 0 auto; padding: 80px 32px 120px; }
+    .note { background: var(--bg-darker); border: 1px solid var(--border); border-radius: var(--radius); padding: 32px 36px; margin-bottom: 32px; }
+    .note h2 { margin-top: 0; }
+    .note-meta { font-family: var(--font-mono); font-size: 0.85rem; color: var(--fg-dim); margin-bottom: 20px; display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
+    .note-meta .dot { width: 3px; height: 3px; background: var(--fg-faint); border-radius: 50%; display: inline-block; }
+    .note ul { color: var(--fg-dim); }
+    .note ul li { margin-bottom: 6px; }
+    .note ul li strong { color: var(--fg); font-weight: 600; }
+    .note code { background: var(--bg); padding: 2px 8px; border-radius: 4px; color: var(--green); font-size: 0.88em; }
+    .note p { color: var(--fg); }
+    .back-link { display: inline-flex; align-items: center; gap: 8px; color: var(--fg-dim); font-size: 0.92rem; margin-bottom: 32px; }
+    .back-link:hover { color: var(--fg); }
+  </style>
+</head>
+<body>
+  <div class="bg-grid"></div>
+
+  <header class="nav">
+    <a class="brand" href="/">
+      <svg class="brand-mark" viewBox="0 0 48 48" aria-hidden="true">
+        <defs>
+          <linearGradient id="shieldGrad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#82aaff" />
+            <stop offset="100%" stop-color="#c099ff" />
+          </linearGradient>
+        </defs>
+        <path d="M24 3 L42 10 V24 C42 34 34 42 24 45 C14 42 6 34 6 24 V10 Z"
+              fill="none" stroke="url(#shieldGrad)" stroke-width="2.5" stroke-linejoin="round" />
+        <circle cx="17" cy="22" r="2.2" fill="#c3e88d" />
+        <circle cx="24" cy="20" r="2.2" fill="#c3e88d" />
+        <circle cx="31" cy="22" r="2.2" fill="#c3e88d" />
+        <path d="M14 30 Q24 38 34 30" fill="none" stroke="#82aaff" stroke-width="2" stroke-linecap="round" />
+      </svg>
+      <span class="brand-name">Cerberix</span>
+    </a>
+    <nav class="nav-links">
+      <a href="/#features">Features</a>
+      <a href="/#download">Download</a>
+      <a href="/feed.xml">RSS</a>
+      <a class="nav-cta" href="/#download">Get it</a>
+    </nav>
+  </header>
+
+  <main class="notes-main">
+    <a class="back-link" href="/">&larr; Back to home</a>
+    <h1>Release Notes</h1>
+    <p style="color: var(--fg-dim); margin-bottom: 48px;">
+      All Cerberix Linux releases in reverse chronological order.
+      Subscribe to the <a href="/feed.xml">RSS feed</a> for updates.
+    </p>
+
+    <article class="note">
+      <h2>0.1.0 &mdash; Styx</h2>
+      <div class="note-meta">
+        <span>Released 2026-04-18</span>
+        <span class="dot"></span>
+        <span>x86_64</span>
+        <span class="dot"></span>
+        <span>ISO: 3.0 GB</span>
+      </div>
+      <p>The first public Cerberix Linux release.</p>
+
+      <h3 style="margin-top: 24px;">Core</h3>
+      <ul>
+        <li><strong>Arch Linux rolling base</strong> with <code>linux</code> and <code>linux-hardened</code> kernels</li>
+        <li><strong>XFCE 4.20</strong> desktop with Tokyo Night Moon theming, Plank dock, and preloaded user dotfiles in <code>/etc/skel/</code></li>
+        <li><strong>fish</strong> default shell with Tide prompt, Fisher plugins (fzf.fish, done), and zoxide</li>
+      </ul>
+
+      <h3 style="margin-top: 24px;">Security stack (preconfigured)</h3>
+      <ul>
+        <li>nftables firewall, fail2ban, ufw/gufw</li>
+        <li>rkhunter + lynis + apparmor + arch-audit</li>
+        <li>keepassxc + gnome-keyring for credentials</li>
+        <li>bleachbit for privacy cleanup</li>
+      </ul>
+
+      <h3 style="margin-top: 24px;">Privacy &amp; VPN</h3>
+      <ul>
+        <li>tor, torbrowser-launcher</li>
+        <li>wireguard-tools, openvpn, openconnect</li>
+        <li>proxychains-ng</li>
+      </ul>
+
+      <h3 style="margin-top: 24px;">Offensive / audit toolkit</h3>
+      <ul>
+        <li>hydra, hashcat, nikto, radare2, sqlmap</li>
+      </ul>
+
+      <h3 style="margin-top: 24px;">Modern CLI</h3>
+      <ul>
+        <li>starship, tmux, eza, bat, fd, fzf, ripgrep, lazygit, neovim, plocate</li>
+      </ul>
+
+      <h3 style="margin-top: 24px;">Cerberix-native tools</h3>
+      <ul>
+        <li><strong>Cerberix Shield</strong> &mdash; system tray indicator for security posture</li>
+        <li><strong>Cerberix Connect</strong> &mdash; firewall appliance dashboard</li>
+        <li><strong>Cerberix Update</strong> / <strong>Cerberix rkhunter</strong> &mdash; systemd timers</li>
+      </ul>
+
+      <h3 style="margin-top: 24px;">Installer</h3>
+      <ul>
+        <li>Single-command: <code>sudo cerberix-install</code></li>
+        <li>UEFI + BIOS, GPT + MBR</li>
+        <li>New users automatically inherit themed dotfiles via <code>/etc/skel/</code></li>
+      </ul>
+
+      <h3 style="margin-top: 24px;">Known caveats</h3>
+      <ul>
+        <li>English locale only at install</li>
+        <li>Desktop only &mdash; no server variant yet</li>
+        <li><code>aide</code> and <code>hexchat</code> ship as post-install AUR additions (<code>yay -S aide hexchat</code>)</li>
+        <li>0.1.0 is young &mdash; please file issues generously</li>
+      </ul>
+
+      <h3 style="margin-top: 24px;">Download &amp; verify</h3>
+      <p>
+        <a href="/#download">ISO + signature + checksum</a> on the homepage.
+        The signing key is published at <a href="/gpg.asc">/gpg.asc</a>.
+      </p>
+    </article>
+  </main>
+
+  <footer class="footer">
+    <div class="foot-row">
+      <div class="foot-brand">
+        <svg class="brand-mark sm" viewBox="0 0 48 48" aria-hidden="true">
+          <path d="M24 3 L42 10 V24 C42 34 34 42 24 45 C14 42 6 34 6 24 V10 Z"
+                fill="none" stroke="#82aaff" stroke-width="2.5" stroke-linejoin="round" />
+          <circle cx="17" cy="22" r="2.2" fill="#c3e88d" />
+          <circle cx="24" cy="20" r="2.2" fill="#c3e88d" />
+          <circle cx="31" cy="22" r="2.2" fill="#c3e88d" />
+        </svg>
+        <span>Cerberix Linux</span>
+      </div>
+      <div class="foot-links">
+        <a href="/">Home</a>
+        <a href="/feed.xml">RSS</a>
+        <a href="https://matrix.to/#/#cerberix:matrix.quantumbytz.com">Matrix</a>
+        <a href="mailto:hello@cerberix.org">Contact</a>
+      </div>
+    </div>
+    <div class="foot-sub">
+      © 2026 Cerberix &middot; Released under the MIT License &middot; Built on Arch
+    </div>
+  </footer>
+</body>
+</html>

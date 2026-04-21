@@ -1,0 +1,399 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/">
+  <channel>
+    <title>Cerberix Linux</title>
+    <link>https://cerberix.org/</link>
+    <atom:link href="https://cerberix.org/feed.xml" rel="self" type="application/rss+xml" />
+    <description>Release notes, security advisories, and project updates for Cerberix Linux.</description>
+    <language>en-us</language>
+    <lastBuildDate>Tue, 21 Apr 2026 09:00:00 -0400</lastBuildDate>
+    <generator>Cerberix blog generator</generator>
+    <image>
+      <url>https://cerberix.org/favicon.svg</url>
+      <title>Cerberix Linux</title>
+      <link>https://cerberix.org/</link>
+    </image>
+
+    <item>
+      <title>What&#x27;s next — pacman repo, source transparency, and the next wave of work</title>
+      <link>https://cerberix.org/blog/2026-04-21-whats-next-roadmap/</link>
+      <guid isPermaLink="true">https://cerberix.org/blog/2026-04-21-whats-next-roadmap/</guid>
+      <pubDate>Tue, 21 Apr 2026 09:00:00 -0400</pubDate>
+      <description>A plain-English roadmap for Cerberix after launch week. The biggest item is a dedicated pacman repository so updates ship without reinstalls.</description>
+      <content:encoded><![CDATA[<p>Three days in, the first wave of launch-week feedback is landing, the
+ISO is mirrored globally, and it's time to outline what's coming next.
+This isn't a wishlist — it's the concrete work queue.</p>
+<h2>A dedicated pacman repository</h2>
+<p>The single most important piece of infrastructure Cerberix doesn't
+have yet is its own <strong>signed pacman repository</strong>. Right now, if a bug
+in Cerberix Shield or a tuning improvement in the installer needs to
+reach users, the only distribution mechanism is cutting a new ISO.
+That's slow, wasteful, and out of line with what users rightly expect
+from an Arch-based system.</p>
+<p>The plan:</p>
+<pre><code>repo.cerberix.org/x86_64/
+  cerberix-shield-&lt;version&gt;.pkg.tar.zst
+  cerberix-connect-&lt;version&gt;.pkg.tar.zst
+  cerberix-install-&lt;version&gt;.pkg.tar.zst
+  cerberix-fw-setup-&lt;version&gt;.pkg.tar.zst
+  cerberix-firstboot-&lt;version&gt;.pkg.tar.zst
+  cerberix-backgrounds-&lt;version&gt;.pkg.tar.zst
+  cerberix-branding-&lt;version&gt;.pkg.tar.zst
+  cerberix.db.tar.gz
+  ... and detached .sig files for each
+</code></pre>
+<p>The repo will be hosted through SourceForge's global mirror network
+(the same infrastructure that serves the ISO) and signed with the
+same GPG key published at <a href="/gpg.asc">cerberix.org/gpg.asc</a>. Every
+Cerberix install will ship with a <code>[cerberix]</code> section already in
+<code>/etc/pacman.conf</code>, so <code>pacman -Syu</code> Just Works from day one.</p>
+<p>Practical result: a Shield fix no longer requires a reinstall. It
+becomes a 30-second <code>pacman -Syu</code> for everyone.</p>
+<p>Beyond the Cerberix-branded tooling, the repo will also carry a
+small set of in-house utilities (netscope, swapwatch, and others
+currently living only in <code>/usr/local/bin/</code> on the maintainer's own
+systems). Shipping them as proper packages makes them installable,
+upgradeable, and removable like any other Arch software.</p>
+<h2>Source transparency on GitHub</h2>
+<p>Cerberix is already reproducible — the build is a short Bash script,
+the rootfs is a simple overlay, and the ISO is signed. What's
+missing is a public, read-only source tree so anyone curious can
+inspect the code without a download.</p>
+<p>A GitHub repo is coming, strictly as an inspection mirror. Rules:</p>
+<ul>
+<li>Source code only. No ISOs, no signatures, no release artifacts.</li>
+<li>Downloads stay on cerberix.org and the SourceForge mirror — the
+  GitHub repo's README will point users there, not to GitHub Releases.</li>
+<li>No GitHub Actions that create releases. Tags will be pushed only
+  as lightweight references, never with attached binaries.</li>
+</ul>
+<p>This split — transparent source on GitHub, artifacts on infrastructure
+we own — keeps Cerberix's distribution independent of any single
+platform's policy changes.</p>
+<h2>Smaller items in the queue</h2>
+<ul>
+<li><strong>Firefox default theme</strong> — shipping the Tokyo Night theme as a
+  default via Firefox's distribution policies, so new installs open
+  the browser already themed.</li>
+<li><strong>DKIM signing for <code>cerberix.org</code> mail</strong> — announcement and update
+  emails from the domain currently pass SPF but don't carry DKIM
+  signatures. This is a configuration-only change on the mail server
+  and will land before the next release.</li>
+<li><strong>Installer locale selection</strong> — English-only at install time today.
+  The installer will get a locale picker in 0.1.1.</li>
+<li><strong>A server / headless variant</strong> — Cerberix is explicitly desktop-
+  first, but a minimal server spin (no XFCE, keeps the security
+  stack) is a natural sibling and will appear once the desktop build
+  is stable enough to share a base.</li>
+</ul>
+<h2>What's intentionally not on the list</h2>
+<ul>
+<li>A paid tier, donation drive, or sponsorship campaign. Not on launch
+  week. Infrastructure comes first; asking people to support the
+  project comes later, if at all, and never before the work has
+  demonstrated sustained value.</li>
+<li>A move to any other desktop environment. XFCE is the choice, not a
+  placeholder.</li>
+<li>A Wayland-by-default switch. When XFCE's Wayland story stabilizes
+  upstream, so will ours. Not before.</li>
+</ul>
+<hr />
+<p>If any of this is broken or misaligned with what you want from a
+security-focused distribution, tell us — <a href="mailto:bugs@cerberix.org">bugs@cerberix.org</a>
+for reproducible issues, <a href="mailto:hello@cerberix.org">hello@cerberix.org</a>
+for everything else.</p>
+<p>The next release-notes post will land when the first point-release
+ships. Subscribe via <a href="/feed.xml">RSS</a> if you want to be notified.</p>]]></content:encoded>
+    </item>
+    <item>
+      <title>Day two — Shield toggles, login background, fewer false alarms</title>
+      <link>https://cerberix.org/blog/2026-04-20-day-two-updates/</link>
+      <guid isPermaLink="true">https://cerberix.org/blog/2026-04-20-day-two-updates/</guid>
+      <pubDate>Mon, 20 Apr 2026 09:00:00 -0400</pubDate>
+      <description>What landed in the ISO today — the Firewall button now actually configures the firewall, the login screen has a background, and the failed-units list is empty.</description>
+      <content:encoded><![CDATA[<p>Quick round of fixes from dogfooding the install. Fresh ISO on the site
+(new SHA256 published alongside the signature as always).</p>
+<h2>The Firewall button in Cerberix Shield actually does something</h2>
+<p>Before today, clicking the Firewall button in Shield ran
+<code>sudo -n ufw</code> — passwordless sudo that almost nobody has configured, so
+the click failed silently. Frustrating because the indicator <em>looked</em>
+like a toggle but wasn't wired to a usable privilege escalation path.</p>
+<p>Now it works:</p>
+<ul>
+<li>Click while UFW is inactive → polkit authentication popup (the same
+  one you already see for other privileged GUI actions) → a single
+  escalation runs:<ul>
+<li><code>ufw default deny incoming</code></li>
+<li><code>ufw default allow outgoing</code></li>
+<li><code>ufw allow ssh</code></li>
+<li><code>ufw --force enable</code></li>
+<li><code>systemctl enable ufw</code></li>
+</ul>
+</li>
+</ul>
+<p>Then Shield re-checks and the Firewall row flips green.</p>
+<ul>
+<li>Click while UFW is active → polkit popup → <code>ufw disable</code>.</li>
+</ul>
+<p>No passwordless sudo rules required, no terminal needed. Implementation
+is a new helper at <code>/usr/local/bin/cerberix-fw-setup</code> invoked via
+<code>pkexec</code>, so the auth flow plays nicely with XFCE's polkit agent.</p>
+<h2>LightDM login screen has a background</h2>
+<p>The greeter was just a flat color before — passable but not great as a
+first impression. Now it loads one of the bundled Cerberix wallpapers
+(<code>cerberix-desktop-background-moon.png</code> by default) via
+<code>/etc/lightdm/lightdm-gtk-greeter.conf</code>.</p>
+<p>This is a separate file from <code>lightdm.conf</code> by design: greeter
+appearance settings shouldn't live in the session-manager config, and
+keeping them apart means future tweaks to one don't risk breaking the
+other.</p>
+<p>Defaults in the greeter conf:</p>
+<ul>
+<li>Background: Cerberix moon wallpaper</li>
+<li>Theme: Adwaita-dark</li>
+<li>Icons: Papirus-Dark</li>
+<li>Font: Inter 11</li>
+</ul>
+<p>Change any of these by editing <code>/etc/lightdm/lightdm-gtk-greeter.conf</code>
+and logging out.</p>
+<h2><code>cerberix-update.service</code> no longer shows as failed</h2>
+<p>If you checked <code>systemctl --failed</code> on a fresh install you'd see
+<code>cerberix-update.service</code> in red. Not actually broken — just a systemd
+quirk. <code>pacman-contrib</code>'s <code>checkupdates</code> tool exits with status 2 when
+there are no pending updates. That's intentional behavior from the tool
+author (exit 0 = "updates found", exit 2 = "no updates"). systemd
+interprets any non-zero exit as failure by default.</p>
+<p>One-line fix — the service unit now has:</p>
+<pre><code>SuccessExitStatus=0 2
+</code></pre>
+<p>systemd treats both as success. The failed-units list stays empty when
+there are no updates, and the timer still works for when there are.</p>
+<h2>New default wallpaper + three new options</h2>
+<p>The default desktop wallpaper now matches the site's palette more
+directly. Three additional wallpapers ship in
+<code>/usr/share/backgrounds/cerberix/</code> so right-clicking the desktop →
+<em>Desktop Settings</em> gives you real choices instead of one option.</p>
+<h2>Shield VPN check: works with any WireGuard interface</h2>
+<p>Shield was hardcoded to look for <code>wg0</code>. If your NetworkManager-managed
+WireGuard connection ended up named <code>cerberix-vpn</code>, <code>mullvad-*</code>, or
+anything else, Shield reported "Disconnected" even when the tunnel was
+up. Fixed — Shield now runs <code>ip -o link show type wireguard</code> to catch
+anything the kernel tags as WireGuard, regardless of name. Toggle logic
+prefers NetworkManager (<code>nmcli connection up/down</code>) and falls back to
+<code>wg-quick</code> for <code>/etc/wireguard/*.conf</code> setups.</p>
+<h2>What's still in progress</h2>
+<ul>
+<li><strong>Tokyo Night Firefox theme as default</strong> — want this shipped as part
+  of the install, blocked on getting the theme's <code>.xpi</code> identified.
+  Next build.</li>
+</ul>
+<p>If something breaks on your end, mail <a href="mailto:hello@cerberix.org">hello@cerberix.org</a>
+— bug reports in the first couple weeks are how this gets genuinely
+polished.</p>]]></content:encoded>
+    </item>
+    <item>
+      <title>Day one testing notes — what we caught and shipped</title>
+      <link>https://cerberix.org/blog/2026-04-19-testing-notes-day-one/</link>
+      <guid isPermaLink="true">https://cerberix.org/blog/2026-04-19-testing-notes-day-one/</guid>
+      <pubDate>Sun, 19 Apr 2026 09:00:00 -0400</pubDate>
+      <description>Real install-test cycles from launch day. What broke, why, and what&#x27;s in the latest ISO.</description>
+      <content:encoded><![CDATA[<p>Between the 0.1.0 "Styx" tag yesterday and the ISO that's on the site right
+now, the installer was rebuilt and re-signed <strong>seven times</strong>. Every rebuild
+came from either an install-it-yourself regression or a Cerberix Shield
+check that wasn't matching reality. Documenting here because the iteration
+is the product — if you download the ISO today, here's what you're getting
+that the first upload didn't have.</p>
+<h2>Install-flow fixes</h2>
+<p><strong>Password handling rewritten.</strong> The first installer piped <code>${USERPASS}</code>
+through an unquoted heredoc inside <code>arch-chroot</code>. Any password with <code>$</code>,
+<code>`</code>, <code>\</code>, or a space got eaten by shell expansion before reaching
+<code>chpasswd</code>, and the user ended up with a stored hash that didn't match what
+they'd typed. Now the installer calls <code>arch-chroot /mnt chpasswd</code> directly
+with the password on stdin — zero shell quoting involved. Same idiom the
+Arch install scripts themselves use.</p>
+<p><strong>Post-install hash verification.</strong> After creating the user, the installer
+now reads <code>/etc/shadow</code> and confirms there's a valid hash on the account.
+If the hash is empty, <code>!</code>, or <code>*</code>, the install <em>refuses to finish</em> and
+prints exactly what's wrong. No more "install succeeds, login fails."</p>
+<p><strong>Explicit group creation.</strong> pacstrap hooks can race — if the <code>docker</code>
+post-install hook hadn't completed by the time <code>useradd -G ...,docker</code>
+ran, the whole user creation silently failed and the script exited
+partway. Now groups are created explicitly first, so useradd has what it
+needs no matter when hooks land.</p>
+<p><strong>Executable bits preserved.</strong> <code>mkarchiso</code> only keeps exec bits on files
+listed in <code>profiledef.sh</code>'s <code>file_permissions</code> array. <code>cerberix-install</code>,
+Shield, Connect, and the grep/egrep/fgrep shims are all explicitly listed
+now. The first ISO shipped with 644 on all of them, which meant you had
+to <code>chmod +x</code> just to run the installer. That's obviously gone.</p>
+<p><strong>Chaotic-AUR bootstrap moved into the installer.</strong> The live ISO builds
+with Chaotic-AUR in the builder's pacman.conf, but the <em>runtime</em> pacman
+config inside the ISO didn't have it. <code>pacstrap</code> choked on Chaotic-only
+packages (ghostty, nikto, torbrowser-launcher). The installer now
+bootstraps Chaotic-AUR on the live ISO just before calling pacstrap, so
+the target picks it up cleanly.</p>
+<h2>LightDM / login fixes</h2>
+<p><strong>Login shell is bash, not fish.</strong> I'd wanted the installed system to
+match the experience of an existing Cerberix VM, so I set <code>useradd -s
+/usr/bin/fish</code>. Bad call. When fish is a login shell, any init-time
+hiccup (Fisher race, plugin sourcing, missing terminfo) makes the shell
+exit non-zero, and LightDM treats that as "session failed" → bounce to
+greeter. Rolling it back to <code>/bin/bash</code> for login, keeping fish for
+interactive terminals via <code>/etc/skel/.config/fish/</code>. Users who want
+fish as login shell can <code>chsh -s /usr/bin/fish</code> after they've verified
+their session boots.</p>
+<p><strong>Autologin is off by default.</strong> The installer was configuring LightDM
+autologin, which depends on a PAM stack, group membership, a matching
+<code>autologin-session</code> name, and several other moving parts. Removed in
+favor of the standard greeter flow — matches the config running on the
+build maintainer's own daily-driver VM. Zero login loops since the
+change.</p>
+<h2>Desktop fixes</h2>
+<p><strong>Backgrounds actually ship now.</strong> <code>/usr/share/backgrounds/cerberix/</code>
+was in the live ISO but the installer didn't copy it to the target, so
+new installs booted into a black desktop (the skel's
+<code>xfce4-desktop.xml</code> pointed at a non-existent wallpaper path). The
+seven included wallpapers are now bundled and present on the installed
+system — new users boot into the Cerberix wallpaper by default.</p>
+<p><strong>Terminal-launching apps actually open in a terminal.</strong> Skel shipped
+<code>TerminalEmulator=custom-TerminalEmulator</code> as a placeholder, which made
+clicking <code>htop</code> or <code>btop</code> from the menu throw an XFCE error dialog.
+Fixed to <code>TerminalEmulator=ghostty</code> with a matching helper file so
+<code>exo-open --launch TerminalEmulator &lt;cmd&gt;</code> resolves correctly.</p>
+<h2>Cerberix Shield accuracy</h2>
+<p>Shield checks <em>look</em> like they should work by inspection, but running as
+a non-root desktop user, half of them quietly returned "Unknown." Each
+check got rewritten to read from world-readable sources, not privileged
+commands:</p>
+<ul>
+<li><strong>Firewall:</strong> was <code>sudo -n ufw status</code> → fails without passwordless
+  sudo. Now <code>systemctl is-active ufw</code> (no privilege needed) with
+  <code>/etc/ufw/ufw.conf</code> fallback.</li>
+<li><strong>VPN:</strong> was hard-coded to <code>wg0</code>. Now matches any WireGuard-type
+  interface via <code>ip -o link show type wireguard</code> — works for <code>wg0</code>,
+  <code>cerberix-vpn</code>, <code>mullvad-*</code>, anything.</li>
+<li><strong>VPN toggle:</strong> was <code>sudo wg-quick</code>. Now prefers NetworkManager-
+  managed connections via <code>nmcli</code> (no sudo), falls back to <code>wg-quick</code>
+  for <code>/etc/wireguard/*.conf</code> setups.</li>
+</ul>
+<h2>AppArmor actually loads</h2>
+<p>The <code>apparmor</code> package was installed, but the kernel needs a specific
+LSM order in the bootloader to activate it. The installer now appends
+<code>lsm=landlock,lockdown,yama,integrity,apparmor,bpf</code> to
+<code>GRUB_CMDLINE_LINUX_DEFAULT</code> and enables <code>apparmor.service</code>. After the
+first reboot post-install, <code>/sys/module/apparmor/parameters/enabled</code>
+reads <code>Y</code> and Shield goes green on that check.</p>
+<h2>SSH hardening drop-in</h2>
+<p>Old installer was actively making sshd <em>less</em> secure — enabling
+<code>PermitRootLogin</code> and <code>PasswordAuthentication</code>. Replaced with a proper
+drop-in at <code>/etc/ssh/sshd_config.d/50-cerberix-hardening.conf</code>:</p>
+<pre><code>PermitRootLogin no
+PermitEmptyPasswords no
+X11Forwarding no
+MaxAuthTries 3
+LoginGraceTime 30
+ClientAliveInterval 300
+ClientAliveCountMax 2
+</code></pre>
+<p>Shield's SSH check greps for <code>MaxAuthTries</code> in the drop-in directory, so
+this satisfies it while keeping the config in a pacman-safe location.</p>
+<h2>NetworkManager MAC randomization</h2>
+<p>Added <code>/etc/NetworkManager/conf.d/00-cerberix-mac-randomization.conf</code>
+with <code>wifi.cloned-mac-address=random</code> and
+<code>ethernet.cloned-mac-address=random</code>. Every new connection gets a
+fresh MAC. Shield's MAC check greps that conf.d directory.</p>
+<h2>What's next</h2>
+<p>The ISO you'd download right now (SHA256 published on the
+<a href="/#download">download section</a> next to the signature) has all of the
+above. Rkhunter and AIDE baselines get populated on first overnight run
+via the existing systemd timer.</p>
+<p>If you install it and hit something that's still broken — mail
+<a href="mailto:hello@cerberix.org">hello@cerberix.org</a>. Testing notes for the
+first real user-reported issues will show up here as its own post.</p>
+<p>A decent distro takes iteration. Thanks for running it with us.</p>]]></content:encoded>
+    </item>
+    <item>
+      <title>Cerberix Linux 0.1.0 &quot;Styx&quot; is here</title>
+      <link>https://cerberix.org/blog/2026-04-18-cerberix-0-1-0-released/</link>
+      <guid isPermaLink="true">https://cerberix.org/blog/2026-04-18-cerberix-0-1-0-released/</guid>
+      <pubDate>Sat, 18 Apr 2026 09:00:00 -0400</pubDate>
+      <description>The first public release of Cerberix Linux. Hardened Arch with a desktop that boots ready — security tooling, privacy stack, and a polished XFCE experience out of the box.</description>
+      <content:encoded><![CDATA[<p>Cerberix Linux <strong>0.1.0 "Styx"</strong> is now available for download.</p>
+<p>This is the first public release. If you've been following the build-out on this
+site: thank you for your patience. If you're new: welcome to what we hope is a
+more humane take on what a "security-focused Linux distribution" can look like.</p>
+<h2>What Cerberix is</h2>
+<p>Cerberix is an <strong>Arch-based, desktop-first</strong> Linux distribution with the
+security plumbing preconfigured on first boot. It's not a pentester's live CD,
+and it's not a hardened headless server spin — it's a normal XFCE desktop where
+the firewall is already on, fail2ban already has sane jails, file integrity
+monitoring is already running, and your update, VPN, and privacy tooling is
+installed and ready.</p>
+<p>The underlying system is Arch. <code>pacman</code> works, the Arch Wiki applies, the AUR
+is one <code>yay</code> away. The difference is the first boot, not the fork.</p>
+<h2>What you get, out of the box</h2>
+<ul>
+<li><strong>XFCE 4.20</strong> with Tokyo Night Moon theming, Plank dock, and preloaded
+  dotfiles so every new user inherits the same polished environment.</li>
+<li><strong>fish shell</strong> as the default, with the Tide prompt, zoxide, fzf.fish, and
+  Fisher already wired up.</li>
+<li><strong>Security stack:</strong> nftables, fail2ban, ufw/gufw, rkhunter, lynis, apparmor,
+  arch-audit, keepassxc, gnome-keyring, bleachbit.</li>
+<li><strong>Privacy &amp; VPN:</strong> tor, torbrowser-launcher, wireguard-tools, openvpn,
+  openconnect, proxychains-ng.</li>
+<li><strong>Offensive / audit toolkit:</strong> hydra, hashcat, nikto, radare2, sqlmap.</li>
+<li><strong>Modern CLI:</strong> starship, tmux, eza, bat, fd, fzf, ripgrep, lazygit, neovim,
+  plocate.</li>
+<li><strong>Cerberix-native tools:</strong><ul>
+<li><strong>Cerberix Shield</strong> — system tray indicator for security posture</li>
+<li><strong>Cerberix Connect</strong> — firewall appliance dashboard</li>
+<li><strong>Cerberix Update</strong> and <strong>rkhunter</strong> scans as systemd timers</li>
+</ul>
+</li>
+</ul>
+<h2>Installing</h2>
+<p>Boot the ISO, log in, and run one command:</p>
+<pre><code>sudo cerberix-install
+</code></pre>
+<p>The installer is a single Bash script — open it before you run it if you want
+to see exactly what it will do. UEFI and BIOS are both supported. Install time
+is about six minutes on modern hardware.</p>
+<p>New users created on the installed system automatically pick up the themed
+dotfiles through <code>/etc/skel/</code>, so adding someone via <code>useradd</code> gives them the
+same experience as the install account.</p>
+<h2>Download and verify</h2>
+<p>Head to the <a href="/#download">download section</a> for the ISO, SHA256 checksum, and
+detached GPG signature.</p>
+<pre><code>curl https://cerberix.org/gpg.asc | gpg --import
+gpg --verify cerberix-linux-0.1.0-x86_64.iso.sig \
+            cerberix-linux-0.1.0-x86_64.iso
+sha256sum -c cerberix-linux-0.1.0-x86_64.iso.sha256
+</code></pre>
+<h2>Known caveats</h2>
+<p>0.1.0 is a young release. A few things to be aware of:</p>
+<ul>
+<li><strong>English locale only</strong> at install — other locales work after setup but
+  aren't presented in the installer yet.</li>
+<li><strong>Desktop only.</strong> There's no server variant yet.</li>
+<li><strong><code>aide</code> and <code>hexchat</code></strong> are AUR-only packages and don't ship on the ISO;
+  add them with <code>yay -S aide hexchat</code> after install.</li>
+<li><strong>Rolling release.</strong> Expect frequent small updates — <code>pacman -Syu</code> is the
+  same as on Arch, and the same caveats apply.</li>
+</ul>
+<h2>What's next</h2>
+<p>Subscribe to the <a href="/feed.xml">RSS feed</a> or check back here for updates. The
+short-term roadmap:</p>
+<ul>
+<li>DKIM-signed mail for <code>cerberix.org</code></li>
+<li>Locale selection in the installer</li>
+<li>A server / headless variant</li>
+<li>A signed package repository for <code>cerberix-shield</code>, <code>cerberix-connect</code>, and
+  friends so they upgrade with <code>pacman -Syu</code> rather than requiring a full
+  reinstall</li>
+</ul>
+<p>If you find something broken or weird, mail
+<a href="mailto:hello@cerberix.org">hello@cerberix.org</a>. Bug reports for a young
+distribution are a gift — please be generous with them.</p>
+<p>Boot it, break it, tell us about it.</p>]]></content:encoded>
+    </item>
+  </channel>
+</rss>

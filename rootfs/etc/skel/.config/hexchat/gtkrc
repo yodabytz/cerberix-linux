@@ -1,0 +1,8 @@
+  style "hexchat" {
+      font_name = "Monospace 10"
+      bg[NORMAL] = "#1e1e2e"
+      fg[NORMAL] = "#cdd6f4"
+      base[NORMAL] = "#1e1e2e"
+      text[NORMAL] = "#cdd6f4"
+  }
+  widget "*" style "hexchat"

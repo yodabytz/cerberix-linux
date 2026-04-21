@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Cerberix Shield
+Comment=Security status tray indicator
+Exec=/usr/local/bin/cerberix-shield
+Icon=/usr/share/cerberix/icons/shield-green.png
+Terminal=false
+X-GNOME-Autostart-enabled=true
+StartupNotify=false
+OnlyShowIn=XFCE;

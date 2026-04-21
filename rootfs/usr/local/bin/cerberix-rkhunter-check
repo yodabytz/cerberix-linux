@@ -1,0 +1,43 @@
+#!/bin/bash
+# Cerberix rkhunter wrapper — runs scan, notifies user of results.
+# Meant to run via cron as root.
+
+set -u
+LOG=/var/log/rkhunter.log
+NOTIFY=/usr/local/bin/cerberix-notify
+
+# Run rkhunter (warnings only, skip keypress)
+/usr/bin/rkhunter --check --sk --rwo --nocolors > /tmp/rkhunter-scan.$$ 2>&1
+rc=$?
+
+# Count warnings (grep -c always prints a number, even when 0 matches → exit 1)
+warns=$(grep -cE "^Warning:" /tmp/rkhunter-scan.$$ 2>/dev/null) || warns=0
+
+if [ "$warns" -eq 0 ] && [ "$rc" -eq 0 ]; then
+    "$NOTIFY" "Rootkit scan clean" \
+        "rkhunter found no issues. Next scan: tomorrow 03:00." \
+        info
+elif [ "$warns" -gt 0 ]; then
+    summary=$(grep -E "^Warning:" /tmp/rkhunter-scan.$$ | head -3 | sed 's/^Warning: //')
+    body="$warns warning(s) found:
+
+$summary
+
+Review full scan: $LOG
+
+If these are false positives (common for Arch — modified
+system binaries, /dev entries, hidden files):
+  sudo rkhunter --propupd      # accept current state as baseline
+
+Or whitelist specific items in /etc/rkhunter.conf:
+  SCRIPTWHITELIST=/usr/bin/ldd
+  ALLOWHIDDENFILE=/path/to/file"
+    "$NOTIFY" "Rootkit warnings" "$body" warn
+else
+    "$NOTIFY" "Rootkit scan error" \
+        "rkhunter exit $rc. Check $LOG for details." \
+        error
+fi
+
+rm -f /tmp/rkhunter-scan.$$
+exit 0

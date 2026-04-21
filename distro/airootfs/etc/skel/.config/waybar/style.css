@@ -1,0 +1,150 @@
+/* ============================================================
+   Cerberix Linux — Waybar Theme
+   ============================================================ */
+
+* {
+    font-family: "JetBrainsMono Nerd Font", monospace;
+    font-size: 13px;
+    min-height: 0;
+}
+
+window#waybar {
+    background: rgba(13, 17, 23, 0.85);
+    border-bottom: 1px solid rgba(48, 54, 61, 0.6);
+    color: #e6edf3;
+}
+
+tooltip {
+    background: #161b22;
+    border: 1px solid #30363d;
+    border-radius: 8px;
+    color: #e6edf3;
+}
+
+/* ── Left Modules ────────────────────────────────────── */
+
+#custom-cerberix {
+    color: #58a6ff;
+    font-size: 18px;
+    padding: 0 12px 0 8px;
+}
+
+#workspaces button {
+    padding: 0 8px;
+    color: #8b949e;
+    background: transparent;
+    border: none;
+    border-radius: 6px;
+    margin: 3px 2px;
+    transition: all 0.2s;
+}
+
+#workspaces button.active {
+    color: #58a6ff;
+    background: rgba(88, 166, 255, 0.15);
+    font-weight: bold;
+}
+
+#workspaces button:hover {
+    background: rgba(88, 166, 255, 0.1);
+    color: #e6edf3;
+}
+
+#window {
+    color: #8b949e;
+    padding: 0 12px;
+    font-size: 12px;
+}
+
+/* ── Center ──────────────────────────────────────────── */
+
+#clock {
+    color: #e6edf3;
+    font-weight: 600;
+    padding: 0 16px;
+}
+
+/* ── Right Modules ───────────────────────────────────── */
+
+#custom-shield {
+    padding: 0 10px;
+    font-size: 14px;
+}
+
+#custom-shield.secure {
+    color: #3fb950;
+}
+
+#custom-shield.warning {
+    color: #d29922;
+}
+
+#custom-shield.danger {
+    color: #f85149;
+}
+
+#custom-vpn {
+    padding: 0 8px;
+}
+
+#custom-vpn.connected {
+    color: #3fb950;
+}
+
+#custom-vpn.disconnected {
+    color: #8b949e;
+}
+
+#network {
+    color: #58a6ff;
+    padding: 0 10px;
+}
+
+#network.disconnected {
+    color: #f85149;
+}
+
+#pulseaudio {
+    color: #d2a8ff;
+    padding: 0 10px;
+}
+
+#pulseaudio.muted {
+    color: #8b949e;
+}
+
+#cpu {
+    color: #79c0ff;
+    padding: 0 10px;
+}
+
+#memory {
+    color: #7ee787;
+    padding: 0 10px;
+}
+
+#battery {
+    color: #3fb950;
+    padding: 0 10px;
+}
+
+#battery.warning {
+    color: #d29922;
+}
+
+#battery.critical {
+    color: #f85149;
+    animation: blink 1s infinite;
+}
+
+@keyframes blink {
+    50% { opacity: 0.5; }
+}
+
+#tray {
+    padding: 0 8px;
+}
+
+#tray > .passive {
+    -gtk-icon-effect: dim;
+}

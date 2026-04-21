@@ -1,0 +1,120 @@
+# ============================================================
+# Cerberix Firewall — Suricata IDS Configuration
+# ============================================================
+# Runs in IDS mode (monitoring, not inline blocking).
+# Alerts feed into the AI engine via eve.json.
+# ============================================================
+
+%YAML 1.1
+---
+
+vars:
+  address-groups:
+    HOME_NET: "[192.168.1.0/24,10.100.0.0/24,10.8.0.0/24]"
+    EXTERNAL_NET: "!$HOME_NET"
+    HTTP_SERVERS: "$HOME_NET"
+    SMTP_SERVERS: "$HOME_NET"
+    SQL_SERVERS: "$HOME_NET"
+    DNS_SERVERS: "$HOME_NET"
+
+  port-groups:
+    HTTP_PORTS: "80"
+    SHELLCODE_PORTS: "!80"
+    SSH_PORTS: "22"
+
+default-log-dir: /var/log/cerberix/suricata
+
+stats:
+  enabled: yes
+  interval: 30
+
+outputs:
+  # EVE JSON log — primary output, parsed by AI engine
+  - eve-log:
+      enabled: yes
+      filetype: regular
+      filename: eve.json
+      types:
+        - alert:
+            payload: no
+            payload-printable: yes
+            http-body: no
+            http-body-printable: yes
+            tagged-packets: no
+        - dns:
+            query: yes
+            answer: yes
+        - tls:
+            extended: yes
+        - stats:
+            totals: yes
+            threads: no
+
+  # Fast log for quick human review
+  - fast:
+      enabled: yes
+      filename: fast.log
+      append: yes
+
+  # Stats log
+  - stats:
+      enabled: yes
+      filename: stats.log
+      append: yes
+      totals: yes
+      threads: no
+
+# Detection engine
+detect-engine:
+  - profile: medium
+  - custom-values:
+      toclient-groups: 3
+      toserver-groups: 25
+
+# Threading — keep it light for appliance use
+threading:
+  set-cpu-affinity: no
+
+# App layer protocols
+app-layer:
+  protocols:
+    http:
+      enabled: yes
+    tls:
+      enabled: yes
+    ssh:
+      enabled: yes
+    dns:
+      enabled: yes
+    smtp:
+      enabled: yes
+    ftp:
+      enabled: yes
+    smb:
+      enabled: yes
+
+# Rule files
+default-rule-path: /var/lib/suricata/rules
+
+rule-files:
+  - suricata.rules
+
+# Network interface — set at runtime by init script
+af-packet:
+  - interface: eth0
+    cluster-id: 99
+    cluster-type: cluster_flow
+    defrag: yes
+    use-mmap: yes
+
+# IDS mode (not IPS)
+host-mode: auto
+
+# Limits
+stream:
+  memcap: 64mb
+  reassembly:
+    memcap: 128mb
+
+flow:
+  memcap: 64mb

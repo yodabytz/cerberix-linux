@@ -1,0 +1,103 @@
+# Tokyo Night Moon — GTK2 theme for Cerberix Linux
+
+gtk-theme-name = "Adwaita-dark"
+gtk-icon-theme-name = "elementary"
+gtk-font-name = "Noto Sans 10"
+gtk-cursor-theme-name = "Adwaita"
+gtk-toolbar-style = GTK_TOOLBAR_ICONS
+gtk-toolbar-icon-size = GTK_ICON_SIZE_SMALL_TOOLBAR
+gtk-button-images = 0
+gtk-menu-images = 0
+gtk-application-prefer-dark-theme = 1
+
+style "tokyo-night-default" {
+    engine "adwaita" {}
+
+    # Tokyo Night Moon palette
+    fg[NORMAL]        = "#c8d3f5"
+    fg[PRELIGHT]      = "#c8d3f5"
+    fg[ACTIVE]        = "#c8d3f5"
+    fg[SELECTED]      = "#c8d3f5"
+    fg[INSENSITIVE]   = "#636da6"
+
+    bg[NORMAL]        = "#222436"
+    bg[PRELIGHT]      = "#2f334d"
+    bg[ACTIVE]        = "#1e2030"
+    bg[SELECTED]      = "#2d3f76"
+    bg[INSENSITIVE]   = "#222436"
+
+    base[NORMAL]      = "#1e2030"
+    base[PRELIGHT]    = "#2f334d"
+    base[ACTIVE]      = "#2d3f76"
+    base[SELECTED]    = "#2d3f76"
+    base[INSENSITIVE] = "#222436"
+
+    text[NORMAL]      = "#c8d3f5"
+    text[PRELIGHT]    = "#c8d3f5"
+    text[ACTIVE]      = "#c8d3f5"
+    text[SELECTED]    = "#c8d3f5"
+    text[INSENSITIVE] = "#636da6"
+}
+
+style "tokyo-night-entry" {
+    engine "adwaita" {}
+    base[NORMAL]   = "#1e2030"
+    text[NORMAL]   = "#c8d3f5"
+    base[SELECTED] = "#2d3f76"
+    text[SELECTED] = "#c8d3f5"
+}
+
+style "tokyo-night-button" {
+    engine "adwaita" {}
+    bg[NORMAL]   = "#2f334d"
+    bg[PRELIGHT] = "#3b4261"
+    bg[ACTIVE]   = "#2d3f76"
+    fg[NORMAL]   = "#c8d3f5"
+    fg[PRELIGHT] = "#c8d3f5"
+    fg[ACTIVE]   = "#c8d3f5"
+}
+
+style "tokyo-night-menu" {
+    engine "adwaita" {}
+    bg[NORMAL]      = "#1e2030"
+    bg[PRELIGHT]    = "#2d3f76"
+    bg[SELECTED]    = "#2d3f76"
+    fg[NORMAL]      = "#c8d3f5"
+    fg[PRELIGHT]    = "#c8d3f5"
+    text[NORMAL]    = "#c8d3f5"
+    text[PRELIGHT]  = "#c8d3f5"
+}
+
+style "tokyo-night-menubar" {
+    engine "adwaita" {}
+    bg[NORMAL]   = "#191a2a"
+    fg[NORMAL]   = "#c8d3f5"
+    bg[SELECTED] = "#2d3f76"
+    fg[SELECTED] = "#c8d3f5"
+}
+
+style "tokyo-night-scrollbar" {
+    engine "adwaita" {}
+    bg[NORMAL]   = "#2f334d"
+    bg[PRELIGHT] = "#3b4261"
+    bg[ACTIVE]   = "#2d3f76"
+}
+
+style "tokyo-night-tooltip" {
+    bg[NORMAL] = "#1e2030"
+    fg[NORMAL] = "#c8d3f5"
+}
+
+class "GtkWidget"    style "tokyo-night-default"
+class "GtkEntry"     style "tokyo-night-entry"
+class "GtkTextView"  style "tokyo-night-entry"
+class "GtkTreeView"  style "tokyo-night-entry"
+class "GtkButton"    style "tokyo-night-button"
+class "GtkToolbar"   style "tokyo-night-button"
+
+widget_class "*<GtkMenu>*"         style "tokyo-night-menu"
+widget_class "*<GtkMenuItem>*"     style "tokyo-night-menu"
+widget_class "*<GtkMenuBar>*"      style "tokyo-night-menubar"
+widget_class "*<GtkScrollbar>*"    style "tokyo-night-scrollbar"
+
+widget "gtk-tooltip*" style "tokyo-night-tooltip"

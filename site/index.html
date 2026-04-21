@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Cerberix Linux — Hardened Arch, ready to use</title>
+  <meta name="description" content="Cerberix Linux is a security-focused, desktop-ready Arch derivative. Three-headed guardian for your system: hardened by default, XFCE 4.20, WireGuard, AIDE, fail2ban, and the Cerberix Shield monitor." />
+  <meta property="og:title" content="Cerberix Linux" />
+  <meta property="og:description" content="Hardened Arch, ready to use. Security tooling baked in. XFCE desktop. Built for people who take their system seriously." />
+  <meta property="og:url" content="https://cerberix.org/" />
+  <meta property="og:type" content="website" />
+  <meta name="theme-color" content="#222436" />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="alternate" type="application/rss+xml" title="Cerberix Linux updates" href="/feed.xml" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Cormorant+Garamond:wght@500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+  <div class="bg-grid"></div>
+
+  <header class="nav">
+    <a class="brand" href="/">
+      <svg class="brand-mark" viewBox="0 0 48 48" aria-hidden="true">
+        <defs>
+          <linearGradient id="shieldGrad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#82aaff" />
+            <stop offset="100%" stop-color="#c099ff" />
+          </linearGradient>
+        </defs>
+        <path d="M24 3 L42 10 V24 C42 34 34 42 24 45 C14 42 6 34 6 24 V10 Z"
+              fill="none" stroke="url(#shieldGrad)" stroke-width="2.5" stroke-linejoin="round" />
+        <circle cx="17" cy="22" r="2.2" fill="#c3e88d" />
+        <circle cx="24" cy="20" r="2.2" fill="#c3e88d" />
+        <circle cx="31" cy="22" r="2.2" fill="#c3e88d" />
+        <path d="M14 30 Q24 38 34 30" fill="none" stroke="#82aaff" stroke-width="2" stroke-linecap="round" />
+      </svg>
+      <span class="brand-name">Cerberix</span>
+    </a>
+    <nav class="nav-links">
+      <a href="#features">Features</a>
+      <a href="#screenshots">Screenshots</a>
+      <a href="/blog/">Blog</a>
+      <a href="#download">Download</a>
+      <a class="nav-cta" href="#download">Get it</a>
+    </nav>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div class="hero-text">
+        <div class="eyebrow">v0.1.0 &mdash; Styx</div>
+        <h1>
+          A hardened Arch,<br />
+          <span class="accent">ready the moment it boots.</span>
+        </h1>
+        <p class="lede">
+          Cerberix is a security-focused Linux distribution built on Arch.
+          Firewall, intrusion detection, VPN tooling, and a polished XFCE
+          desktop &mdash; configured correctly on first boot, not your tenth.
+        </p>
+        <div class="hero-cta">
+          <a class="btn btn-primary" href="#download">
+            Download ISO
+            <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M12 3v12.17l4.59-4.58L18 12l-6 6-6-6 1.41-1.41L12 15.17V3zm-8 16h16v2H4z"/></svg>
+          </a>
+          <a class="btn btn-ghost" href="#install">Quick install</a>
+        </div>
+        <!-- ISO hosted on this server; no external mirrors -->
+        <div class="hero-meta">
+          <span><strong>x86_64</strong> &middot; UEFI + BIOS</span>
+          <span class="dot"></span>
+          <span>GPG-signed releases</span>
+          <span class="dot"></span>
+          <span>Rolling release</span>
+        </div>
+      </div>
+
+      <div class="hero-visual">
+        <div class="terminal">
+          <div class="term-head">
+            <span class="term-dot red"></span>
+            <span class="term-dot yellow"></span>
+            <span class="term-dot green"></span>
+            <span class="term-title">yodabytz@cerberix ~</span>
+          </div>
+          <div class="term-body">
+<pre><span class="prompt">$</span> <span class="cmd">fastfetch</span>
+<span class="c1">                   -`                    </span>  <span class="c3">yodabytz@cerberix</span>
+<span class="c1">                  .o+`                   </span>  <span class="c4">─────────────────</span>
+<span class="c1">                 `ooo/                   </span>  <span class="c2">OS</span>       Cerberix 0.1.0 Styx
+<span class="c1">                `+oooo:                  </span>  <span class="c2">Kernel</span>   Linux 6.13.x
+<span class="c1">               `+oooooo:                 </span>  <span class="c2">Shell</span>    fish 3.7
+<span class="c1">               -+oooooo+:                </span>  <span class="c2">DE</span>       XFCE 4.20
+<span class="c1">             `/:-:++oooo+:               </span>  <span class="c2">Theme</span>    Tokyo Night Moon
+<span class="c1">            `/++++/+++++++:              </span>  <span class="c2">Shield</span>   <span class="c3">● active</span>
+<span class="c1">           `/++++++++++++++:             </span>  <span class="c2">Firewall</span> <span class="c3">● nftables</span>
+<span class="c1">          `/+++ooooooooooooo/`           </span>  <span class="c2">VPN</span>      wireguard ready
+<span class="c1">         ./ooosssso++osssssso+`          </span>
+<span class="prompt">$</span> <span class="cmd">sudo cerberix-harden --status</span>
+  <span class="c3">✓</span> nftables        active
+  <span class="c3">✓</span> fail2ban        active, 4 jails
+  <span class="c3">✓</span> aide            baseline current
+  <span class="c3">✓</span> unattended      opt-in (off)
+  <span class="c3">✓</span> kernel hardening <span class="c5">23/23</span> sysctl keys
+<span class="prompt">$</span> <span class="cursor">▌</span></pre>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="features" class="features">
+      <div class="section-head">
+        <h2>Three heads. One system.</h2>
+        <p>Every Cerberix install ships with the trio preconfigured and tested.</p>
+      </div>
+      <div class="feature-grid">
+        <article class="feature-card">
+          <div class="feature-icon icon-guard">
+            <svg viewBox="0 0 24 24"><path fill="currentColor" d="M12 2 4 5v6c0 5 3.4 9.3 8 10 4.6-.7 8-5 8-10V5l-8-3zm0 10.9h6c-.5 3.4-2.7 6.4-6 7.4v-7.4H6V6.4L12 4l6 2.4v6.5h-6z"/></svg>
+          </div>
+          <h3>Hardened by default</h3>
+          <p>
+            nftables firewall, fail2ban with sane jails, AIDE file integrity,
+            WireGuard tooling, and a curated set of kernel sysctl tweaks.
+            No hunting down guides &mdash; it boots ready.
+          </p>
+        </article>
+
+        <article class="feature-card">
+          <div class="feature-icon icon-desktop">
+            <svg viewBox="0 0 24 24"><path fill="currentColor" d="M21 2H3c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h7v2H8v2h8v-2h-2v-2h7c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H3V4h18v12z"/></svg>
+          </div>
+          <h3>Desktop, actually.</h3>
+          <p>
+            XFCE 4.20 with Tokyo Night Moon theming, Plank dock, and a tuned
+            font stack. Plus Firefox, Thunar, and the everyday tools that
+            other security distros treat as an afterthought.
+          </p>
+        </article>
+
+        <article class="feature-card">
+          <div class="feature-icon icon-tools">
+            <svg viewBox="0 0 24 24"><path fill="currentColor" d="M22.7 19l-9.1-9.1c.9-2.3.4-5-1.5-6.9-2-2-5-2.4-7.4-1.3L9 6 6 9 1.6 4.7C.4 7.1.9 10.1 2.9 12.1c1.9 1.9 4.6 2.4 6.9 1.5l9.1 9.1c.4.4 1 .4 1.4 0l2.3-2.3c.5-.4.5-1 .1-1.4z"/></svg>
+          </div>
+          <h3>Built-in tools</h3>
+          <p>
+            <strong>Cerberix Shield</strong> watches your system tray and
+            flags anomalies. <strong>Cerberix Connect</strong> pairs with
+            the firewall appliance for dashboard visibility. Both written
+            for this distro, not bolted on.
+          </p>
+        </article>
+      </div>
+    </section>
+
+    <section id="screenshots" class="screenshots">
+      <div class="section-head">
+        <h2>See it in motion</h2>
+        <p>A polished XFCE desktop, Cerberix Shield in the tray, everything green.</p>
+      </div>
+      <div class="shots-grid">
+        <a class="shot" href="#shot1" aria-label="Open screenshot 1">
+          <img src="/screenshots/cerberix-desktop-1-thumb.jpg"
+               alt="Cerberix desktop with netscope, Firefox, and nvim open" loading="lazy" />
+        </a>
+        <a class="shot" href="#shot2" aria-label="Open screenshot 2">
+          <img src="/screenshots/cerberix-desktop-2-thumb.jpg"
+               alt="Cerberix desktop showing netscope connections and terminal" loading="lazy" />
+        </a>
+        <a class="shot" href="#shot3" aria-label="Open screenshot 3">
+          <img src="/screenshots/cerberix-desktop-3-thumb.jpg"
+               alt="Cerberix Shield status dialog — all checks passing" loading="lazy" />
+        </a>
+      </div>
+    </section>
+
+    <section id="inside" class="stack">
+      <div class="section-head">
+        <h2>What's inside</h2>
+        <p>A curated stack &mdash; not a pile of features.</p>
+      </div>
+      <div class="stack-grid">
+        <div class="stack-item"><span class="stack-k">Base</span><span class="stack-v">Arch Linux (rolling)</span></div>
+        <div class="stack-item"><span class="stack-k">Kernel</span><span class="stack-v">linux + hardened sysctl</span></div>
+        <div class="stack-item"><span class="stack-k">Desktop</span><span class="stack-v">XFCE 4.20</span></div>
+        <div class="stack-item"><span class="stack-k">Display</span><span class="stack-v">LightDM greeter</span></div>
+        <div class="stack-item"><span class="stack-k">Shell</span><span class="stack-v">fish (zsh available)</span></div>
+        <div class="stack-item"><span class="stack-k">Firewall</span><span class="stack-v">nftables + ufw</span></div>
+        <div class="stack-item"><span class="stack-k">IDS</span><span class="stack-v">AIDE + rkhunter</span></div>
+        <div class="stack-item"><span class="stack-k">Intrusion</span><span class="stack-v">fail2ban</span></div>
+        <div class="stack-item"><span class="stack-k">VPN</span><span class="stack-v">WireGuard</span></div>
+        <div class="stack-item"><span class="stack-k">Sandbox</span><span class="stack-v">firejail</span></div>
+        <div class="stack-item"><span class="stack-k">Repos</span><span class="stack-v">core + extra + chaotic-aur</span></div>
+        <div class="stack-item"><span class="stack-k">Arch</span><span class="stack-v">x86_64 (UEFI + BIOS)</span></div>
+      </div>
+    </section>
+
+    <section id="download" class="download">
+      <div class="section-head">
+        <h2>Download</h2>
+        <p>Burn it to USB, boot it, try it. Installer takes about six minutes.</p>
+      </div>
+
+      <div class="dl-card">
+        <div class="dl-main">
+          <div class="dl-name">
+            cerberix-linux-0.1.0-x86_64.iso
+            <span class="badge">latest</span>
+          </div>
+          <div class="dl-meta">~3.1&nbsp;GB &middot; Released <span id="releaseDate">2026-04-18</span> &middot; x86_64 &middot; via SourceForge mirror network</div>
+        </div>
+        <a class="btn btn-primary" href="https://sourceforge.net/projects/cerberix-linux/files/0.1.0/cerberix-linux-0.1.0-x86_64.iso/download">
+          Download
+          <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M12 3v12.17l4.59-4.58L18 12l-6 6-6-6 1.41-1.41L12 15.17V3zm-8 16h16v2H4z"/></svg>
+        </a>
+      </div>
+
+      <div class="dl-sub">
+        <a href="/download/cerberix-linux-0.1.0-x86_64.iso.sha256">SHA256SUMS</a>
+        <span class="pipe">|</span>
+        <a href="/download/cerberix-linux-0.1.0-x86_64.iso.sig">GPG signature</a>
+        <span class="pipe">|</span>
+        <a href="/gpg.asc">Signing key</a>
+        <span class="pipe">|</span>
+        <a href="/release-notes/">Release notes</a>
+      </div>
+
+      <div class="dl-sub" style="margin-top: 10px;">
+        <span style="color: var(--fg-faint);">Direct from origin:</span>
+        <a href="/download/cerberix-linux-0.1.0-x86_64.iso">cerberix.org</a>
+        <span class="pipe">|</span>
+        <span style="color: var(--fg-faint);">Browse:</span>
+        <a href="https://sourceforge.net/projects/cerberix-linux/files/0.1.0/">SourceForge files</a>
+      </div>
+
+      <details class="verify">
+        <summary>Verify your download</summary>
+<pre><code><span class="c-comment"># 1. Import the signing key</span>
+curl https://cerberix.org/gpg.asc | gpg --import
+
+<span class="c-comment"># 2. Verify the signature</span>
+gpg --verify cerberix-linux-0.1.0-x86_64.iso.sig \
+            cerberix-linux-0.1.0-x86_64.iso
+
+<span class="c-comment"># 3. Check the hash</span>
+sha256sum -c cerberix-linux-0.1.0-x86_64.iso.sha256</code></pre>
+      </details>
+    </section>
+
+    <section id="install" class="install">
+      <div class="section-head">
+        <h2>Install in six minutes</h2>
+        <p>Boot the ISO, log in, and run one command.</p>
+      </div>
+      <div class="install-code">
+<pre><code><span class="prompt">$</span> <span class="cmd">sudo cerberix-install</span>
+
+  Cerberix Linux Installer
+  ============================================
+
+  Available Disks:
+    sda   256G   Samsung SSD 860
+    nvme0 1.0T   Samsung 980 PRO
+
+  Install to disk: <span class="c5">nvme0</span>
+  Username:        <span class="c5">you</span>
+  Password:        <span class="c2">••••••••</span>
+
+  <span class="c3">✓</span> Partitioning (GPT, UEFI)
+  <span class="c3">✓</span> Base system (pacstrap)
+  <span class="c3">✓</span> XFCE + LightDM + autologin
+  <span class="c3">✓</span> Security stack (nftables, fail2ban, AIDE)
+  <span class="c3">✓</span> Bootloader (GRUB)
+
+  Cerberix Linux installed. Remove ISO and reboot.</code></pre>
+      </div>
+      <p class="install-note">
+        That's it. No DE choice screen, no 20-step wizard, no surprise
+        telemetry. The installer is a single Bash script &mdash; open it
+        first if you want to see exactly what happens.
+      </p>
+    </section>
+
+    <section id="about" class="about">
+      <div class="section-head">
+        <h2>Why another distro?</h2>
+      </div>
+      <div class="about-grid">
+        <div class="about-text">
+          <p>
+            Because "security-focused" usually means one of two things:
+            a pentester's toolkit you wouldn't daily-drive, or a hardened
+            server spin with no desktop in sight.
+          </p>
+          <p>
+            Cerberix is for everyone in between: developers, sysadmins,
+            and curious users who want sensible defaults &mdash; firewall
+            on, logs rotating, file integrity checks running &mdash;
+            without giving up a normal desktop.
+          </p>
+          <p>
+            It's Arch underneath, so <code>pacman</code> works, the wiki
+            applies, and the AUR is one <code>yay</code> away. The
+            difference is the first boot, not the fork.
+          </p>
+        </div>
+        <aside class="about-aside">
+          <h4>Known caveats</h4>
+          <ul>
+            <li>Rolling release &mdash; expect package churn</li>
+            <li>Desktop only (server variant TBD)</li>
+            <li>English locale out of the box</li>
+            <li>0.1.0 is young &mdash; file issues generously</li>
+          </ul>
+        </aside>
+      </div>
+    </section>
+  </main>
+
+  <div class="lightbox" id="shot1" role="dialog" aria-label="Screenshot 1">
+    <a class="lightbox-close" href="#screenshots" aria-label="Close screenshot"></a>
+    <img src="/screenshots/cerberix-desktop-1.jpg" alt="Cerberix desktop screenshot 1" />
+  </div>
+  <div class="lightbox" id="shot2" role="dialog" aria-label="Screenshot 2">
+    <a class="lightbox-close" href="#screenshots" aria-label="Close screenshot"></a>
+    <img src="/screenshots/cerberix-desktop-2.jpg" alt="Cerberix desktop screenshot 2" />
+  </div>
+  <div class="lightbox" id="shot3" role="dialog" aria-label="Screenshot 3">
+    <a class="lightbox-close" href="#screenshots" aria-label="Close screenshot"></a>
+    <img src="/screenshots/cerberix-desktop-3.jpg" alt="Cerberix desktop screenshot 3" />
+  </div>
+
+  <footer class="footer">
+    <div class="foot-row">
+      <div class="foot-brand">
+        <svg class="brand-mark sm" viewBox="0 0 48 48" aria-hidden="true">
+          <path d="M24 3 L42 10 V24 C42 34 34 42 24 45 C14 42 6 34 6 24 V10 Z"
+                fill="none" stroke="#82aaff" stroke-width="2.5" stroke-linejoin="round" />
+          <circle cx="17" cy="22" r="2.2" fill="#c3e88d" />
+          <circle cx="24" cy="20" r="2.2" fill="#c3e88d" />
+          <circle cx="31" cy="22" r="2.2" fill="#c3e88d" />
+        </svg>
+        <span>Cerberix Linux</span>
+      </div>
+      <div class="foot-links">
+        <a href="/blog/">Blog</a>
+        <a href="/release-notes/">Release notes</a>
+        <a href="/feed.xml">RSS</a>
+        <a href="https://matrix.to/#/#cerberix:matrix.quantumbytz.com">Matrix</a>
+        <a href="mailto:hello@cerberix.org">Contact</a>
+      </div>
+    </div>
+    <div class="foot-sub">
+      © 2026 Cerberix &middot; Released under the MIT License &middot; Built on Arch
+    </div>
+  </footer>
+</body>
+</html>
