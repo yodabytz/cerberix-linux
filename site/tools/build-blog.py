@@ -174,6 +174,7 @@ PAGE_FOOT = """
         <a href="/feed.xml">RSS</a>
         <a href="https://github.com/yodabytz/cerberix-linux">Source</a>
         <a href="https://matrix.to/#/#cerberix:matrix.quantumbytz.com">Matrix</a>
+        <a href="https://x.com/CerberixLinux">X</a>
         <a href="mailto:hello@cerberix.org">Contact</a>
       </div>
     </div>
