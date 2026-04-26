@@ -6,7 +6,7 @@
     <atom:link href="https://cerberix.org/feed.xml" rel="self" type="application/rss+xml" />
     <description>Release notes, security advisories, and project updates for Cerberix Linux.</description>
     <language>en-us</language>
-    <lastBuildDate>Tue, 21 Apr 2026 09:00:00 -0400</lastBuildDate>
+    <lastBuildDate>Sun, 26 Apr 2026 09:00:00 -0400</lastBuildDate>
     <generator>Cerberix blog generator</generator>
     <image>
       <url>https://cerberix.org/favicon.svg</url>
@@ -14,6 +14,400 @@
       <link>https://cerberix.org/</link>
     </image>
 
+    <item>
+      <title>krellix remote-mode fixes, and the docker0 puzzle</title>
+      <link>https://cerberix.org/blog/2026-04-26-krellix-remote-mode-and-docker0/</link>
+      <guid isPermaLink="true">https://cerberix.org/blog/2026-04-26-krellix-remote-mode-and-docker0/</guid>
+      <pubDate>Sun, 26 Apr 2026 09:00:00 -0400</pubDate>
+      <description>A round of fixes for krellix in --host mode (idle disconnect, stale-data spikes, CPU/Net panels stuck on the placeholder), plus a deep dive into why docker0 looks dead even when containers are busy — and the plan to fix it properly.</description>
+      <content:encoded><![CDATA[<p>Spent today on <a href="https://github.com/yodabytz/krellix">krellix</a> — the Qt 6 system
+monitor I've been rebuilding in the spirit of GKrellM. A handful of
+real bugs surfaced once I started actually using <code>--host</code> mode in
+anger to watch the VPS from cerberix, plus a more interesting puzzle
+around how Linux bridges count traffic that's worth writing up.</p>
+<h2>What landed today</h2>
+<p>One commit, seven files, all addressing things that were quietly
+broken in <code>--host</code> mode.</p>
+<h3>The 5-minute disconnect loop</h3>
+<p>The daemon (<code>krellixd</code>) was kicking every healthy client every
+5 minutes. The protocol is one-way — server pushes JSON samples on a
+timer, client never replies — so the server's idle timer (which only
+reset on <em>client → server</em> reads) always fired, and the connection
+got force-closed with <code>idle timeout</code>. The client reconnected, the
+cycle repeated.</p>
+<p>Fix: reset the idle timer on the socket's <code>bytesWritten</code> signal
+instead. When the kernel actually flushes a sample to the client,
+that's proof of life. A <em>hung</em> client whose kernel buffer fills up
+still doesn't fire <code>bytesWritten</code>, so we still kick those — which is
+the whole point of having an idle timer.</p>
+<h3>"no /proc/stat" forever</h3>
+<p><code>CpuMonitor::createWidget()</code> ran once at construction and called
+<code>CpuStat::read()</code> to figure out how many cores to lay out. In
+<code>--host</code> mode the first remote sample lands a tick <em>after</em>
+construction, so the read came back empty, and the monitor
+permanently locked itself into the <code>(no /proc/stat)</code> placeholder. The
+real CPU panels never got built.</p>
+<p>Fix: defer panel construction until the first non-empty sample
+arrives. The placeholder now says <code>(waiting for data...)</code> and gets
+ripped out and replaced with the real per-core panels in <code>tick()</code>
+once samples start landing. NetMonitor already had this pattern;
+CpuMonitor now matches.</p>
+<h3>Stale-data spikes after a reconnect</h3>
+<p><code>RemoteSource</code> cached the last sample so that reads through the
+sysdep override returned something synchronously. But on disconnect
+it never cleared the cache. After a multi-minute outage, the very
+first new sample would diff against pre-disconnect counters and the
+NetMonitor would fabricate a giant rate spike (5 minutes of
+accumulated bytes / 1 second).</p>
+<p>Fix: clear cached samples on disconnect. The chart shows zero for one
+tick instead of a fake spike. Uptime falls back to <code>-1</code> so its decal
+renders <code>?</code> rather than the misleading <code>00:00</code>.</p>
+<h3>Wedged on initial connect failure</h3>
+<p><code>onSocketError</code> only logged. Subsequent reconnect was scheduled from
+<code>onSocketDisconnected</code> — which never fires if you never made it to
+<code>ConnectedState</code> in the first place. So a one-time outage at startup
+left the client wedged with no retry.</p>
+<p>Fix: schedule the reconnect from <code>onSocketError</code> too, when the socket
+is in <code>UnconnectedState</code>. Backoff is unchanged.</p>
+<h3>Plus a couple of smaller cleanups</h3>
+<ul>
+<li><code>RemoteSource::onReadyRead</code> bails out the moment <code>parseLine</code> aborts
+  the socket — we were touching post-abort state in the loop tail.</li>
+<li>NetMonitor's <code>(waiting for data...)</code> placeholder now actually gets
+  removed when the first interface lazy-arrives, instead of sitting
+  above the live data forever.</li>
+</ul>
+<h2>The docker0 puzzle</h2>
+<p>This one was meant to be the third bullet of an unrelated bug list
+and turned into the most interesting thing of the day.</p>
+<p>The original report: the box running krellixd has Docker, krellix
+shows the <code>docker0</code> panel fine, but it never shows any <em>traffic</em>.
+Just zeros, forever.</p>
+<p>First instinct: there's a parser bug in <code>NetStat</code>. There wasn't.
+<code>docker0</code> parses fine; <code>cat /proc/net/dev | grep docker0</code> gives the
+same numbers krellixd is sending. The bytes value just… doesn't
+move.</p>
+<pre><code>$ grep docker0 /proc/net/dev; sleep 5; grep docker0 /proc/net/dev
+docker0:    106069651    1044044   ...   58775111737    2155297   ...
+docker0:    106069651    1044044   ...   58775111737    2155297   ...
+</code></pre>
+<p>Frozen. 58 GB on TX from way back, but no current activity counted —
+even though containers were definitely doing things.</p>
+<h3>Why a Linux bridge counter goes silent</h3>
+<p>The <code>docker0</code> interface only counts traffic that crosses <em>its own</em>
+bridge boundary into the host's IP stack. Pure forwarding <em>between</em>
+member ports (or — much more importantly — traffic that gets
+intercepted by the iptables <code>FORWARD</code> chain because Docker NAT'd it)
+does not increment the bridge interface's RX/TX. With Docker's
+default <code>MASQUERADE</code> rules, that's basically <em>all</em> container traffic.</p>
+<p>You can see the same effect on user-defined Compose networks:
+<code>br-cad87d883e4a</code>, <code>br-f6739fab5f74</code>, etc. all show large historical
+counters that aren't moving, while the <code>veth*</code> member ports of those
+bridges <em>are</em> moving.</p>
+<h3>First fix (shipped today)</h3>
+<p>In <code>NetStat::read()</code>, after parsing <code>/proc/net/dev</code>, check
+<code>/sys/class/net/&lt;iface&gt;/brif/</code> for each interface. If the directory
+exists, the interface is a Linux bridge — replace its counters with
+the sum of its member ports' counters.</p>
+<p>Because this lives in shared sysdep code, the daemon does the
+aggregation server-side, and the client just renders whatever the
+daemon sends. No client-side awareness needed.</p>
+<p>Verified live on the VPS:</p>
+<pre><code>/proc/net/dev   docker0:        106069651 / 58775111737   (frozen)
+/proc/net/dev   veth2d339ec:     21849675 /     1949031   (the only member)
+daemon JSON     docker0: rx=21849675 tx=1949031           ✓
+</code></pre>
+<p><code>docker0</code> now reports its single attached container's actual
+throughput.</p>
+<h3>…but it's not the whole story</h3>
+<p>Then I went to look at <em>all</em> the bridges on this host, and the real
+picture became clear:</p>
+<table>
+<thead>
+<tr>
+<th>bridge</th>
+<th>docker network</th>
+<th>members</th>
+<th>active?</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>docker0</code></td>
+<td><code>bridge</code> (default)</td>
+<td>1 (portainer)</td>
+<td>idle</td>
+</tr>
+<tr>
+<td><code>br-f6739fab5f74</code></td>
+<td><strong><code>internal</code></strong></td>
+<td>matrix-monolith, postgres</td>
+<td>✓ pushing ~100 KB/s</td>
+</tr>
+<tr>
+<td><code>br-cad87d883e4a</code></td>
+<td><code>matrix_internal</code></td>
+<td>3 containers</td>
+<td>quiet</td>
+</tr>
+<tr>
+<td><code>br-82fd7b48ecfe</code></td>
+<td><code>wwwcelthauscom_default</code></td>
+<td>2 containers</td>
+<td>quiet</td>
+</tr>
+<tr>
+<td><code>br-fc8be0e11cb2</code></td>
+<td><code>testingapparixapp_default</code></td>
+<td>2 containers</td>
+<td>quiet</td>
+</tr>
+<tr>
+<td><code>br-8a9594c0792f</code></td>
+<td><code>apparixapp_default</code></td>
+<td>1 container</td>
+<td>quiet</td>
+</tr>
+</tbody>
+</table>
+<p><code>docker0</code> is genuinely idle on this host — its only attached
+container is portainer, which mostly sits there. Everything actually
+<em>doing</em> something is on a Compose-created user-defined bridge with
+an unintelligible <code>br-&lt;hash&gt;</code> name.</p>
+<p>So the user-visible problem isn't "docker0 doesn't show data" — it's
+"the bridge that <em>does</em> have my data has a name nobody can read, and
+isn't enabled by default."</p>
+<h3>The plan</h3>
+<p>Three phases, smallest-and-most-valuable first.</p>
+<p><strong>Phase 1 — Friendly bridge names.</strong> Resolve <code>br-&lt;hash&gt;</code> to its
+docker network name (<code>internal</code>, <code>matrix_internal</code>, etc.) by reading
+<code>/var/run/docker.sock</code> and adding an optional <code>alias</code> field to the
+daemon's net-sample JSON. Client renders the alias when present,
+falls back to the raw name. Cache the lookup for ~30 s.</p>
+<p><strong>Phase 2 — A "Docker total" pseudo-interface.</strong> A synthetic entry
+that aggregates every docker-managed bridge into one number, so a
+user can answer "what is Docker doing right now?" without enabling
+each bridge individually. Default-enabled; individual bridges stay
+default-disabled.</p>
+<p><strong>Phase 3 — Cleanup.</strong> Drop <code>docker</code> and <code>br-</code> from the
+"virtual prefix" filter in <code>isMainInterface()</code> once the synthetic
+entry exists, so the synthetic shows up by default while the noisy
+individual bridges don't.</p>
+<p>Phase 1 alone is probably 80% of the value with 20% of the risk —
+the <em>numbers</em> are already correct after this morning's aggregation
+patch; the bridges just need to be legible. Phase 2 needs a bit more
+thought about how the synthetic interacts with NetMonitor's lazy-add
+path and how settings persist for an entry that doesn't exist in
+<code>/proc/net/dev</code>.</p>
+<p>Starting on Phase 1 now. The daemon needs read access to
+<code>docker.sock</code> (gid <code>docker</code>), so the systemd unit gets a
+<code>SupplementaryGroups=docker</code> line, gated behind a config flag so
+hosts that don't run Docker don't pull in any extra perms.</p>
+<p>— yodabytz</p>]]></content:encoded>
+    </item>
+    <item>
+      <title>A pacman repo for the Cerberix personal toolbox</title>
+      <link>https://cerberix.org/blog/2026-04-24-cerberix-extra-pacman-repo/</link>
+      <guid isPermaLink="true">https://cerberix.org/blog/2026-04-24-cerberix-extra-pacman-repo/</guid>
+      <pubDate>Fri, 24 Apr 2026 09:00:00 -0400</pubDate>
+      <description>cerberix-extra is live — a signed pacman repo with netscope, swapwatch, modsentry, fuzzytail, and snitch. Here&#x27;s how to add it and what&#x27;s actually in there.</description>
+      <content:encoded><![CDATA[<p>Shipped something I've wanted for a while: a proper pacman repository
+for the personal tools that used to get copy-pasted into every
+Cerberix install.</p>
+<p>The repo is called <strong><code>cerberix-extra</code></strong>. It's a sibling to the (still
+empty) <code>cerberix</code> repo that'll eventually hold the distro's own
+packages once Shield, Connect and the installer get proper
+PKGBUILDs. Everything is GPG-signed with the same key that signs the
+ISOs.</p>
+<h2>What's in it</h2>
+<p>Five tools, all my own, all things I actually use:</p>
+<ul>
+<li><strong><a href="https://github.com/yodabytz/netscope">netscope</a></strong> &mdash; a
+  network-and-process monitor TUI. Think htop crossed with netstat,
+  with theming and 58 distro logos for the sysinfo page.</li>
+<li><strong><a href="https://github.com/yodabytz/swapwatch">swapwatch</a></strong> &mdash;
+  smart swap monitor that actually identifies the real culprit
+  process before blindly restarting monitored services.
+  Tokyo Night theme out of the box.</li>
+<li><strong><a href="https://github.com/yodabytz/modsentry">modsentry</a></strong> &mdash; a
+  real-time ModSecurity log monitor that lets you block abusive IPs
+  via iptables right from the terminal, with an audit trail.</li>
+<li><strong><a href="https://github.com/yodabytz/fuzzytail">fuzzytail</a></strong> &mdash;
+  <code>tail</code> replacement in Rust with split-pane monitoring, syntax
+  highlighting, and drop-in compatibility. Binary is called <code>ft</code>.</li>
+<li><strong><a href="https://github.com/yodabytz/snitch">snitch</a></strong> &mdash; Fail2Ban
+  companion that emails netblock admins when their space is the
+  source of repeated abuse.</li>
+</ul>
+<p>Versions pinned, tagged upstream, signed, and verified against a
+clean Arch container end-to-end before anything was promoted.</p>
+<h2>How to add the repo</h2>
+<p>One-time trust bootstrap:</p>
+<pre><code>sudo pacman-key --init
+curl -s https://cerberix.org/gpg.asc | sudo pacman-key --add -
+sudo pacman-key --lsign-key 49840314FFF3DFE2D6E75439577040DEDD8E521E
+</code></pre>
+<p>Then append this to <code>/etc/pacman.conf</code>:</p>
+<pre><code>[cerberix-extra]
+SigLevel = Required DatabaseOptional
+Server = https://cerberix.org/repo/cerberix-extra/$arch/
+Server = https://downloads.sourceforge.net/project/cerberix-linux/cerberix/cerberix-extra/$arch/
+</code></pre>
+<p>Then:</p>
+<pre><code>sudo pacman -Sy
+sudo pacman -S netscope swapwatch modsentry fuzzytail snitch
+</code></pre>
+<p>The first <code>Server</code> line (cerberix.org) is the primary. SF is a
+secondary mirror &mdash; I tried to make SF primary first and their
+CDN was inconsistent serving <code>.db</code> and <code>.sig</code> pairs, which pacman
+reasonably refuses. Lesson there: for pacman repos, own the bytes.</p>
+<h2>One-time wrinkle if you're already on 0.1.x</h2>
+<p>The 0.1.0 and 0.1.1 ISOs installed these tools as manually-copied
+files, not pacman-tracked packages. That means when you <code>pacman -S</code>
+one for the first time, pacman will refuse with "file exists in
+filesystem" &mdash; it won't overwrite files it didn't install. The
+one-line migration fix:</p>
+<pre><code>sudo pacman -S --overwrite '*' netscope swapwatch modsentry fuzzytail snitch
+</code></pre>
+<p>(the single quotes around <code>*</code> matter &mdash; without them your shell
+expands it before pacman sees it). That single command takes
+ownership of the existing files and migrates them into pacman's
+tracking. After that, normal <code>pacman -Syu</code> updates work.</p>
+<p>For 0.2.0 (Acheron, coming up) I'll rip the manual <code>cp</code> lines out of
+the installer and have the ISO install these through the repo
+directly, so nobody hits this again.</p>
+<h2>Why not just AUR?</h2>
+<p>AUR would have been the lazy answer but it puts the trust decision on
+every user individually and doesn't help me keep the build inside the
+distro's signing chain. Having these in a distro-signed repo means
+anyone on Cerberix gets the same cryptographic trust story they get
+for ISO downloads. That's the whole point.</p>
+<p>&mdash; yodabytz</p>]]></content:encoded>
+    </item>
+    <item>
+      <title>0.1.1 is out — and I owe you some honesty about the fix</title>
+      <link>https://cerberix.org/blog/2026-04-23-0-1-1-released/</link>
+      <guid isPermaLink="true">https://cerberix.org/blog/2026-04-23-0-1-1-released/</guid>
+      <pubDate>Thu, 23 Apr 2026 09:00:00 -0400</pubDate>
+      <description>Cerberix 0.1.1 ships with the haveged entropy fix promised yesterday. Test-installed it in a headless QEMU first. What I found was not exactly what I expected.</description>
+      <content:encoded><![CDATA[<p>0.1.1 is live on <a href="/">cerberix.org</a> and on the
+<a href="https://sourceforge.net/projects/cerberix-linux/files/0.1.1/">SourceForge mirror</a>.
+SHA256 and detached signature are up next to the ISO as always.</p>
+<p>Yesterday's post said the next build would ship <code>haveged</code> to stop
+the install hang on low-entropy VMs, and it does. Before cutting the
+release I actually sat down and installed it, end-to-end, in a fresh
+headless QEMU — something I should have done before 0.1.0 and didn't.
+Lesson learned there.</p>
+<p>Here's where it gets a bit awkward.</p>
+<h2>The fix is there, but it's not really doing anything on modern kernels</h2>
+<p><code>haveged</code> has a systemd condition: <code>ConditionVersion=&lt;5.6</code>. On any
+kernel from 5.6 onwards, systemd just skips it — the in-kernel CRNG
+got a rewrite around that version and seeds itself fast enough that
+<code>haveged</code> is redundant. Cerberix ships kernel 6.19. So in my test VM,
+<code>haveged</code> was installed, enabled, symlinked into
+<code>sysinit.target.wants</code>, started defensively inside the installer — and
+systemd quietly skipped all of it every time. The service literally
+never ran.</p>
+<h2>I never reproduced the original hang</h2>
+<p><code>pacman-key --init</code> into a clean gnupg dir took <strong>three seconds</strong> on
+the 0.1.1 live ISO. Into an already-initialized dir, a fraction of a
+second. Neither is within an order of magnitude of the two-hour hang
+the original reporter described.</p>
+<p>Which means one of two things:</p>
+<ol>
+<li>The person who reported it was on an older kernel, or a
+   virtualization stack that somehow starves the CRNG badly even on
+   6.x. In which case <code>haveged</code> being present (even conditionally
+   dormant) is still a belt-and-braces improvement.</li>
+<li>The hang was something else entirely — <code>pacman-key</code>'s keyserver
+   fetch timing out against a slow WKD lookup, for instance, looks
+   identical from the outside. Same "sits forever at the pacman-key
+   step" symptom, totally different root cause. A <code>haveged</code> fix would
+   do nothing for that.</li>
+</ol>
+<p>I genuinely don't know which it is. I'd guess (2) is more likely on
+a modern kernel, but I can't prove it without the original reporter's
+environment in front of me.</p>
+<h2>So what does 0.1.1 actually give you</h2>
+<ul>
+<li>A clean install, verified end-to-end in QEMU</li>
+<li><code>haveged</code> in the base set, ready to kick in on older kernels or odd
+  virtualization setups where it actually matters</li>
+<li>The version bumped in the right places (os-release, site, release
+  notes, grub distributor string)</li>
+<li>Updated SHA256 and GPG signature</li>
+</ul>
+<p>If you were on 0.1.0 and things worked fine — 0.1.1 is not urgent.
+Grab it at your leisure. If you hit the install hang on 0.1.0, 0.1.1
+might still stall in the same spot, and if it does I want to hear
+about it at <a href="mailto:bugs@cerberix.org">bugs@cerberix.org</a> because
+then we're looking at the second possibility above and I'd like to
+chase it properly.</p>
+<p>Thanks to everyone who wrote in on the 0.1.0 release — keep it coming,
+including the "this didn't work for me" ones. Those are the ones that
+move the needle.</p>
+<p>&mdash; yodabytz</p>]]></content:encoded>
+    </item>
+    <item>
+      <title>Known issue — installer hang on low-entropy VMs (fix in the next build)</title>
+      <link>https://cerberix.org/blog/2026-04-22-install-hang-entropy-fix/</link>
+      <guid isPermaLink="true">https://cerberix.org/blog/2026-04-22-install-hang-entropy-fix/</guid>
+      <pubDate>Wed, 22 Apr 2026 09:00:00 -0400</pubDate>
+      <description>A user report surfaced a real bug — pacman-key init can hang for hours on headless VMs with little entropy. Fix is prepared; the next ISO ships haveged to prevent it.</description>
+      <content:encoded><![CDATA[<p>A user writing in from the DistroWatch listing reported a clean-install
+failure: their session hung for two hours on the messages
+<em>"Generating Pacman Master Key / Updating Trust Database,"</em> with no
+further progress. Thanks to that report, we found the root cause
+quickly and wanted to be transparent about the fix.</p>
+<h2>What's happening</h2>
+<p>The installer calls <code>pacman-key --init</code> to set up the keyring used to
+verify downloaded packages. That command generates a fresh GPG keyring
+on the fly, which depends on the kernel's entropy pool. On a physical
+machine with a keyboard, mouse, and active network, the pool fills in
+seconds. On a <strong>headless VM</strong> — especially a cold boot with minimal
+background activity — entropy accumulates painfully slowly, and
+<code>pacman-key --init</code> can sit there for hours waiting on randomness.</p>
+<p>Arch's own install media works around this by bundling the
+<a href="https://wiki.archlinux.org/title/Haveged"><code>haveged</code></a> daemon, which
+deliberately accelerates entropy generation. The 0.1.0 ISO does not
+ship <code>haveged</code> — an oversight on our end. That's the bug.</p>
+<h2>The fix (staged, not yet deployed)</h2>
+<p>The next ISO will:</p>
+<ul>
+<li>Ship <code>haveged</code> as part of the default package set</li>
+<li>Auto-start it on the live-ISO boot (via a systemd symlink in
+  <code>/etc/systemd/system/sysinit.target.wants/haveged.service</code>)</li>
+<li>Defensively <code>systemctl start haveged</code> inside the installer, right
+  before <code>pacman-key --init</code>, so it's running even if anyone disables
+  the service</li>
+<li>Enable <code>haveged</code> permanently on the installed system</li>
+</ul>
+<p>Four layers of defense for a problem that should never have reached
+a user.</p>
+<h2>Workaround for anyone stuck on the current 0.1.0 ISO</h2>
+<p>If you're mid-install and the installer is stalled at the
+pacman-key step, <strong>don't kill it</strong>. Instead open a second virtual
+terminal (<code>Ctrl+Alt+F2</code>) and run:</p>
+<pre><code>find / &gt;/dev/null 2&gt;&amp;1
+</code></pre>
+<p>That generates enough filesystem activity to push the kernel's
+entropy pool past the threshold, and <code>pacman-key --init</code> on the
+original terminal will usually finish within a minute of kicking this
+off. Let the installer continue normally after that. Not pretty, but
+it works.</p>
+<h2>When the new ISO ships</h2>
+<p>The rebuilt ISO with this fix is already built and verified — it will
+drop on cerberix.org and the SourceForge mirror shortly. The new
+SHA256 and detached signature will be published alongside it as
+always. Subscribe to the <a href="/feed.xml">RSS feed</a> or watch
+<a href="https://x.com/CerberixLinux">@CerberixLinux</a> to get the notification
+the moment it's live.</p>
+<h2>Thank-you</h2>
+<p>Bug reports with enough detail to reproduce — like this one — are the
+single most useful thing we receive. If you hit something rough, write
+to <a href="mailto:bugs@cerberix.org">bugs@cerberix.org</a>. We read every
+message.</p>]]></content:encoded>
+    </item>
     <item>
       <title>What&#x27;s next — pacman repo, source transparency, and the next wave of work</title>
       <link>https://cerberix.org/blog/2026-04-21-whats-next-roadmap/</link>
