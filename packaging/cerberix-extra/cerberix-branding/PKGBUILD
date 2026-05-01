@@ -1,0 +1,21 @@
+# Maintainer: yodabytz <hello@cerberix.org>
+pkgname=cerberix-branding
+pkgver=0.1.1
+pkgrel=1
+pkgdesc="Cerberix Linux OS branding: os-release, survives filesystem upgrades via pacman hook"
+arch=('any')
+url="https://cerberix.org"
+license=('MIT')
+depends=()
+install=cerberix-branding.install
+source=("cerberix-os-release"
+        "99-cerberix-branding.hook")
+sha256sums=('SKIP' 'SKIP')
+
+package() {
+  install -Dm644 "$srcdir/cerberix-os-release" \
+                 "$pkgdir/usr/share/cerberix/os-release"
+
+  install -Dm644 "$srcdir/99-cerberix-branding.hook" \
+                 "$pkgdir/usr/share/libalpm/hooks/99-cerberix-branding.hook"
+}

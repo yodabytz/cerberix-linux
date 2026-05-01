@@ -1,0 +1,44 @@
+# Maintainer: yodabytz <hello@cerberix.org>
+pkgname=fuzzytail
+pkgver=0.2.3
+pkgrel=1
+pkgdesc="Modern, fast tail replacement with split-pane log monitoring and syntax highlighting (Rust)"
+arch=('x86_64')
+url="https://github.com/yodabytz/fuzzytail"
+license=('MIT')
+depends=('gcc-libs')
+makedepends=('cargo')
+source=("$pkgname-$pkgver.tar.gz::$url/archive/refs/tags/v$pkgver.tar.gz")
+sha256sums=('0aa05d6c9ea47d8a3919f10ff80fe51489bf5862e040119d26e95a0dab7f9a6c')
+
+prepare() {
+  cd "$srcdir/$pkgname-$pkgver"
+  export RUSTUP_TOOLCHAIN=stable
+  cargo fetch --locked --target "$CARCH-unknown-linux-gnu"
+}
+
+build() {
+  cd "$srcdir/$pkgname-$pkgver"
+  export RUSTUP_TOOLCHAIN=stable
+  export CARGO_TARGET_DIR=target
+  cargo build --frozen --release
+}
+
+check() {
+  cd "$srcdir/$pkgname-$pkgver"
+  export RUSTUP_TOOLCHAIN=stable
+  cargo test --frozen --release || true
+}
+
+package() {
+  cd "$srcdir/$pkgname-$pkgver"
+
+  install -Dm755 target/release/ft "$pkgdir/usr/bin/ft"
+
+  install -dm755 "$pkgdir/etc/fuzzytail/themes"
+  install -Dm644 themes/ft.conf.* -t "$pkgdir/etc/fuzzytail/themes/"
+
+  install -Dm644 README.md "$pkgdir/usr/share/doc/$pkgname/README.md"
+  install -Dm644 CHANGELOG.md "$pkgdir/usr/share/doc/$pkgname/CHANGELOG.md"
+  install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+}

@@ -1,0 +1,27 @@
+# Maintainer: yodabytz <hello@cerberix.org>
+pkgname=netscope
+pkgver=2.0.15
+pkgrel=1
+pkgdesc="Network and process monitoring TUI inspired by htop and netstat, with theming and distro logos"
+arch=('any')
+url="https://github.com/yodabytz/netscope"
+license=('MIT')
+depends=('python' 'python-psutil')
+source=("$pkgname-$pkgver.tar.gz::$url/archive/refs/tags/v$pkgver.tar.gz")
+sha256sums=('9e118369c4d0ec6b5e16b766a56b40d717ee9f306f3a0478dadaf585dcfab0a9')
+
+package() {
+  cd "$srcdir/$pkgname-$pkgver"
+
+  install -Dm755 netscope.py "$pkgdir/usr/bin/netscope"
+  install -Dm644 ascii_art.py "$pkgdir/etc/netscope/ascii_art.py"
+
+  install -dm755 "$pkgdir/etc/netscope/themes"
+  install -Dm644 themes/*.json -t "$pkgdir/etc/netscope/themes/"
+
+  install -dm755 "$pkgdir/usr/share/netscope/tools"
+  install -Dm755 tools/convert_neofetch.py -t "$pkgdir/usr/share/netscope/tools/"
+
+  install -Dm644 README.md "$pkgdir/usr/share/doc/$pkgname/README.md"
+  install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+}

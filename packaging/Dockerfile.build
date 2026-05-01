@@ -1,0 +1,15 @@
+FROM archlinux:latest
+
+RUN pacman-key --init && \
+    pacman -Syu --noconfirm && \
+    pacman -S --noconfirm --needed \
+      base-devel git rust sudo && \
+    pacman -Scc --noconfirm
+
+RUN useradd -m -s /bin/bash builder && \
+    echo 'builder ALL=(ALL) NOPASSWD: ALL' > /etc/sudoers.d/builder
+
+USER builder
+WORKDIR /build
+
+ENV MAKEFLAGS=-j$(nproc)

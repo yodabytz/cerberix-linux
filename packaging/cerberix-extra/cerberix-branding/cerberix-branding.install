@@ -1,0 +1,16 @@
+post_install() {
+    # Apply branding immediately on first install.
+    /usr/bin/install -m644 /usr/share/cerberix/os-release /usr/lib/os-release
+}
+
+post_upgrade() {
+    post_install
+}
+
+post_remove() {
+    # On uninstall, we can't restore Arch's original os-release
+    # because `filesystem` doesn't re-run its post_install. Best we
+    # can do: reinstall filesystem to get the canonical file back.
+    echo "cerberix-branding removed. To restore stock Arch os-release:"
+    echo "  sudo pacman -S filesystem --overwrite '/usr/lib/os-release'"
+}

@@ -1,0 +1,27 @@
+# Maintainer: yodabytz <hello@cerberix.org>
+pkgname=swapwatch
+pkgver=2.1.0
+pkgrel=1
+pkgdesc="Smart swap monitor with culprit detection, adaptive caching, and a curses UI"
+arch=('any')
+url="https://github.com/yodabytz/swapwatch"
+license=('MIT')
+depends=('python' 'python-psutil')
+source=("$pkgname-$pkgver.tar.gz::$url/archive/refs/tags/v$pkgver.tar.gz"
+        "$pkgname.tmpfiles")
+sha256sums=('6d0d81bc9b3e26ac75daadd75ddc5f65b4a9747650d022c65303ec5791e73804'
+            'SKIP')
+
+package() {
+  cd "$srcdir/$pkgname-$pkgver"
+
+  install -Dm755 swapwatch.py "$pkgdir/usr/bin/swapwatch"
+
+  install -dm755 "$pkgdir/etc/swapwatch/themes"
+  install -Dm644 *.theme -t "$pkgdir/etc/swapwatch/themes/"
+
+  install -Dm644 README.md "$pkgdir/usr/share/doc/$pkgname/README.md"
+  install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+
+  install -Dm644 "$srcdir/$pkgname.tmpfiles" "$pkgdir/usr/lib/tmpfiles.d/$pkgname.conf"
+}

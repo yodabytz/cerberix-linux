@@ -1,0 +1,77 @@
+# Maintainer: yodabytz <hello@cerberix.org>
+pkgbase=krellix
+pkgname=('krellix' 'krellix-server')
+pkgver=0.1.0
+pkgrel=2
+arch=('x86_64' 'aarch64')
+url='https://github.com/yodabytz/krellix'
+license=('GPL-3.0-or-later')
+makedepends=('cmake' 'ninja' 'qt6-tools' 'qt6-base')
+source=("$pkgbase-$pkgver.tar.gz::$url/archive/refs/tags/v$pkgver.tar.gz")
+sha256sums=('476df4269b4be86dbfc797a2255723a462203e768e51468030f23a4fa9ad7cad')
+
+build() {
+    cd "$pkgbase-$pkgver"
+    cmake -GNinja -B build -S . \
+        -DCMAKE_BUILD_TYPE=Release \
+        -DCMAKE_INSTALL_PREFIX=/usr
+    cmake --build build
+}
+
+package_krellix() {
+    pkgdesc='Themeable Qt 6 system monitor in the spirit of GKrellM (GUI client)'
+    depends=('qt6-base')
+    optdepends=('krellix-server: monitor remote hosts via krellix --host')
+
+    cd "$pkgbase-$pkgver"
+
+    # Install everything, then strip out the daemon — that lives in the
+    # krellix-server split. Keeps build() single-pass for both packages.
+    DESTDIR="$pkgdir" cmake --install build
+    rm -f "$pkgdir/usr/bin/krellixd"
+
+    install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+    install -Dm644 README.md "$pkgdir/usr/share/doc/$pkgname/README.md"
+}
+
+package_krellix-server() {
+    pkgdesc='krellixd — remote monitoring daemon for krellix'
+    depends=('qt6-base')
+    optdepends=('docker: friendly Docker bridge name resolution')
+    backup=('etc/krellixd/krellixd.conf')
+
+    cd "$pkgbase-$pkgver"
+
+    install -Dm755 build/bin/krellixd "$pkgdir/usr/bin/krellixd"
+
+    # Bundled systemd unit. Deliberately NO mount-namespace Protect*
+    # options — those break /proc visibility on many container hosts
+    # and the daemon ends up reporting host-level CPU/RAM. Hosts on
+    # bare metal can opt back into the extra hardening via the
+    # drop-in shipped under /usr/share/doc/krellix-server/.
+    install -Dm644 packaging/systemd/krellixd.service \
+        "$pkgdir/usr/lib/systemd/system/krellixd.service"
+    install -Dm644 packaging/systemd/krellixd.service.d/bare-metal-hardening.conf \
+        "$pkgdir/usr/share/doc/$pkgname/krellixd.service.d/bare-metal-hardening.conf"
+    install -Dm644 packaging/systemd/krellixd.service.d/docker-aliases.conf \
+        "$pkgdir/usr/share/doc/$pkgname/krellixd.service.d/docker-aliases.conf"
+
+    # Sample config — empty allow_hosts, daemon refuses to listen
+    # until admin sets one. backup= so admin edits survive upgrades.
+    install -dm755 "$pkgdir/etc/krellixd"
+    cat > "$pkgdir/etc/krellixd/krellixd.conf" <<'CONF'
+[server]
+listen=127.0.0.1
+port=19150
+update_hz=1
+max_clients=4
+io_timeout=300
+
+[security]
+# Allow-list is empty by default — krellixd will refuse to listen.
+# Add IPs that should be allowed to connect, comma- or space-separated.
+allow_hosts=
+CONF
+
+    install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+}

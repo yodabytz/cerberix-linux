@@ -1,0 +1,4 @@
+d /etc/modsentry 0755 root root -
+f /var/log/modsentry-audit.log 0640 root root -
+f /etc/modsentry/blocked-ips.conf 0644 root root -
+f /etc/modsentry/whitelist.conf 0644 root root -

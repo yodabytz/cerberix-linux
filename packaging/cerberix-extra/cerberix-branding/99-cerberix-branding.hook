@@ -1,0 +1,14 @@
+# Rewrite /usr/lib/os-release with Cerberix branding whenever the
+# filesystem package (or anything else) touches it. Without this,
+# any `pacman -Syu` that updates `filesystem` silently resets
+# /etc/os-release to upstream Arch.
+[Trigger]
+Type = Path
+Operation = Install
+Operation = Upgrade
+Target = usr/lib/os-release
+
+[Action]
+Description = Restoring Cerberix branding in /usr/lib/os-release
+When = PostTransaction
+Exec = /usr/bin/install -m644 /usr/share/cerberix/os-release /usr/lib/os-release

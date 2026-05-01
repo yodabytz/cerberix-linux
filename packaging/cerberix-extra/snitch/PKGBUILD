@@ -1,0 +1,24 @@
+# Maintainer: yodabytz <hello@cerberix.org>
+pkgname=snitch
+pkgver=0.1.0
+pkgrel=1
+pkgdesc="Fail2Ban-integrated security monitor that emails netblock admins about abuse"
+arch=('any')
+url="https://github.com/yodabytz/snitch"
+license=('MIT')
+depends=('python' 'whois')
+source=("$pkgname-$pkgver.tar.gz::$url/archive/refs/tags/v$pkgver.tar.gz"
+        "$pkgname.tmpfiles")
+sha256sums=('0c855bdcb62fe972624b9d08b4fb035cd4fe126145c40a12756d79bd05a6b0ad'
+            'SKIP')
+
+package() {
+  cd "$srcdir/$pkgname-$pkgver"
+
+  install -Dm755 snitch.py "$pkgdir/usr/bin/snitch"
+
+  install -Dm644 README.md "$pkgdir/usr/share/doc/$pkgname/README.md"
+  install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+
+  install -Dm644 "$srcdir/$pkgname.tmpfiles" "$pkgdir/usr/lib/tmpfiles.d/$pkgname.conf"
+}
