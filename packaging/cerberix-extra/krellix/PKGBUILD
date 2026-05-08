@@ -2,7 +2,7 @@
 pkgbase=krellix
 pkgname=('krellix' 'krellix-server')
 pkgver=0.1.0
-pkgrel=54
+pkgrel=55
 arch=('x86_64' 'aarch64')
 url='https://github.com/yodabytz/krellix'
 license=('GPL-3.0-or-later')
@@ -35,10 +35,14 @@ package_krellix() {
 
     # Install everything, then strip out the daemon and installable
     # plugins. Plugins are packaged independently so a Krellkam fix does
-    # not force every other plugin package to update.
+    # not force every other plugin package to update. Strip both the
+    # plugin .so dir AND any per-plugin asset dirs (krellmoon ships
+    # phase PNGs under share/krellix/plugins/krellmoon/) — leaving them
+    # in place causes a file-ownership conflict with the plugin package.
     DESTDIR="$pkgdir" cmake --install build
     rm -f "$pkgdir/usr/bin/krellixd"
     rm -rf "$pkgdir/usr/lib/krellix/plugins"
+    rm -rf "$pkgdir/usr/share/krellix/plugins"
 
     install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
     install -Dm644 README.md "$pkgdir/usr/share/doc/$pkgname/README.md"
