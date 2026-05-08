@@ -2,13 +2,14 @@
 pkgbase=krellix
 pkgname=('krellix' 'krellix-server')
 pkgver=0.1.0
-pkgrel=2
+pkgrel=45
 arch=('x86_64' 'aarch64')
 url='https://github.com/yodabytz/krellix'
 license=('GPL-3.0-or-later')
 makedepends=('cmake' 'ninja' 'qt6-tools' 'qt6-base')
-source=("$pkgbase-$pkgver.tar.gz::$url/archive/refs/tags/v$pkgver.tar.gz")
-sha256sums=('476df4269b4be86dbfc797a2255723a462203e768e51468030f23a4fa9ad7cad')
+options=('!debug')
+source=("$pkgbase-$pkgver.tar.gz")
+sha256sums=('ae1607f93b5dcae91f89e5df69500cf390ade3d252c7d2caf4843ed0259a18f7')
 
 build() {
     cd "$pkgbase-$pkgver"
@@ -21,14 +22,22 @@ build() {
 package_krellix() {
     pkgdesc='Themeable Qt 6 system monitor in the spirit of GKrellM (GUI client)'
     depends=('qt6-base')
-    optdepends=('krellix-server: monitor remote hosts via krellix --host')
+    optdepends=('krellix-server: monitor remote hosts via krellix --host'
+                'krellix-krellkam: webcam/image panel plugin'
+                'krellix-krelldacious: Audacious playback controls plugin'
+                'krellix-krellweather: compact weather station plugin'
+                'krellix-krellwire: RSS headline ticker plugin'
+                'krellix-krellspectrum: real-time audio spectrum visualizer plugin'
+                'krellix-krellmail: POP3/IMAP mail count plugin')
 
     cd "$pkgbase-$pkgver"
 
-    # Install everything, then strip out the daemon — that lives in the
-    # krellix-server split. Keeps build() single-pass for both packages.
+    # Install everything, then strip out the daemon and installable
+    # plugins. Plugins are packaged independently so a Krellkam fix does
+    # not force every other plugin package to update.
     DESTDIR="$pkgdir" cmake --install build
     rm -f "$pkgdir/usr/bin/krellixd"
+    rm -rf "$pkgdir/usr/lib/krellix/plugins"
 
     install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
     install -Dm644 README.md "$pkgdir/usr/share/doc/$pkgname/README.md"
