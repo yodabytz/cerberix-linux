@@ -9,7 +9,7 @@ license=('GPL-3.0-or-later')
 makedepends=('cmake' 'ninja' 'qt6-tools' 'qt6-base')
 options=('!debug')
 source=("$pkgbase-$pkgver.tar.gz")
-sha256sums=('7ce3b99b071915a9ecceb6a6104c97d3e424498a3b1295567a9007045a067b1b')
+sha256sums=('1df3012e382779921ebf93b0cbe29363614edc78c2b07ea367f6989a8c483c00')
 
 build() {
     cd "$pkgbase-$pkgver"
@@ -28,7 +28,8 @@ package_krellix() {
                 'krellix-krellweather: compact weather station plugin'
                 'krellix-krellwire: RSS headline ticker plugin'
                 'krellix-krellspectrum: real-time audio spectrum visualizer plugin'
-                'krellix-krellmail: POP3/IMAP mail count plugin')
+                'krellix-krellmail: POP3/IMAP mail count plugin'
+                'krellix-krellmoon: current moon-phase panel plugin')
 
     cd "$pkgbase-$pkgver"
 

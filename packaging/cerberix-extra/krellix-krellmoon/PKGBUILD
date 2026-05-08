@@ -1,0 +1,39 @@
+# Maintainer: yodabytz <hello@cerberix.org>
+pkgname=krellix-krellmoon
+pkgver=0.1.0
+pkgrel=1
+arch=('x86_64' 'aarch64')
+url='https://github.com/yodabytz/krellix'
+license=('GPL-3.0-or-later')
+pkgdesc='Krellmoon current moon-phase panel plugin for Krellix'
+depends=('krellix>=0.1.0' 'qt6-base')
+makedepends=('cmake' 'ninja' 'qt6-tools' 'qt6-base')
+options=('!debug')
+source=("krellix-$pkgver.tar.gz")
+sha256sums=('1df3012e382779921ebf93b0cbe29363614edc78c2b07ea367f6989a8c483c00')
+
+build() {
+    cd "krellix-$pkgver"
+    cmake -GNinja -B build -S . \
+        -DCMAKE_BUILD_TYPE=Release \
+        -DCMAKE_INSTALL_PREFIX=/usr
+    cmake --build build --target krellmoon
+}
+
+package() {
+    cd "krellix-$pkgver"
+    install -Dm755 build/plugins/libkrellmoon.so \
+        "$pkgdir/usr/lib/krellix/plugins/libkrellmoon.so"
+
+    # Bundle any PNG image assets the user dropped under
+    # plugins/krellmoon/assets/ at build time. The plugin searches
+    # /usr/share/krellix/plugins/krellmoon/ at runtime in addition to
+    # the per-user override path under XDG_DATA_HOME.
+    if compgen -G "plugins/krellmoon/assets/*.png" >/dev/null; then
+        install -dm755 "$pkgdir/usr/share/krellix/plugins/krellmoon"
+        install -m644 plugins/krellmoon/assets/*.png \
+            "$pkgdir/usr/share/krellix/plugins/krellmoon/"
+    fi
+
+    install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+}
