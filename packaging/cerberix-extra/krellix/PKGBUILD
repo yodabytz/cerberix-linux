@@ -9,7 +9,7 @@ license=('GPL-3.0-or-later')
 makedepends=('cmake' 'ninja' 'qt6-tools' 'qt6-base')
 options=('!debug')
 source=("$pkgbase-$pkgver.tar.gz")
-sha256sums=('18009e0be79d5314f3a79c0103505f37e9b35909c7e20f1100748f30b2244194')
+sha256sums=('770e335b423bb540e8192a37a6742fbbd60932b213b8f05cf5be47572e353e0e')
 
 build() {
     cd "$pkgbase-$pkgver"
