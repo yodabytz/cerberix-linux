@@ -10,7 +10,7 @@ depends=('krellix>=0.1.0' 'qt6-base')
 makedepends=('cmake' 'ninja' 'qt6-tools' 'qt6-base')
 options=('!debug')
 source=("krellix-$pkgver.tar.gz")
-sha256sums=('06304662591df87e140cbabaada8b3821acb1e6d2a49b8855cb420388113e97c')
+sha256sums=('46c636258c789fd978edf6f356a0cebb2a29c369b382567c32909867435ee97d')
 
 build() {
     cd "krellix-$pkgver"
