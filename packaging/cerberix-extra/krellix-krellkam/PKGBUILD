@@ -1,0 +1,28 @@
+# Maintainer: yodabytz <hello@cerberix.org>
+pkgname=krellix-krellkam
+pkgver=0.1.0
+pkgrel=42
+arch=('x86_64' 'aarch64')
+url='https://github.com/yodabytz/krellix'
+license=('GPL-3.0-or-later')
+pkgdesc='Krellkam webcam/image panel plugin for Krellix'
+depends=('krellix>=0.1.0' 'qt6-base' 'yt-dlp' 'ffmpeg')
+makedepends=('cmake' 'ninja' 'qt6-tools' 'qt6-base')
+options=('!debug')
+source=("krellix-$pkgver.tar.gz")
+sha256sums=('a3cb809ff190e3b73746da16e7ed012bb20b70b06c20f39e51090cfe82f25e41')
+
+build() {
+    cd "krellix-$pkgver"
+    cmake -GNinja -B build -S . \
+        -DCMAKE_BUILD_TYPE=Release \
+        -DCMAKE_INSTALL_PREFIX=/usr
+    cmake --build build --target krellkam
+}
+
+package() {
+    cd "krellix-$pkgver"
+    install -Dm755 build/plugins/libkrellkam.so \
+        "$pkgdir/usr/lib/krellix/plugins/libkrellkam.so"
+    install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+}
