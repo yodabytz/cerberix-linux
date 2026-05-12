@@ -1,0 +1,28 @@
+# Maintainer: yodabytz <hello@cerberix.org>
+pkgname=krellix-krellweather
+pkgver=0.1.0
+pkgrel=40
+arch=('x86_64' 'aarch64')
+url='https://github.com/yodabytz/krellix'
+license=('GPL-3.0-or-later')
+pkgdesc='Krellweather compact METAR weather station plugin for Krellix'
+depends=('krellix>=0.1.0' 'qt6-base')
+makedepends=('cmake' 'ninja' 'qt6-tools' 'qt6-base')
+options=('!debug')
+source=("krellix-$pkgver.tar.gz")
+sha256sums=('f0d258de30916627b5e1102bcddf32cf28e1f3f0ac8234fdbf5d0255527eda59')
+
+build() {
+    cd "krellix-$pkgver"
+    cmake -GNinja -B build -S . \
+        -DCMAKE_BUILD_TYPE=Release \
+        -DCMAKE_INSTALL_PREFIX=/usr
+    cmake --build build --target krellweather
+}
+
+package() {
+    cd "krellix-$pkgver"
+    install -Dm755 build/plugins/libkrellweather.so \
+        "$pkgdir/usr/lib/krellix/plugins/libkrellweather.so"
+    install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+}
