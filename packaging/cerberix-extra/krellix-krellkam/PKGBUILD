@@ -10,7 +10,7 @@ depends=('krellix>=0.1.0' 'qt6-base' 'yt-dlp' 'ffmpeg')
 makedepends=('cmake' 'ninja' 'qt6-tools' 'qt6-base')
 options=('!debug')
 source=("krellix-$pkgver.tar.gz")
-sha256sums=('8f5f51cb24e384a844e5deb9e5f2abf8badf3e251a729414dd1163db0dd2c450')
+sha256sums=('436134816f464df829130f5ffb9efb0692ed4cfdb83a50786e01929d98b07506')
 
 build() {
     cd "krellix-$pkgver"
