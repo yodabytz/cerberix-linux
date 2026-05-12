@@ -1,14 +1,19 @@
 # Maintainer: yodabytz <hello@cerberix.org>
-pkgname=krellix-krellspectrum
+pkgname=krellix-krellpkg
 pkgver=0.1.0
-pkgrel=40
+pkgrel=1
 arch=('x86_64' 'aarch64')
 url='https://github.com/yodabytz/krellix'
 license=('GPL-3.0-or-later')
-pkgdesc='KrellSpectrum real-time audio spectrum visualizer plugin for Krellix'
+pkgdesc='Krellpkg package update monitor plugin for Krellix'
 depends=('krellix>=0.1.0' 'qt6-base')
-optdepends=('pipewire: PipeWire capture backend via pw-record'
-            'pulseaudio: PulseAudio capture backend via parec')
+optdepends=('pacman-contrib: pacman checkupdates support'
+            'paru: AUR update checks'
+            'yay: AUR update checks'
+            'apt: apt update checks'
+            'dnf: dnf update checks'
+            'flatpak: Flatpak update checks'
+            'snapd: Snap update checks')
 makedepends=('cmake' 'ninja' 'qt6-tools' 'qt6-base')
 options=('!debug')
 source=("krellix-$pkgver.tar.gz")
@@ -19,12 +24,12 @@ build() {
     cmake -GNinja -B build -S . \
         -DCMAKE_BUILD_TYPE=Release \
         -DCMAKE_INSTALL_PREFIX=/usr
-    cmake --build build --target krellspectrum
+    cmake --build build --target krellpkg
 }
 
 package() {
     cd "krellix-$pkgver"
-    install -Dm755 build/plugins/libkrellspectrum.so \
-        "$pkgdir/usr/lib/krellix/plugins/libkrellspectrum.so"
+    install -Dm755 build/plugins/libkrellpkg.so \
+        "$pkgdir/usr/lib/krellix/plugins/libkrellpkg.so"
     install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
 }

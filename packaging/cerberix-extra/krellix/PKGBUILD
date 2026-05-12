@@ -2,14 +2,14 @@
 pkgbase=krellix
 pkgname=('krellix' 'krellix-server')
 pkgver=0.1.0
-pkgrel=60
+pkgrel=61
 arch=('x86_64' 'aarch64')
 url='https://github.com/yodabytz/krellix'
 license=('GPL-3.0-or-later')
 makedepends=('cmake' 'ninja' 'qt6-tools' 'qt6-base')
 options=('!debug')
 source=("$pkgbase-$pkgver.tar.gz")
-sha256sums=('f0d258de30916627b5e1102bcddf32cf28e1f3f0ac8234fdbf5d0255527eda59')
+sha256sums=('8f5f51cb24e384a844e5deb9e5f2abf8badf3e251a729414dd1163db0dd2c450')
 
 build() {
     cd "$pkgbase-$pkgver"
@@ -29,7 +29,10 @@ package_krellix() {
                 'krellix-krellwire: RSS headline ticker plugin'
                 'krellix-krellspectrum: real-time audio spectrum visualizer plugin'
                 'krellix-krellmail: POP3/IMAP mail count plugin'
-                'krellix-krellmoon: current moon-phase panel plugin')
+                'krellix-krellmoon: current moon-phase panel plugin'
+                'krellix-krellpkg: package update monitor plugin'
+                'krellix-krellwifi: WiFi analyzer plugin'
+                'krellix-krellstack: container stack monitor plugin')
 
     cd "$pkgbase-$pkgver"
 
