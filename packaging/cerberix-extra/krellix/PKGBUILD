@@ -2,14 +2,14 @@
 pkgbase=krellix
 pkgname=('krellix' 'krellix-server')
 pkgver=0.1.0
-pkgrel=65
+pkgrel=66
 arch=('x86_64' 'aarch64')
 url='https://github.com/yodabytz/krellix'
 license=('GPL-3.0-or-later')
 makedepends=('cmake' 'ninja' 'qt6-tools' 'qt6-base')
 options=('!debug')
 source=("$pkgbase-$pkgver.tar.gz")
-sha256sums=('066f49e014c3b8377d936ccd5d9874096a784966299a1aec7f24dc31639119c3')
+sha256sums=('662322c573e18777546498f796e78232f51d55786045c3ca02e4003da30d8960')
 
 build() {
     cd "$pkgbase-$pkgver"
