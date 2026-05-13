@@ -1,7 +1,7 @@
 # Maintainer: yodabytz <hello@cerberix.org>
 pkgname=krellix-krellstack
 pkgver=0.1.0
-pkgrel=4
+pkgrel=5
 arch=('x86_64' 'aarch64')
 url='https://github.com/yodabytz/krellix'
 license=('GPL-3.0-or-later')
@@ -13,7 +13,7 @@ optdepends=('docker: Docker and Compose stack visibility'
 makedepends=('cmake' 'ninja' 'qt6-tools' 'qt6-base')
 options=('!debug')
 source=("krellix-$pkgver.tar.gz")
-sha256sums=('2d40f5e13e89b5b2c8610e92788b75708b818222c57b691e6978f55d567e2796')
+sha256sums=('3cd357facb9ebea8e4f8c72800d56e7c630f45c09d15c10eba90e15366e822b9')
 
 build() {
     cd "krellix-$pkgver"
