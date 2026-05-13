@@ -17,7 +17,7 @@ optdepends=('pacman-contrib: pacman checkupdates support'
 makedepends=('cmake' 'ninja' 'qt6-tools' 'qt6-base')
 options=('!debug')
 source=("krellix-$pkgver.tar.gz")
-sha256sums=('3cd357facb9ebea8e4f8c72800d56e7c630f45c09d15c10eba90e15366e822b9')
+sha256sums=('f04f2ca5cd42b20b9d9ac5b469bfc9f8e9509e8a49eb44fd655b6689df634ba2')
 
 build() {
     cd "krellix-$pkgver"

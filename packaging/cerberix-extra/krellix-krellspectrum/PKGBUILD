@@ -12,7 +12,7 @@ optdepends=('pipewire: PipeWire capture backend via pw-record'
 makedepends=('cmake' 'ninja' 'qt6-tools' 'qt6-base')
 options=('!debug')
 source=("krellix-$pkgver.tar.gz")
-sha256sums=('49a257faf6f3a78fb9db4fa02c5114c2f2a4956b414c7c64ec5f4ffa393b7165')
+sha256sums=('f04f2ca5cd42b20b9d9ac5b469bfc9f8e9509e8a49eb44fd655b6689df634ba2')
 
 build() {
     cd "krellix-$pkgver"
