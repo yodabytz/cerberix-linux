@@ -13,7 +13,7 @@ optdepends=('docker: Docker and Compose stack visibility'
 makedepends=('cmake' 'ninja' 'qt6-tools' 'qt6-base')
 options=('!debug')
 source=("krellix-$pkgver.tar.gz")
-sha256sums=('3b1e7705ecec34baec9613c3f4f2a1665a5f2b9dc270beee57e2b92fea92648f')
+sha256sums=('868ea19d8fc77fafe21cf8c567011c66793144ecf1d8b16ec347ec4701eebfae')
 
 build() {
     cd "krellix-$pkgver"
