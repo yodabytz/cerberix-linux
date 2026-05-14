@@ -1,19 +1,19 @@
 # Maintainer: yodabytz <hello@cerberix.org>
 pkgname=krellix-krellstack
-pkgver=0.1.0
-pkgrel=5
+pkgver=0.1.1
+pkgrel=1
 arch=('x86_64' 'aarch64')
 url='https://github.com/yodabytz/krellix'
 license=('GPL-3.0-or-later')
 pkgdesc='KrellStack container stack monitor plugin for Krellix'
-depends=('krellix>=0.1.0' 'qt6-base')
+depends=('krellix>=0.1.1' 'qt6-base')
 optdepends=('docker: Docker and Compose stack visibility'
             'podman: Podman container visibility'
             'kubectl: Kubernetes pod visibility')
 makedepends=('cmake' 'ninja' 'qt6-tools' 'qt6-base')
 options=('!debug')
 source=("krellix-$pkgver.tar.gz")
-sha256sums=('a7091b2d25d2b8a492291bc23c67287e95172f792f83fe998a0a46909655ad02')
+sha256sums=('c8df5ccc19f362d88ff0e01ed51dd524c3b7b612b01b62f8b04552935a8de48d')
 
 build() {
     cd "krellix-$pkgver"

@@ -1,16 +1,16 @@
 # Maintainer: yodabytz <hello@cerberix.org>
 pkgname=krellix-krellwire
-pkgver=0.1.0
-pkgrel=40
+pkgver=0.1.1
+pkgrel=1
 arch=('x86_64' 'aarch64')
 url='https://github.com/yodabytz/krellix'
 license=('GPL-3.0-or-later')
 pkgdesc='Krellwire RSS headline ticker plugin for Krellix'
-depends=('krellix>=0.1.0' 'qt6-base')
+depends=('krellix>=0.1.1' 'qt6-base')
 makedepends=('cmake' 'ninja' 'qt6-tools' 'qt6-base')
 options=('!debug')
 source=("krellix-$pkgver.tar.gz")
-sha256sums=('a7091b2d25d2b8a492291bc23c67287e95172f792f83fe998a0a46909655ad02')
+sha256sums=('c8df5ccc19f362d88ff0e01ed51dd524c3b7b612b01b62f8b04552935a8de48d')
 
 build() {
     cd "krellix-$pkgver"
