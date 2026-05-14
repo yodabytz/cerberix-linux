@@ -2,7 +2,7 @@
 pkgbase=krellix
 pkgname=('krellix' 'krellix-server')
 pkgver=0.1.0
-pkgrel=75
+pkgrel=76
 arch=('x86_64' 'aarch64')
 url='https://github.com/yodabytz/krellix'
 license=('GPL-3.0-or-later')
@@ -44,6 +44,7 @@ package_krellix() {
     # in place causes a file-ownership conflict with the plugin package.
     DESTDIR="$pkgdir" cmake --install build
     rm -f "$pkgdir/usr/bin/krellixd"
+    rm -f "$pkgdir/usr/lib/systemd/system/krellixd.service"
     rm -rf "$pkgdir/usr/lib/krellix/plugins"
     rm -rf "$pkgdir/usr/share/krellix/plugins"
 
