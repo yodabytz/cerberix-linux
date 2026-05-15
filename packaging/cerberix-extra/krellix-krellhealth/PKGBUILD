@@ -15,7 +15,7 @@ optdepends=('smartmontools: SMART disk health checks'
 makedepends=('cmake' 'ninja' 'qt6-tools' 'qt6-base')
 options=('!debug')
 source=("krellix-$pkgver.tar.gz")
-sha256sums=('dcc1bef431215d62d22f624c9a9ee229d92f792c26ac76c735da85a8867a6f4c')
+sha256sums=('1c3331ecb2496a7a7bf99101d65642fe7709b69422d6be3f53a0db78cb9cd1c0')
 
 build() {
     cd "krellix-$pkgver"
