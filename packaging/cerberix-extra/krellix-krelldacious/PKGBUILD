@@ -11,7 +11,7 @@ optdepends=('audacious: MPRIS player controlled by this plugin')
 makedepends=('cmake' 'ninja' 'qt6-tools' 'qt6-base')
 options=('!debug')
 source=("krellix-$pkgver.tar.gz")
-sha256sums=('1c3331ecb2496a7a7bf99101d65642fe7709b69422d6be3f53a0db78cb9cd1c0')
+sha256sums=('1c2d29205bb3749410e6288e8bb13d06b41ac3467687c80d14101d3c1073c3de')
 
 build() {
     cd "krellix-$pkgver"
