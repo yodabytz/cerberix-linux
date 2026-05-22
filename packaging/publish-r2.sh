@@ -7,6 +7,8 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 REPO_ROOT="$ROOT/packaging/repo"
 BUCKET="${CERBERIX_R2_BUCKET:-cerberix-repo}"
 
+"$ROOT/packaging/update-repo-index.sh"
+
 put_tree() {
     local src="$1"
     local key_prefix="$2"

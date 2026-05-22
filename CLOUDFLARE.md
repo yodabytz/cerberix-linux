@@ -38,7 +38,8 @@ make extra-publish
 ```
 
 `make extra-publish` calls `packaging/publish-r2.sh`, then refreshes the
-origin compatibility mirror. The R2 upload writes:
+origin compatibility mirror. The R2 publisher refreshes the browsable pacman
+index from the signed database before it uploads:
 
 - `packaging/repo/cerberix-extra/` to the bucket root, so pacman sees
   `x86_64/cerberix-extra.db`

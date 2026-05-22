@@ -81,6 +81,9 @@ make extra-sync SF_USER=yodabytz   # rsync to SourceForge
 
 Each step depends on the previous via Make targets — `extra-test` will
 trigger `extra-build` and `extra-sign` if they haven't been run.
+Push the release commit to GitHub before treating this flow as complete.
+When `krellix-server` changes, update the headless `krellixd` deployment in
+the same release pass using that host's install method.
 
 ### Layout
 
