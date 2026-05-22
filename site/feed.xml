@@ -250,7 +250,7 @@ sudo pacman-key --lsign-key 49840314FFF3DFE2D6E75439577040DEDD8E521E
 <p>Then append this to <code>/etc/pacman.conf</code>:</p>
 <pre><code>[cerberix-extra]
 SigLevel = Required DatabaseOptional
-Server = https://cerberix.org/repo/cerberix-extra/$arch/
+Server = https://repo.cerberix.org/$arch/
 Server = https://downloads.sourceforge.net/project/cerberix-linux/cerberix/cerberix-extra/$arch/
 </code></pre>
 <p>Then:</p>

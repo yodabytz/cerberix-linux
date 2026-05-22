@@ -5,6 +5,20 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Release Notes — Cerberix Linux</title>
   <meta name="description" content="Release history and change log for Cerberix Linux." />
+  <meta property="og:title" content="Release Notes — Cerberix Linux" />
+  <meta property="og:description" content="Release history and change log for Cerberix Linux." />
+  <meta property="og:url" content="https://cerberix.org/release-notes/" />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="Cerberix Linux" />
+  <meta property="og:image" content="https://cerberix.org/og.png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:image:alt" content="Cerberix Linux — hardened Arch, ready the moment it boots." />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:site" content="@CerberixLinux" />
+  <meta name="twitter:title" content="Release Notes — Cerberix Linux" />
+  <meta name="twitter:description" content="Release history and change log for Cerberix Linux." />
+  <meta name="twitter:image" content="https://cerberix.org/og.png" />
   <meta name="theme-color" content="#222436" />
   <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
   <link rel="alternate" type="application/rss+xml" title="Cerberix Linux updates" href="/feed.xml" />
@@ -50,8 +64,10 @@
     </a>
     <nav class="nav-links">
       <a href="/#features">Features</a>
+      <a href="/#screenshots">Screenshots</a>
+      <a href="/extras/">Extras</a>
+      <a href="/blog/">Blog</a>
       <a href="/#download">Download</a>
-      <a href="/feed.xml">RSS</a>
       <a class="nav-cta" href="/#download">Get it</a>
     </nav>
   </header>
@@ -63,6 +79,48 @@
       All Cerberix Linux releases in reverse chronological order.
       Subscribe to the <a href="/feed.xml">RSS feed</a> for updates.
     </p>
+
+<article class="note">
+      <h2>0.1.1 &mdash; Styx</h2>
+      <div class="note-meta">
+        <span>Released 2026-04-23</span>
+        <span class="dot"></span>
+        <span>x86_64</span>
+        <span class="dot"></span>
+        <span>ISO: 3.1 GB</span>
+      </div>
+      <p>Maintenance release off the back of a user-reported install
+      hang on low-entropy VMs. See the
+      <a href="/blog/2026-04-23-0-1-1-released/">0.1.1 post</a> for
+      the fuller story &mdash; including what I didn't actually manage
+      to reproduce.</p>
+
+      <h3 style="margin-top: 24px;">Changes</h3>
+      <ul>
+        <li>Ship <code>haveged</code> in the base package set and
+          auto-start it on the live ISO</li>
+        <li>Installer starts <code>haveged</code> before
+          <code>pacman-key --init</code> as a defensive layer</li>
+        <li>Enable <code>haveged</code> on the installed system so
+          post-install pacman operations don't hit the same class of
+          stall on headless boxes</li>
+        <li>Full end-to-end install tested in QEMU before release
+          (0.1.0 didn't get that treatment, which was sloppy of me)</li>
+      </ul>
+
+      <h3 style="margin-top: 24px;">Honest caveat</h3>
+      <p>On kernels 5.6+ systemd skips <code>haveged</code> entirely
+      via <code>ConditionVersion</code> &mdash; the modern CRNG
+      self-seeds fast enough that <code>haveged</code> is unnecessary.
+      Running the install in a fresh headless QEMU with the 0.1.1 ISO,
+      <code>pacman-key --init</code> finished in about three seconds,
+      which matches what most people on modern hardware would have
+      seen with 0.1.0 too. I did not manage to reproduce the original
+      two-hour hang. So: the change is defense-in-depth at worst,
+      genuine fix at best. If you hit the stall again on 0.1.1,
+      please write in &mdash; it would mean the root cause is something
+      else (keyserver timeout, WKD lookup) and I'd want to chase it.</p>
+    </article>
 
     <article class="note">
       <h2>0.1.0 &mdash; Styx</h2>
@@ -150,7 +208,9 @@
         <span>Cerberix Linux</span>
       </div>
       <div class="foot-links">
-        <a href="/">Home</a>
+        <a href="/extras/">Extras</a>
+        <a href="/blog/">Blog</a>
+        <a href="/release-notes/">Release notes</a>
         <a href="/feed.xml">RSS</a>
         <a href="https://github.com/yodabytz/cerberix-linux">Source</a>
         <a href="https://matrix.to/#/#cerberix:matrix.quantumbytz.com">Matrix</a>

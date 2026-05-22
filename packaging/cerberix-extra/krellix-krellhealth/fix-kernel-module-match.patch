@@ -1,0 +1,102 @@
+--- a/plugins/krellhealth/KrellhealthPlugin.cpp
++++ b/plugins/krellhealth/KrellhealthPlugin.cpp
+@@ -123,7 +123,7 @@
+     {
+         const QFont textFont = m_theme->font(QStringLiteral("label"));
+         QFont iconFont = textFont;
+-        iconFont.setPointSize(qMax(textFont.pointSize() + 6, 15));
++        iconFont.setPointSize(qMax(textFont.pointSize() + 3, 13));
+         iconFont.setBold(true);
+ 
+         const QFontMetrics ifm(iconFont);
+@@ -149,7 +149,7 @@
+ 
+         QFont textFont = m_theme->font(QStringLiteral("label"));
+         QFont iconFont = textFont;
+-        iconFont.setPointSize(qMax(textFont.pointSize() + 6, 15));
++        iconFont.setPointSize(qMax(textFont.pointSize() + 3, 13));
+         iconFont.setBold(true);
+ 
+         const QRect r = rect();
+@@ -191,8 +191,6 @@
+     m_panel = panel;
+     m_summary = new HealthStatusBadge(theme(), panel);
+     panel->addWidget(m_summary);
+-    m_detail = panel->addDecal(QStringLiteral("label"), QStringLiteral("text_secondary"));
+-    m_detail->setAlignment(Qt::AlignHCenter);
+     if (m_summary)
+         m_summary->setStatus(QStringLiteral("?"), QStringLiteral("CHECK"), QStringLiteral("text_secondary"));
+     QTimer::singleShot(0, this, &KrellhealthMonitor::tick);
+@@ -204,7 +202,30 @@
+     if (m_updating)
+         return;
+ 
+-    if (RemoteSource *remote = RemoteSource::instance(); remote && remote->isConnected()) {
++    const auto showChecking = [this](const QString &detail) {
++        if (m_summary)
++            m_summary->setStatus(QStringLiteral("?"), QStringLiteral("CHECK"),
++                                 QStringLiteral("text_secondary"));
++        if (m_panel)
++            m_panel->setToolTip(QStringLiteral("KrellHealth checks:\n%1").arg(detail));
++    };
++
++    if (RemoteSource *remote = RemoteSource::instance()) {
++        if (!remote->isConnected()) {
++            m_findings.clear();
++            m_pendingJobs.clear();
++            showChecking(QStringLiteral("Waiting for remote connection to %1.")
++                                 .arg(remote->remoteAddress()));
++            return;
++        }
++        if (remote->uptimeSeconds() <= 0) {
++            m_findings.clear();
++            m_pendingJobs.clear();
++            showChecking(QStringLiteral("Waiting for the first remote health sample from %1.")
++                                 .arg(remote->remoteAddress()));
++            return;
++        }
++
+         m_findings.clear();
+         const HealthInfo health = remote->healthInfo();
+         for (const HealthFindingInfo &finding : health.findings) {
+@@ -222,6 +243,7 @@
+     m_updating = true;
+     m_findings.clear();
+     m_pendingJobs.clear();
++    showChecking(QStringLiteral("Checking enabled local probes..."));
+     addLocalChecks();
+ 
+     if (haveCommand(QStringLiteral("systemctl")))
+@@ -238,7 +260,8 @@
+     if (haveCommand(QStringLiteral("journalctl")))
+         m_pendingJobs << CheckJob{QStringLiteral("journal"), QStringLiteral("journal"),
+                                   QStringLiteral("journalctl"), {QStringLiteral("-p"), QStringLiteral("err"),
+-                                  QStringLiteral("-b"), QStringLiteral("--no-pager"), QStringLiteral("-n"), QStringLiteral("10")}, 3000};
++                                  QStringLiteral("-b"), QStringLiteral("--since"), QStringLiteral("-10 min"),
++                                  QStringLiteral("--no-pager"), QStringLiteral("-n"), QStringLiteral("5")}, 3000};
+     if (haveCommand(QStringLiteral("timedatectl")))
+         m_pendingJobs << CheckJob{QStringLiteral("timesync"), QStringLiteral("time sync"),
+                                   QStringLiteral("timedatectl"), {QStringLiteral("show"),
+@@ -248,7 +271,7 @@
+     if (haveCommand(QStringLiteral("pacman")))
+         m_pendingJobs << CheckJob{QStringLiteral("pacmanlog"), QStringLiteral("pacman"),
+                                   QStringLiteral("sh"), {QStringLiteral("-c"),
+-                                  QStringLiteral("grep -Ei 'error|failed|conflict' /var/log/pacman.log 2>/dev/null | tail -n 5")}, 2500};
++                                  QStringLiteral("since=$(date -d '-30 minutes' '+%Y-%m-%dT%H:%M:%S'); awk -v since=\"$since\" 'substr($0,2,19) >= since && $0 ~ /(] error:|==> ERROR:|failed to|transaction failed|conflicting files|exists in filesystem|invalid or corrupted package)/ { print }' /var/log/pacman.log 2>/dev/null | tail -n 5")}, 2500};
+     if (haveCommand(QStringLiteral("apt")))
+         m_pendingJobs << CheckJob{QStringLiteral("aptlog"), QStringLiteral("apt"),
+                                   QStringLiteral("sh"), {QStringLiteral("-c"),
+@@ -325,9 +348,11 @@
+         if (f.open(QIODevice::ReadOnly | QIODevice::Text)) {
+             const QString running = QString::fromLocal8Bit(f.readAll()).trimmed();
+             const QString newest = newestKernelModuleDir();
+-            if (!newest.isEmpty() && !running.startsWith(newest)) {
++            const QString runningModules = QStringLiteral("/usr/lib/modules/%1").arg(running);
++            if (!running.isEmpty() && !fileExists(runningModules) && !newest.isEmpty()) {
+                 addFinding(Severity::Info, QStringLiteral("Kernel/package mismatch"),
+-                           QStringLiteral("running %1, newest modules %2").arg(running, newest));
++                           QStringLiteral("running %1 has no matching modules; newest modules %2")
++                                   .arg(running, newest));
+             }
+         }
+     }

@@ -35,11 +35,16 @@ EOF
     echo '== Repo listing =='
     pacman -Sl $REPO_NAME
     echo
-    echo '== Installing all 5 packages =='
-    pacman -S --noconfirm netscope swapwatch modsentry fuzzytail snitch
+    echo '== Installing repo packages =='
+    pacman -S --noconfirm netscope swapwatch modsentry fuzzytail snitch \
+      krellix krellix-server \
+      krellix-krellkam krellix-krelldacious krellix-krellweather \
+      krellix-krellwire krellix-krellspectrum krellix-krellmail \
+      krellix-krellhealth krellix-krellmoon krellix-krellpkg \
+      krellix-krelltop krellix-krellwifi krellix-krellstack
     echo
     echo '== Binary resolution =='
-    for b in netscope swapwatch modsentry ft snitch; do
+    for b in netscope swapwatch modsentry ft snitch krellix krellixd; do
       printf '  %-10s -> %s\n' \"\$b\" \"\$(command -v \$b || echo MISSING)\"
     done
     echo
@@ -52,5 +57,5 @@ EOF
     echo '== Licenses installed =='
     ls /usr/share/licenses/ | grep -E 'netscope|swapwatch|modsentry|fuzzytail|snitch'
     echo
-    echo '== TEST PASSED: all 5 packages installed and verified from signed local repo =='
+    echo '== TEST PASSED: repo packages installed and verified from signed local repo =='
   "

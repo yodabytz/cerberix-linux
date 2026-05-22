@@ -3,9 +3,7 @@
 # Base
 base
 base-devel
-linux
 linux-firmware
-linux-headers
 linux-hardened
 linux-hardened-headers
 mkinitcpio
@@ -188,3 +186,7 @@ dnsmasq
 # Chaotic-AUR (third-party prebuilt AUR repo)
 chaotic-keyring
 chaotic-mirrorlist
+
+# Entropy daemon — critical so `pacman-key --init` completes in seconds,
+# not hours, on headless VMs (low /dev/random availability).
+haveged

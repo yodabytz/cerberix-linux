@@ -26,13 +26,21 @@ for pkg in *.pkg.tar.zst; do
 done
 
 echo
-echo "==> Generating (or updating) $REPO_NAME.db"
+echo "==> Generating $REPO_NAME.db from current package files"
+# Rebuild from scratch so removed package files do not remain in the
+# database and same-version rebuilt packages cannot leave stale sizes.
+rm -f "$REPO_NAME.db" "$REPO_NAME.db.sig" \
+      "$REPO_NAME.db.tar.zst" "$REPO_NAME.db.tar.zst.sig" \
+      "$REPO_NAME.db.tar.zst.old" "$REPO_NAME.db.tar.zst.old.sig" \
+      "$REPO_NAME.files" "$REPO_NAME.files.sig" \
+      "$REPO_NAME.files.tar.zst" "$REPO_NAME.files.tar.zst.sig" \
+      "$REPO_NAME.files.tar.zst.old" "$REPO_NAME.files.tar.zst.old.sig"
 # repo-add needs the Arch toolchain. Use the builder image so this
 # also works on non-Arch hosts like quantumbytz.
 docker run --rm \
   -v "$OUT_DIR":/build/out \
   cerberix-pkgbuild:latest \
-  bash -c "cd /build/out && sudo chown builder:builder . && repo-add --new --remove $REPO_NAME.db.tar.zst ./*.pkg.tar.zst"
+  bash -c "cd /build/out && sudo chown builder:builder . && repo-add --new $REPO_NAME.db.tar.zst ./*.pkg.tar.zst"
 
 echo
 echo "==> Signing $REPO_NAME.db and $REPO_NAME.files"

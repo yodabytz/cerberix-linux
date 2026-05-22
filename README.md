@@ -22,9 +22,9 @@ A security-focused, desktop-ready Arch Linux derivative.
 
 ```bash
 curl https://cerberix.org/gpg.asc | gpg --import
-gpg --verify cerberix-linux-0.1.0-x86_64.iso.sig \
-            cerberix-linux-0.1.0-x86_64.iso
-sha256sum -c cerberix-linux-0.1.0-x86_64.iso.sha256
+gpg --verify cerberix-linux-0.1.1-x86_64.iso.sig \
+            cerberix-linux-0.1.1-x86_64.iso
+sha256sum -c cerberix-linux-0.1.1-x86_64.iso.sha256
 ```
 
 ---

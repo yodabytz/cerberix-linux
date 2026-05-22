@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Krellix — Cerberix Extras</title>
+  <meta name="description" content="Krellix is a themeable Qt system monitor with remote daemon support, installable plugins, and downloadable themes." />
+  <meta name="theme-color" content="#222436" />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="stylesheet" href="/style.css?v=20260506-badges" />
+</head>
+<body>
+  <div class="bg-grid"></div>
+  <header class="nav">
+    <a class="brand" href="/"><span class="brand-name">Cerberix</span></a>
+    <nav class="nav-links">
+      <a href="/#features">Features</a>
+      <a href="/#screenshots">Screenshots</a>
+      <a href="/extras/">Extras</a>
+      <a href="/blog/">Blog</a>
+      <a href="/#download">Download</a>
+      <a class="nav-cta" href="/#download">Get it</a>
+    </nav>
+  </header>
+
+  <main>
+    <section class="page-hero">
+      <div class="crumbs"><a href="/">Home</a> / <a href="/extras/">Extras</a> / Krellix</div>
+      <div class="eyebrow">krellix 0.1.1</div>
+      <h1>Krellix</h1>
+      <p>
+        Krellix is a compact, themeable Qt 6 system monitor in the spirit of
+        GKrellM. It can monitor the local desktop, connect to remote
+        <code>krellixd</code> servers, load optional plugins, and use custom
+        themes.
+      </p>
+      <div class="tag-list">
+        <span class="tag">Qt 6</span>
+        <span class="tag">remote daemon</span>
+        <span class="tag">themes</span>
+        <span class="tag">plugins</span>
+        <span class="tag">pacman packaged</span>
+        <span class="tag">deb</span>
+        <span class="tag">rpm</span>
+        <span class="tag">macOS port</span>
+      </div>
+      <div class="mini-grid">
+        <article class="mini-card">
+          <h3>First time</h3>
+          <p>Add the signed cerberix-extra repo before installing packages.</p>
+          <a class="card-link" href="/extras/#repo-setup">repo setup</a>
+        </article>
+        <article class="mini-card">
+          <h3>Install</h3>
+          <p>Main client and built-in monitor set.</p>
+          <a class="card-link" href="https://repo.cerberix.org/x86_64/">pacman -S krellix</a>
+        </article>
+        <article class="mini-card">
+          <h3>Remote hosts</h3>
+          <p>Install the standalone daemon on headless systems.</p>
+          <a class="card-link" href="https://repo.cerberix.org/x86_64/">pacman -S krellix-server</a>
+        </article>
+        <article class="mini-card">
+          <h3>macOS port</h3>
+          <p>Self-contained Intel macOS app bundle with bundled Qt runtime.</p>
+          <a class="card-link" href="https://repo.cerberix.org/macos/x86_64/krellix-0.1.1-Darwin-x86_64-selfcontained.dmg">Download DMG</a>
+        </article>
+        <article class="mini-card">
+          <h3>Debian/Ubuntu</h3>
+          <p>Standalone amd64 package served from the signed Debian repo.</p>
+          <a class="card-link" href="https://repo.cerberix.org/debian/pool/main/k/krellix/krellix_0.1.1-8_amd64.deb">Download DEB</a>
+        </article>
+        <article class="mini-card">
+          <h3>Fedora/RHEL</h3>
+          <p>Standalone x86_64 package served from the RPM repo.</p>
+          <a class="card-link" href="https://repo.cerberix.org/rpm/x86_64/krellix-0.1.1-8.x86_64.rpm">Download RPM</a>
+        </article>
+      </div>
+    </section>
+
+    <section class="features" style="padding-top: 0;">
+      <div class="section-head">
+        <h2>Plugins and themes</h2>
+        <p>Krellix stays small by letting optional pieces live as separate installs.</p>
+      </div>
+      <div class="feature-grid">
+        <article class="feature-card">
+          <div class="feature-icon icon-tools">Add-ons</div>
+          <h3><a href="/extras/krellix/plugins/">Plugins</a></h3>
+          <p>Krellkam, Krelldacious, Krellweather, Krellwire, KrellSpectrum, and Krellmail are installable packages.</p>
+          <div class="card-actions"><a class="card-link" href="/extras/krellix/plugins/">View plugins</a></div>
+        </article>
+        <article class="feature-card">
+          <div class="feature-icon icon-desktop">Themes</div>
+          <h3><a href="/extras/krellix/themes/">Themes</a></h3>
+          <p>Browse bundled themes and download theme archives. Later this page can include themes not shipped in the package.</p>
+          <div class="card-actions"><a class="card-link" href="/extras/krellix/themes/">View themes</a></div>
+        </article>
+        <article class="feature-card">
+          <div class="feature-icon icon-guard">Pacman</div>
+          <h3>Repository</h3>
+          <p>Krellix packages are served from the signed pacman, Debian, and RPM repositories.</p>
+          <div class="card-actions"><a class="card-link" href="https://repo.cerberix.org/x86_64/">Browse pacman</a> <a class="card-link" href="https://repo.cerberix.org/debian/">Debian repo</a> <a class="card-link" href="https://repo.cerberix.org/rpm/x86_64/">RPM repo</a></div>
+        </article>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="foot-row">
+      <div class="foot-brand"><span>Cerberix Linux</span></div>
+      <div class="foot-links">
+        <a href="/extras/">Extras</a>
+        <a href="/blog/">Blog</a>
+        <a href="/release-notes/">Release notes</a>
+        <a href="/feed.xml">RSS</a>
+        <a href="https://github.com/yodabytz/cerberix-linux">Source</a>
+        <a href="https://matrix.to/#/#cerberix:matrix.quantumbytz.com">Matrix</a>
+        <a href="https://x.com/CerberixLinux">X</a>
+        <a href="mailto:hello@cerberix.org">Contact</a>
+      </div>
+    </div>
+    <div class="foot-sub">© 2026 Cerberix &middot; Krellix packages in cerberix-extra</div>
+  </footer>
+</body>
+</html>

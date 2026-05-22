@@ -1,0 +1,17 @@
+diff --git a/plugins/krellmail/KrellmailPlugin.cpp b/plugins/krellmail/KrellmailPlugin.cpp
+index f3c8020..cd31a69 100644
+--- a/plugins/krellmail/KrellmailPlugin.cpp
++++ b/plugins/krellmail/KrellmailPlugin.cpp
+@@ -507,8 +507,10 @@ void KrellmailMonitor::onEncrypted()
+ 
+ void KrellmailMonitor::onReadyRead()
+ {
+-    if (!m_socket) return;
+-    m_buffer.append(m_socket->readAll());
++    auto *socket = qobject_cast<QSslSocket *>(sender());
++    if (!socket || socket != m_socket || !socket->isOpen())
++        return;
++    m_buffer.append(socket->readAll());
+     if (m_buffer.size() > kMaxMailBufferBytes) {
+         failCurrent(QStringLiteral("mail response too large"));
+         return;

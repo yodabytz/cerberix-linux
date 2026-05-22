@@ -1,0 +1,18 @@
+diff --git a/src/remote/RemoteSource.cpp b/src/remote/RemoteSource.cpp
+index c4a5e24..6ae047b 100644
+--- a/src/remote/RemoteSource.cpp
++++ b/src/remote/RemoteSource.cpp
+@@ -99,8 +99,11 @@ void RemoteSource::onSocketDisconnected()
+ 
+ void RemoteSource::onSocketError()
+ {
+-    qCWarning(lcRemote) << "socket error from" << remoteAddress() << ":"
+-                        << m_socket->errorString();
++    if (m_socket
++        && m_socket->error() != QAbstractSocket::RemoteHostClosedError) {
++        qCWarning(lcRemote) << "socket error from" << remoteAddress() << ":"
++                            << m_socket->errorString();
++    }
+     // For a connection that *was* established, `disconnected` fires next
+     // and reconnect is scheduled there. For a failed initial connect
+     // (host unreachable, refused, etc.) we never reach ConnectedState, so

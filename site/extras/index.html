@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Extras — Cerberix Linux</title>
+  <meta name="description" content="Extra Cerberix apps and tools available from the cerberix-extra pacman repository." />
+  <meta name="theme-color" content="#222436" />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="stylesheet" href="/style.css?v=20260506-badges" />
+</head>
+<body>
+  <div class="bg-grid"></div>
+  <header class="nav">
+    <a class="brand" href="/"><span class="brand-name">Cerberix</span></a>
+    <nav class="nav-links">
+      <a href="/#features">Features</a>
+      <a href="/#screenshots">Screenshots</a>
+      <a href="/extras/">Extras</a>
+      <a href="/blog/">Blog</a>
+      <a href="/#download">Download</a>
+      <a class="nav-cta" href="/#download">Get it</a>
+    </nav>
+  </header>
+
+  <main>
+    <section class="page-hero">
+      <div class="crumbs"><a href="/">Home</a> / Extras</div>
+      <div class="eyebrow">cerberix-extra</div>
+      <h1>Extra apps for Cerberix.</h1>
+      <p>
+        Tools and desktop utilities that ship through the signed
+        <code>cerberix-extra</code> pacman repository. Krellix has its own page
+        because it has installable plugins and downloadable themes.
+      </p>
+    </section>
+
+    <section id="repo-setup" class="repo-setup">
+      <div class="repo-card">
+        <h2>Install the cerberix-extra repo</h2>
+        <p>Add the signing key once, add the repo to <code>/etc/pacman.conf</code>, then install packages normally with pacman.</p>
+        <div class="repo-code">
+<pre><code>sudo pacman-key --init
+curl -s https://cerberix.org/gpg.asc | sudo pacman-key --add -
+sudo pacman-key --lsign-key 49840314FFF3DFE2D6E75439577040DEDD8E521E</code></pre>
+<pre><code>[cerberix-extra]
+SigLevel = Required DatabaseOptional
+Server = https://repo.cerberix.org/$arch/</code></pre>
+        </div>
+        <div class="repo-note">
+          Put the repo block at the end of <code>/etc/pacman.conf</code>, then run <code>sudo pacman -Sy</code>.
+          After that, package commands like <code>sudo pacman -S krellix</code> work directly.
+        </div>
+        <div class="card-actions">
+          <a class="card-link" href="https://repo.cerberix.org/x86_64/">Browse repo</a>
+        </div>
+      </div>
+    </section>
+
+    <section class="features" style="padding-top: 0;">
+      <div class="feature-grid">
+        <article class="feature-card">
+          <div class="feature-icon icon-guard">Monitor</div>
+          <h3><a href="/extras/krellix/">Krellix</a></h3>
+          <p>A themeable Qt system monitor inspired by GKrellM, with remote host support, installable plugins, and downloadable themes.</p>
+          <div class="card-actions">
+            <a class="card-link" href="/extras/krellix/">Krellix page</a>
+            <a class="card-link" href="/extras/krellix/themes/">Themes</a>
+          </div>
+        </article>
+
+        <article class="feature-card">
+          <div class="feature-icon icon-desktop">Network</div>
+          <h3>Netscope</h3>
+          <p>Network visibility tool for watching active connections and system network behavior from the terminal.</p>
+          <div class="card-actions"><span class="card-link">pacman -S netscope</span></div>
+        </article>
+
+        <article class="feature-card">
+          <div class="feature-icon icon-tools">Memory</div>
+          <h3>Swapwatch</h3>
+          <p>Swap and memory pressure watcher for keeping an eye on systems before they get sluggish.</p>
+          <div class="card-actions"><span class="card-link">pacman -S swapwatch</span></div>
+        </article>
+
+        <article class="feature-card">
+          <div class="feature-icon icon-guard">Logs</div>
+          <h3>Modsentry</h3>
+          <p>Monitors ModSecurity logs and displays them in a readable format.</p>
+          <div class="card-actions"><span class="card-link">pacman -S modsentry</span></div>
+        </article>
+
+        <article class="feature-card">
+          <div class="feature-icon icon-desktop">Logs</div>
+          <h3>Fuzzytail</h3>
+          <p>Fast colorized log tailing with filtering and themes, packaged as <code>ft</code>.</p>
+          <div class="card-actions"><span class="card-link">pacman -S fuzzytail</span></div>
+        </article>
+
+        <article class="feature-card">
+          <div class="feature-icon icon-tools">Host</div>
+          <h3>Snitch</h3>
+          <p>Fail2ban helper for reporting abusive hosts and connection details from the command line.</p>
+          <div class="card-actions"><span class="card-link">pacman -S snitch</span></div>
+        </article>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="foot-row">
+      <div class="foot-brand"><span>Cerberix Linux</span></div>
+      <div class="foot-links">
+        <a href="/extras/">Extras</a>
+        <a href="/blog/">Blog</a>
+        <a href="/release-notes/">Release notes</a>
+        <a href="/feed.xml">RSS</a>
+        <a href="https://github.com/yodabytz/cerberix-linux">Source</a>
+        <a href="https://matrix.to/#/#cerberix:matrix.quantumbytz.com">Matrix</a>
+        <a href="https://x.com/CerberixLinux">X</a>
+        <a href="mailto:hello@cerberix.org">Contact</a>
+      </div>
+    </div>
+    <div class="foot-sub">© 2026 Cerberix &middot; Built on Arch</div>
+  </footer>
+</body>
+</html>

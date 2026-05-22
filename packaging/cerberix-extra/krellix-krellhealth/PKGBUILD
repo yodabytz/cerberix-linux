@@ -1,7 +1,7 @@
 # Maintainer: yodabytz <hello@cerberix.org>
 pkgname=krellix-krellhealth
 pkgver=0.1.1
-pkgrel=2
+pkgrel=7
 arch=('x86_64' 'aarch64')
 url='https://github.com/yodabytz/krellix'
 license=('GPL-3.0-or-later')
@@ -14,8 +14,15 @@ optdepends=('smartmontools: SMART disk health checks'
             'systemd: failed unit and time sync checks')
 makedepends=('cmake' 'ninja' 'qt6-tools' 'qt6-base')
 options=('!debug')
-source=("krellix-$pkgver.tar.gz")
-sha256sums=('1c2d29205bb3749410e6288e8bb13d06b41ac3467687c80d14101d3c1073c3de')
+source=("krellix-$pkgver.tar.gz"
+        "fix-kernel-module-match.patch")
+sha256sums=('1c2d29205bb3749410e6288e8bb13d06b41ac3467687c80d14101d3c1073c3de'
+            'a519481c5dfdc8f6ab86d16bddda5cf429bc4719797eb76cd66fe0bcac380e44')
+
+prepare() {
+    cd "krellix-$pkgver"
+    patch -Np1 -i "$srcdir/fix-kernel-module-match.patch"
+}
 
 build() {
     cd "krellix-$pkgver"

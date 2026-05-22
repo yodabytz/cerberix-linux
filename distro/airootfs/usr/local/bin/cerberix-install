@@ -132,7 +132,7 @@ else
 fi
 
 msg "Installing base system..."
-pacstrap -K /mnt base linux linux-firmware linux-headers \
+pacstrap -K /mnt base linux-hardened linux-firmware linux-hardened-headers \
     networkmanager grub efibootmgr btrfs-progs sudo zsh \
     hyprland waybar wofi kitty thunar firefox \
     pipewire pipewire-pulse wireplumber \

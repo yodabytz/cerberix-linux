@@ -1,0 +1,28 @@
+Cerberix VM — issues & TODO (2026-05-21)
+
+DONE
+- [x] First-boot wizard reappeared on every reboot.
+      Root cause: cerberix-firstboot autostarts as the user but writes its
+      "done" flag to /etc/cerberix/.firstboot-done (root-owned), so the touch
+      silently failed every login and the wizard never knew it had run.
+      Fix applied on VM: created /etc/cerberix/.firstboot-done. Verified the
+      wizard now exits immediately with no dialog. (Not the shield — the shield
+      tray icon has no dialog code; the checklist is cerberix-firstboot.)
+
+- [x] Krellix journal noise from network paths.
+      Fix packaged: krellmail ignores stale/closed QSslSocket readyRead events
+      before calling readAll(), and Krellix remote sources stop warning on the
+      normal "remote host closed the connection" disconnect case.
+
+- [x] Distro firstboot source aligned with the per-user marker implementation.
+      Fresh installs now use the same $HOME/.config/cerberix marker as rootfs
+      instead of trying to write /etc/cerberix from a user autostart.
+
+OPEN — needs your call
+
+NOT FIXABLE / cosmetic (VM + USB passthrough noise, no real fault)
+- piix4_smbus: SMBus base address uninitialized   (VMware emulated chipset)
+- uvcvideo ... error code control ... -32 / pipewire VIDIOC_QUERYCTRL Broken pipe
+                                                  (passthrough USB webcam)
+- Bluetooth hci0: Opcode 0x0c12 failed            (passthrough BT adapter quirk)
+- lightdm gkr-pam: unable to locate daemon control file  (benign keyring/PAM)

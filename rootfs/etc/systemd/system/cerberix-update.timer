@@ -1,7 +1,9 @@
 [Unit]
 Description=Cerberix Update Check
 [Timer]
-OnBootSec=5min
-OnUnitActiveSec=6h
+OnBootSec=30min
+OnUnitActiveSec=12h
+RandomizedDelaySec=10min
+AccuracySec=5min
 [Install]
 WantedBy=timers.target

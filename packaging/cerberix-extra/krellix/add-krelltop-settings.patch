@@ -1,0 +1,51 @@
+diff --git a/src/krellix/SettingsDialog.cpp b/src/krellix/SettingsDialog.cpp
+index 5bcbe30..e7cf6ce 100644
+--- a/src/krellix/SettingsDialog.cpp
++++ b/src/krellix/SettingsDialog.cpp
+@@ -77,6 +77,7 @@ const QList<QPair<QString, QString>> kMonitorOrderItems = {
+     {QStringLiteral("host"),    QStringLiteral("Host")},
+     {QStringLiteral("cpu"),     QStringLiteral("CPU")},
+     {QStringLiteral("proc"),    QStringLiteral("Proc")},
++    {QStringLiteral("krelltop"), QStringLiteral("KrellTop")},
+     {QStringLiteral("mem"),     QStringLiteral("Memory + Swap")},
+     {QStringLiteral("uptime"),  QStringLiteral("Uptime")},
+     {QStringLiteral("net"),     QStringLiteral("Net")},
+@@ -1062,6 +1063,9 @@ SettingsDialog::SettingsDialog(Theme *theme, KrellmailOAuthBroker *krellmailOAu
+         addSimplePluginPage(QStringLiteral("krellhealth"), QStringLiteral("KrellHealth"),
+                             QStringLiteral("Compact health summary with tooltip details for failed services, storage, SMART, package transactions, certificates, time sync, backups, and reboot state."),
+                             &m_krellhealthEnabled);
++        addSimplePluginPage(QStringLiteral("krelltop"), QStringLiteral("KrellTop"),
++                            QStringLiteral("Top CPU processes in the panel with CPU and memory details in the tooltip."),
++                            &m_krelltopEnabled);
+         if (hasPlugin(QStringLiteral("krellstack"))) {
+             auto *pluginPage = new QWidget(m_pluginStack);
+             auto *pluginLayout = new QVBoxLayout(pluginPage);
+@@ -1714,6 +1719,7 @@ SettingsDialog::SettingsDialog(Theme *theme, KrellmailOAuthBroker *krellmailOAu
+     wireSimplePlugin(m_krellpkgEnabled, QStringLiteral("plugins/krellpkg/enabled"));
+     wireSimplePlugin(m_krellwifiEnabled, QStringLiteral("plugins/krellwifi/enabled"));
+     wireSimplePlugin(m_krellhealthEnabled, QStringLiteral("plugins/krellhealth/enabled"));
++    wireSimplePlugin(m_krelltopEnabled, QStringLiteral("plugins/krelltop/enabled"));
+     wireSimplePlugin(m_krellstackEnabled, QStringLiteral("plugins/krellstack/enabled"));
+     if (m_krellstackHosts) {
+         connect(m_krellstackHosts, &QLineEdit::editingFinished, this, [this]() {
+@@ -1861,6 +1867,8 @@ void SettingsDialog::loadFromSettings()
+         m_krellwifiEnabled->setChecked(s.value(QStringLiteral("plugins/krellwifi/enabled"), false).toBool());
+     if (m_krellhealthEnabled)
+         m_krellhealthEnabled->setChecked(s.value(QStringLiteral("plugins/krellhealth/enabled"), false).toBool());
++    if (m_krelltopEnabled)
++        m_krelltopEnabled->setChecked(s.value(QStringLiteral("plugins/krelltop/enabled"), false).toBool());
+     if (m_krellstackEnabled)
+         m_krellstackEnabled->setChecked(s.value(QStringLiteral("plugins/krellstack/enabled"), false).toBool());
+     if (m_krellstackHosts)
+diff --git a/src/krellix/SettingsDialog.h b/src/krellix/SettingsDialog.h
+index 655e6f1..3aef906 100644
+--- a/src/krellix/SettingsDialog.h
++++ b/src/krellix/SettingsDialog.h
+@@ -155,6 +155,7 @@ private:
+     QCheckBox   *m_krellpkgEnabled = nullptr;
+     QCheckBox   *m_krellhealthEnabled = nullptr;
+     QCheckBox   *m_krellwifiEnabled = nullptr;
++    QCheckBox   *m_krelltopEnabled = nullptr;
+     QCheckBox   *m_krellstackEnabled = nullptr;
+     QLineEdit   *m_krellstackHosts = nullptr;
+     QList<QCheckBox *> m_krellpkgSystemChecks;

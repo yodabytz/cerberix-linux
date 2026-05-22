@@ -89,6 +89,20 @@ PAGE_HEAD = """<!DOCTYPE html>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>__PAGE_TITLE__</title>
   <meta name="description" content="__PAGE_DESC__" />
+  <meta property="og:title" content="__PAGE_TITLE__" />
+  <meta property="og:description" content="__PAGE_DESC__" />
+  <meta property="og:url" content="__PAGE_URL__" />
+  <meta property="og:type" content="__OG_TYPE__" />
+  <meta property="og:site_name" content="Cerberix Linux" />
+  <meta property="og:image" content="https://cerberix.org/og.png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:image:alt" content="Cerberix Linux — hardened Arch, ready the moment it boots." />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:site" content="@CerberixLinux" />
+  <meta name="twitter:title" content="__PAGE_TITLE__" />
+  <meta name="twitter:description" content="__PAGE_DESC__" />
+  <meta name="twitter:image" content="https://cerberix.org/og.png" />
   <meta name="theme-color" content="#222436" />
   <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
   <link rel="alternate" type="application/rss+xml" title="Cerberix Linux updates" href="/feed.xml" />
@@ -187,11 +201,13 @@ PAGE_FOOT = """
 """
 
 
-def page_head(title, desc):
+def page_head(title, desc, url=SITE_URL + "/", og_type="website"):
     return (
         PAGE_HEAD
         .replace("__PAGE_TITLE__", html.escape(title))
         .replace("__PAGE_DESC__", html.escape(desc))
+        .replace("__PAGE_URL__", html.escape(url))
+        .replace("__OG_TYPE__", og_type)
     )
 
 
@@ -200,6 +216,8 @@ def render_post(post):
         page_head(
             f"{post['title']} — Cerberix Linux",
             post["description"] or post["title"],
+            f"{SITE_URL}/blog/{post['slug']}/",
+            "article",
         )
         + f"""
   <main class="prose">
@@ -239,7 +257,7 @@ def render_index(posts):
     </ul>
   </main>
 """
-    return page_head(f"Blog — {SITE_TITLE}", SITE_DESC) + body + PAGE_FOOT
+    return page_head(f"Blog — {SITE_TITLE}", SITE_DESC, f"{SITE_URL}/blog/") + body + PAGE_FOOT
 
 
 def rfc822(dt):

@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Krellix
+Comment=Themeable system monitor
+Exec=krellix
+Icon=krellix
+Terminal=false
+Categories=System;Monitor;

@@ -1,0 +1,345 @@
+diff -ruN '--exclude=build' /tmp/krelltop-work/original/krellix-0.1.1/CMakeLists.txt /tmp/krelltop-work/krellix-0.1.1/CMakeLists.txt
+--- a/CMakeLists.txt	2026-05-15 08:09:41.000000000 -0400
++++ b/CMakeLists.txt	2026-05-19 13:59:34.117218538 -0400
+@@ -398,6 +398,22 @@
+ )
+ install(TARGETS krellhealth LIBRARY DESTINATION "${KRELLIX_PLUGIN_INSTALL_DIR}")
+ 
++add_library(krelltop MODULE
++    plugins/krelltop/KrelltopPlugin.cpp
++    plugins/krelltop/KrelltopPlugin.h
++)
++target_include_directories(krelltop PRIVATE src)
++target_link_libraries(krelltop PRIVATE Qt6::Core Qt6::Gui Qt6::Widgets)
++target_compile_definitions(krelltop PRIVATE
++    QT_NO_CAST_FROM_ASCII
++    QT_NO_CAST_TO_ASCII
++    QT_NO_NARROWING_CONVERSIONS_IN_CONNECT
++)
++set_target_properties(krelltop PROPERTIES
++    LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/plugins"
++)
++install(TARGETS krelltop LIBRARY DESTINATION "${KRELLIX_PLUGIN_INSTALL_DIR}")
++
+ add_library(krellwifi MODULE
+     plugins/krellwifi/KrellwifiPlugin.cpp
+     plugins/krellwifi/KrellwifiPlugin.h
+@@ -441,6 +457,7 @@
+             krellmail
+             krellpkg
+             krellhealth
++            krelltop
+             krellwifi
+             krellstack)
+         target_link_libraries(${plugin_target} PRIVATE krellix)
+diff -ruN '--exclude=build' /tmp/krelltop-work/original/krellix-0.1.1/plugins/krelltop/KrelltopPlugin.cpp /tmp/krelltop-work/krellix-0.1.1/plugins/krelltop/KrelltopPlugin.cpp
+--- a/plugins/krelltop/KrelltopPlugin.cpp	1969-12-31 19:00:00.000000000 -0500
++++ b/plugins/krelltop/KrelltopPlugin.cpp	2026-05-19 14:02:33.289813686 -0400
+@@ -0,0 +1,244 @@
++#include "KrelltopPlugin.h"
++
++#include "remote/RemoteSource.h"
++#include "widgets/Decal.h"
++#include "widgets/Panel.h"
++
++#include <QProcess>
++#include <QRegularExpression>
++#include <QSettings>
++#include <QStringList>
++
++#include <algorithm>
++
++namespace {
++
++constexpr int kVisibleRows = 3;
++constexpr int kTooltipRows = 6;
++
++QString pct(double value)
++{
++    return QString::number(value, 'f', value >= 10.0 ? 0 : 1) + QLatin1Char('%');
++}
++
++QString elideMiddle(const QString &value, int maxChars)
++{
++    if (value.size() <= maxChars)
++        return value;
++    if (maxChars <= 3)
++        return value.left(maxChars);
++    const int left = (maxChars - 1) / 2;
++    const int right = maxChars - left - 1;
++    return value.left(left) + QStringLiteral("...") + value.right(right);
++}
++
++QList<KrelltopMonitor::ProcessRow> topRows(QList<KrelltopMonitor::ProcessRow> rows,
++                                           bool byMemory)
++{
++    std::sort(rows.begin(), rows.end(), [byMemory](const auto &a, const auto &b) {
++        if (byMemory) {
++            if (a.rssKiB != b.rssKiB)
++                return a.rssKiB > b.rssKiB;
++            return a.mem > b.mem;
++        }
++        if (qAbs(a.cpu - b.cpu) > 0.05)
++            return a.cpu > b.cpu;
++        return a.rssKiB > b.rssKiB;
++    });
++    return rows.mid(0, kTooltipRows);
++}
++
++QString tooltipSection(const QString &title, const QList<KrelltopMonitor::ProcessRow> &rows, bool memory)
++{
++    QStringList lines;
++    lines << title;
++    const int limit = qMin(kTooltipRows, rows.size());
++    for (int i = 0; i < limit; ++i) {
++        const auto &row = rows.at(i);
++        lines << QStringLiteral("%1. %2  pid %3  cpu %4  mem %5 (%6)")
++                     .arg(i + 1)
++                     .arg(KrelltopMonitor::displayNameFor(row))
++                     .arg(row.pid)
++                     .arg(pct(row.cpu))
++                     .arg(pct(row.mem))
++                     .arg(KrelltopMonitor::formatRss(row.rssKiB));
++        if (!row.command.isEmpty())
++            lines << QStringLiteral("   %1").arg(elideMiddle(row.command, memory ? 120 : 100));
++    }
++    if (limit == 0)
++        lines << QStringLiteral("No process data.");
++    return lines.join(QLatin1Char('\n'));
++}
++
++QList<KrelltopMonitor::ProcessRow> remoteRows(const QList<TopProcessInfo> &remote)
++{
++    QList<KrelltopMonitor::ProcessRow> rows;
++    for (const TopProcessInfo &src : remote) {
++        KrelltopMonitor::ProcessRow row;
++        row.pid = src.pid;
++        row.cpu = src.cpu;
++        row.mem = src.mem;
++        row.rssKiB = src.rssKiB;
++        row.name = src.name;
++        row.command = src.command;
++        if (row.pid > 0 && !row.name.isEmpty())
++            rows.append(row);
++    }
++    return rows;
++}
++
++} // namespace
++
++KrelltopMonitor::KrelltopMonitor(Theme *theme, QObject *parent)
++    : MonitorBase(theme, parent)
++{
++}
++
++QWidget *KrelltopMonitor::createWidget(QWidget *parent)
++{
++    auto *panel = new Panel(theme(), parent);
++    panel->setSurfaceKey(QStringLiteral("panel_bg_krelltop"));
++    panel->setTitle(QStringLiteral("Top"));
++    m_panel = panel;
++
++    for (int i = 0; i < kVisibleRows; ++i) {
++        auto *row = panel->addDecal(i == 0 ? QStringLiteral("value") : QStringLiteral("label"),
++                                    i == 0 ? QStringLiteral("text_primary") : QStringLiteral("text_secondary"));
++        row->setAlignment(Qt::AlignHCenter);
++        m_rows << row;
++    }
++
++    tick();
++    return panel;
++}
++
++void KrelltopMonitor::tick()
++{
++    if (RemoteSource *remote = RemoteSource::instance(); remote && remote->isConnected()) {
++        const QList<ProcessRow> rows = remoteRows(remote->topProcesses());
++        if (rows.isEmpty()) {
++            setUnavailable(QStringLiteral("remote top unavailable; update krellix-server"));
++            return;
++        }
++        setRows(topRows(rows, false), topRows(rows, true));
++        return;
++    }
++
++    QString error;
++    const QList<ProcessRow> processes = readProcesses(&error);
++    if (!error.isEmpty()) {
++        setUnavailable(error);
++        return;
++    }
++
++    setRows(topRows(processes, false), topRows(processes, true));
++}
++
++QList<KrelltopMonitor::ProcessRow> KrelltopMonitor::readProcesses(QString *error)
++{
++    QProcess proc;
++    proc.setProgram(QStringLiteral("ps"));
++    proc.setArguments({QStringLiteral("-eo"),
++                       QStringLiteral("pid=,pcpu=,pmem=,rss=,comm=,args="),
++                       QStringLiteral("--sort=-pcpu")});
++    proc.setProcessChannelMode(QProcess::MergedChannels);
++    proc.start();
++    if (!proc.waitForFinished(2000)) {
++        proc.kill();
++        proc.waitForFinished(300);
++        if (error)
++            *error = QStringLiteral("ps timed out");
++        return {};
++    }
++
++    const QString output = QString::fromLocal8Bit(proc.readAll());
++    if (proc.exitCode() != 0) {
++        if (error)
++            *error = output.trimmed().isEmpty() ? QStringLiteral("ps failed") : output.trimmed().left(120);
++        return {};
++    }
++
++    QList<ProcessRow> rows;
++    const QRegularExpression rx(QStringLiteral("^\\s*(\\d+)\\s+([0-9.]+)\\s+([0-9.]+)\\s+(\\d+)\\s+(\\S+)\\s*(.*)$"));
++    for (const QString &line : output.split(QLatin1Char('\n'))) {
++        const QRegularExpressionMatch m = rx.match(line);
++        if (!m.hasMatch())
++            continue;
++        ProcessRow row;
++        row.pid = m.captured(1).toInt();
++        row.cpu = m.captured(2).toDouble();
++        row.mem = m.captured(3).toDouble();
++        row.rssKiB = m.captured(4).toLongLong();
++        row.name = m.captured(5).trimmed();
++        row.command = m.captured(6).trimmed();
++        if (row.pid <= 0 || row.name.isEmpty())
++            continue;
++        rows << row;
++    }
++
++    if (rows.isEmpty() && error)
++        *error = QStringLiteral("no process rows from ps");
++    return rows;
++}
++
++QString KrelltopMonitor::formatRss(qint64 rssKiB)
++{
++    if (rssKiB >= 1024 * 1024)
++        return QStringLiteral("%1 GiB").arg(double(rssKiB) / (1024.0 * 1024.0), 0, 'f', 1);
++    if (rssKiB >= 1024)
++        return QStringLiteral("%1 MiB").arg(double(rssKiB) / 1024.0, 0, 'f', 0);
++    return QStringLiteral("%1 KiB").arg(rssKiB);
++}
++
++QString KrelltopMonitor::displayNameFor(const ProcessRow &row)
++{
++    QString name = row.name;
++    if (name.startsWith(QLatin1Char('[')) && name.endsWith(QLatin1Char(']')))
++        return name;
++    if (name.size() > 22)
++        name = name.left(19) + QStringLiteral("...");
++    return name;
++}
++
++void KrelltopMonitor::setRows(const QList<ProcessRow> &byCpu, const QList<ProcessRow> &byMem)
++{
++    for (int i = 0; i < m_rows.size(); ++i) {
++        if (!m_rows.at(i))
++            continue;
++        if (i >= byCpu.size()) {
++            m_rows.at(i)->setText(QStringLiteral("no process"));
++            continue;
++        }
++        const ProcessRow &row = byCpu.at(i);
++        m_rows.at(i)->setText(QStringLiteral("%1 %2 %3")
++            .arg(i + 1)
++            .arg(elideMiddle(displayNameFor(row), 13))
++            .arg(pct(row.cpu)));
++    }
++
++    QStringList tooltip;
++    tooltip << QStringLiteral("KrellTop process usage")
++            << tooltipSection(QStringLiteral("Top CPU"), byCpu, false)
++            << tooltipSection(QStringLiteral("Top memory"), byMem, true);
++    if (m_panel)
++        m_panel->setToolTip(tooltip.join(QStringLiteral("\n\n")));
++}
++
++void KrelltopMonitor::setUnavailable(const QString &message)
++{
++    for (int i = 0; i < m_rows.size(); ++i) {
++        if (!m_rows.at(i))
++            continue;
++        m_rows.at(i)->setText(i == 0 ? QStringLiteral("top unavailable")
++                                     : (i == 1 ? message.left(32) : QString()));
++    }
++    if (m_panel)
++        m_panel->setToolTip(QStringLiteral("KrellTop\n%1").arg(message));
++}
++
++QList<MonitorBase *> KrelltopPlugin::createMonitors(Theme *theme, QObject *parent)
++{
++    if (!QSettings().value(QStringLiteral("plugins/krelltop/enabled"), false).toBool())
++        return {};
++    return {new KrelltopMonitor(theme, parent)};
++}
+diff -ruN '--exclude=build' /tmp/krelltop-work/original/krellix-0.1.1/plugins/krelltop/KrelltopPlugin.h /tmp/krelltop-work/krellix-0.1.1/plugins/krelltop/KrelltopPlugin.h
+--- a/plugins/krelltop/KrelltopPlugin.h	1969-12-31 19:00:00.000000000 -0500
++++ b/plugins/krelltop/KrelltopPlugin.h	2026-05-19 14:00:08.074940147 -0400
+@@ -0,0 +1,59 @@
++#pragma once
++
++#include "monitors/MonitorBase.h"
++#include "sdk/KrellixPlugin.h"
++
++#include <QList>
++#include <QPointer>
++#include <QString>
++
++class Decal;
++class Panel;
++
++class KrelltopMonitor : public MonitorBase
++{
++    Q_OBJECT
++
++public:
++    explicit KrelltopMonitor(Theme *theme, QObject *parent = nullptr);
++
++    QString id() const override { return QStringLiteral("krelltop"); }
++    QString displayName() const override { return QStringLiteral("KrellTop"); }
++    int tickIntervalMs() const override { return 5000; }
++    QWidget *createWidget(QWidget *parent) override;
++    void tick() override;
++
++    struct ProcessRow {
++        int pid = 0;
++        double cpu = 0.0;
++        double mem = 0.0;
++        qint64 rssKiB = 0;
++        QString name;
++        QString command;
++    };
++
++    static QString formatRss(qint64 rssKiB);
++    static QString displayNameFor(const ProcessRow &row);
++
++private:
++    static QList<ProcessRow> readProcesses(QString *error);
++
++    void setRows(const QList<ProcessRow> &byCpu, const QList<ProcessRow> &byMem);
++    void setUnavailable(const QString &message);
++
++    QPointer<Panel> m_panel;
++    QList<QPointer<Decal>> m_rows;
++};
++
++class KrelltopPlugin : public QObject, public IKrellixPlugin
++{
++    Q_OBJECT
++    Q_PLUGIN_METADATA(IID KrellixPlugin_iid)
++    Q_INTERFACES(IKrellixPlugin)
++
++public:
++    QString pluginId() const override { return QStringLiteral("io.krellix.krelltop"); }
++    QString pluginName() const override { return QStringLiteral("KrellTop"); }
++    QString pluginVersion() const override { return QStringLiteral("0.1.0"); }
++    QList<MonitorBase *> createMonitors(Theme *theme, QObject *parent) override;
++};

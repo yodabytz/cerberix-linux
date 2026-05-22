@@ -1,7 +1,7 @@
 # Maintainer: yodabytz <hello@cerberix.org>
 pkgname=krellix-krellmail
 pkgver=0.1.1
-pkgrel=1
+pkgrel=2
 arch=('x86_64' 'aarch64')
 url='https://github.com/yodabytz/krellix'
 license=('GPL-3.0-or-later')
@@ -9,8 +9,15 @@ pkgdesc='Krellmail POP3/IMAP mail count plugin for Krellix'
 depends=('krellix>=0.1.1' 'qt6-base')
 makedepends=('cmake' 'ninja' 'qt6-tools' 'qt6-base')
 options=('!debug')
-source=("krellix-$pkgver.tar.gz")
-sha256sums=('1c2d29205bb3749410e6288e8bb13d06b41ac3467687c80d14101d3c1073c3de')
+source=("krellix-$pkgver.tar.gz"
+        "fix-closed-socket-read.patch")
+sha256sums=('1c2d29205bb3749410e6288e8bb13d06b41ac3467687c80d14101d3c1073c3de'
+            '67746e6e053d55a7be226f924b4fc7f9976b2fa00a9af52a9a520ee2a1b90989')
+
+prepare() {
+    cd "krellix-$pkgver"
+    patch -Np1 -i "$srcdir/fix-closed-socket-read.patch"
+}
 
 build() {
     cd "krellix-$pkgver"

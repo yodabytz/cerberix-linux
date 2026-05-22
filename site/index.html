@@ -9,13 +9,23 @@
   <meta property="og:description" content="Hardened Arch, ready to use. Security tooling baked in. XFCE desktop. Built for people who take their system seriously." />
   <meta property="og:url" content="https://cerberix.org/" />
   <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="Cerberix Linux" />
+  <meta property="og:image" content="https://cerberix.org/og.png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:image:alt" content="Cerberix Linux — hardened Arch, ready the moment it boots." />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:site" content="@CerberixLinux" />
+  <meta name="twitter:title" content="Cerberix Linux" />
+  <meta name="twitter:description" content="Hardened Arch, ready to use. Security tooling baked in. XFCE desktop." />
+  <meta name="twitter:image" content="https://cerberix.org/og.png" />
   <meta name="theme-color" content="#222436" />
   <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
   <link rel="alternate" type="application/rss+xml" title="Cerberix Linux updates" href="/feed.xml" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Cormorant+Garamond:wght@500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="/style.css" />
+  <link rel="stylesheet" href="/style.css?v=20260506-badges" />
 </head>
 <body>
   <div class="bg-grid"></div>
@@ -41,6 +51,7 @@
     <nav class="nav-links">
       <a href="#features">Features</a>
       <a href="#screenshots">Screenshots</a>
+      <a href="/extras/">Extras</a>
       <a href="/blog/">Blog</a>
       <a href="#download">Download</a>
       <a class="nav-cta" href="#download">Get it</a>
@@ -50,7 +61,7 @@
   <main>
     <section class="hero">
       <div class="hero-text">
-        <div class="eyebrow">v0.1.0 &mdash; Styx</div>
+        <div class="eyebrow">v0.1.1 &mdash; Styx</div>
         <h1>
           A hardened Arch,<br />
           <span class="accent">ready the moment it boots.</span>
@@ -89,7 +100,7 @@
 <pre><span class="prompt">$</span> <span class="cmd">fastfetch</span>
 <span class="c1">                   -`                    </span>  <span class="c3">yodabytz@cerberix</span>
 <span class="c1">                  .o+`                   </span>  <span class="c4">─────────────────</span>
-<span class="c1">                 `ooo/                   </span>  <span class="c2">OS</span>       Cerberix 0.1.0 Styx
+<span class="c1">                 `ooo/                   </span>  <span class="c2">OS</span>       Cerberix 0.1.1 Styx
 <span class="c1">                `+oooo:                  </span>  <span class="c2">Kernel</span>   Linux 6.13.x
 <span class="c1">               `+oooooo:                 </span>  <span class="c2">Shell</span>    fish 3.7
 <span class="c1">               -+oooooo+:                </span>  <span class="c2">DE</span>       XFCE 4.20
@@ -206,21 +217,21 @@
       <div class="dl-card">
         <div class="dl-main">
           <div class="dl-name">
-            cerberix-linux-0.1.0-x86_64.iso
+            cerberix-linux-0.1.1-x86_64.iso
             <span class="badge">latest</span>
           </div>
-          <div class="dl-meta">~3.1&nbsp;GB &middot; Released <span id="releaseDate">2026-04-18</span> &middot; x86_64 &middot; via SourceForge mirror network</div>
+          <div class="dl-meta">~3.1&nbsp;GB &middot; Released <span id="releaseDate">2026-04-23</span> &middot; x86_64 &middot; via SourceForge mirror network</div>
         </div>
-        <a class="btn btn-primary" href="https://sourceforge.net/projects/cerberix-linux/files/0.1.0/cerberix-linux-0.1.0-x86_64.iso/download">
+        <a class="btn btn-primary" href="https://downloads.sourceforge.net/project/cerberix-linux/0.1.1/cerberix-linux-0.1.1-x86_64.iso">
           Download
           <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M12 3v12.17l4.59-4.58L18 12l-6 6-6-6 1.41-1.41L12 15.17V3zm-8 16h16v2H4z"/></svg>
         </a>
       </div>
 
       <div class="dl-sub">
-        <a href="/download/cerberix-linux-0.1.0-x86_64.iso.sha256">SHA256SUMS</a>
+        <a href="/download/cerberix-linux-0.1.1-x86_64.iso.sha256">SHA256SUMS</a>
         <span class="pipe">|</span>
-        <a href="/download/cerberix-linux-0.1.0-x86_64.iso.sig">GPG signature</a>
+        <a href="/download/cerberix-linux-0.1.1-x86_64.iso.sig">GPG signature</a>
         <span class="pipe">|</span>
         <a href="/gpg.asc">Signing key</a>
         <span class="pipe">|</span>
@@ -229,11 +240,11 @@
 
       <div class="dl-sub" style="margin-top: 10px;">
         <span style="color: var(--fg-faint);">Browse all files:</span>
-        <a href="https://sourceforge.net/projects/cerberix-linux/files/0.1.0/">SourceForge</a>
+        <a href="https://sourceforge.net/projects/cerberix-linux/files/0.1.1/">SourceForge</a>
       </div>
 
       <div class="dl-sub" style="margin-top: 16px;">
-        <a href="https://sourceforge.net/projects/cerberix-linux/files/latest/download">
+        <a href="https://downloads.sourceforge.net/project/cerberix-linux/0.1.1/cerberix-linux-0.1.1-x86_64.iso">
           <img src="https://img.shields.io/badge/download-sourceforge-82aaff?style=flat&labelColor=222436"
                alt="Download from SourceForge" />
         </a>
@@ -253,11 +264,11 @@
 curl https://cerberix.org/gpg.asc | gpg --import
 
 <span class="c-comment"># 2. Verify the signature</span>
-gpg --verify cerberix-linux-0.1.0-x86_64.iso.sig \
-            cerberix-linux-0.1.0-x86_64.iso
+gpg --verify cerberix-linux-0.1.1-x86_64.iso.sig \
+            cerberix-linux-0.1.1-x86_64.iso
 
 <span class="c-comment"># 3. Check the hash</span>
-sha256sum -c cerberix-linux-0.1.0-x86_64.iso.sha256</code></pre>
+sha256sum -c cerberix-linux-0.1.1-x86_64.iso.sha256</code></pre>
       </details>
     </section>
 
@@ -324,7 +335,7 @@ sha256sum -c cerberix-linux-0.1.0-x86_64.iso.sha256</code></pre>
             <li>Rolling release &mdash; expect package churn</li>
             <li>Desktop only (server variant TBD)</li>
             <li>English locale out of the box</li>
-            <li>0.1.0 is young &mdash; file issues generously</li>
+            <li>0.1.x is young &mdash; file issues generously</li>
           </ul>
         </aside>
       </div>
@@ -357,6 +368,7 @@ sha256sum -c cerberix-linux-0.1.0-x86_64.iso.sha256</code></pre>
         <span>Cerberix Linux</span>
       </div>
       <div class="foot-links">
+        <a href="/extras/">Extras</a>
         <a href="/blog/">Blog</a>
         <a href="/release-notes/">Release notes</a>
         <a href="/feed.xml">RSS</a>

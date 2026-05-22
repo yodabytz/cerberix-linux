@@ -1,0 +1,205 @@
+diff --git a/src/remote/RemoteSource.h b/src/remote/RemoteSource.h
+index 73fc584..b268e92 100644
+--- a/src/remote/RemoteSource.h
++++ b/src/remote/RemoteSource.h
+@@ -33,6 +33,15 @@ struct HealthInfo {
+     QList<HealthFindingInfo> findings;
+ };
+ 
++struct TopProcessInfo {
++    int pid = 0;
++    double cpu = 0.0;
++    double mem = 0.0;
++    qint64 rssKiB = 0;
++    QString name;
++    QString command;
++};
++
+ // Client-side counterpart of krellixd. Maintains a TCP connection,
+ // parses JSON-lines messages, and caches the latest sample so that the
+ // per-monitor sysdep::read() overrides can return remote data
+@@ -67,6 +76,7 @@ public:
+     ProcInfo          procInfo()    const { return m_proc; }
+     StackInfo         stackInfo()   const { return m_stack; }
+     HealthInfo        healthInfo()  const { return m_health; }
++    QList<TopProcessInfo> topProcesses() const { return m_top; }
+ 
+ signals:
+     void connectionStateChanged(bool connected);
+@@ -104,6 +114,7 @@ private:
+     ProcInfo          m_proc;
+     StackInfo         m_stack;
+     HealthInfo        m_health;
++    QList<TopProcessInfo> m_top;
+ 
+     int               m_consecutiveParseErrors = 0;
+     int               m_reconnectDelayMs       = 1000;
+diff --git a/src/remote/RemoteSource.cpp b/src/remote/RemoteSource.cpp
+index 335ef05..a638d09 100644
+--- a/src/remote/RemoteSource.cpp
++++ b/src/remote/RemoteSource.cpp
+@@ -280,6 +280,21 @@ void RemoteSource::parseLine(const QByteArray &line)
+     }
+     m_health = health;
+ 
++    QList<TopProcessInfo> top;
++    for (const QJsonValue &v : obj.value(QStringLiteral("top")).toArray()) {
++        const QJsonObject p = v.toObject();
++        TopProcessInfo row;
++        row.pid = p.value(QStringLiteral("pid")).toInt();
++        row.cpu = p.value(QStringLiteral("cpu")).toDouble();
++        row.mem = p.value(QStringLiteral("mem")).toDouble();
++        row.rssKiB = static_cast<qint64>(p.value(QStringLiteral("rss")).toDouble());
++        row.name = p.value(QStringLiteral("name")).toString();
++        row.command = p.value(QStringLiteral("cmd")).toString();
++        if (row.pid > 0 && !row.name.isEmpty())
++            top.append(row);
++    }
++    m_top = top;
++
+     emit sampleReceived();
+ }
+ 
+@@ -293,6 +308,7 @@ void RemoteSource::resetCachedState()
+     m_proc = ProcInfo{};
+     m_stack = StackInfo{};
+     m_health = HealthInfo{};
++    m_top.clear();
+     // -1 is the "unknown" sentinel UptimeMonitor uses to render "?".
+     // Zero would render as "00:00" — actively misleading during a
+     // disconnect window.
+diff --git a/src/krellixd/ClientSession.cpp b/src/krellixd/ClientSession.cpp
+index 4c1219e..39c9d6a 100644
+--- a/src/krellixd/ClientSession.cpp
++++ b/src/krellixd/ClientSession.cpp
+@@ -13,6 +13,7 @@
+ #include <QFileInfo>
+ #include <QHostAddress>
+ #include <QHostInfo>
++#include <QHash>
+ #include <QJsonArray>
+ #include <QJsonDocument>
+ #include <QJsonObject>
+@@ -26,6 +27,8 @@
+ 
+ #include <netdb.h>
+ 
++#include <algorithm>
++
+ Q_LOGGING_CATEGORY(lcSession, "krellixd.session")
+ 
+ namespace {
+@@ -39,6 +42,15 @@ struct HealthFinding {
+     QString detail;
+ };
+ 
++struct TopProcess {
++    int pid = 0;
++    double cpu = 0.0;
++    double mem = 0.0;
++    qint64 rssKiB = 0;
++    QString name;
++    QString command;
++};
++
+ QString runProgram(const QString &program, const QStringList &args, int timeoutMs = 1500)
+ {
+     if (QStandardPaths::findExecutable(program).isEmpty())
+@@ -263,6 +272,79 @@ QJsonObject stackObject(const QList<NetSample> &netSamples)
+     return o;
+ }
+ 
++QList<TopProcess> topN(QList<TopProcess> rows, bool byMemory, int limit)
++{
++    std::sort(rows.begin(), rows.end(), [byMemory](const TopProcess &a, const TopProcess &b) {
++        if (byMemory) {
++            if (a.rssKiB != b.rssKiB)
++                return a.rssKiB > b.rssKiB;
++            return a.mem > b.mem;
++        }
++        if (qAbs(a.cpu - b.cpu) > 0.05)
++            return a.cpu > b.cpu;
++        return a.rssKiB > b.rssKiB;
++    });
++    return rows.mid(0, limit);
++}
++
++QJsonArray topProcessArray()
++{
++    static QJsonArray cachedTop;
++    static qint64 nextProbeMs = 0;
++
++    const qint64 nowMs = QDateTime::currentMSecsSinceEpoch();
++    if (nowMs < nextProbeMs)
++        return cachedTop;
++    nextProbeMs = nowMs + 5000;
++
++    const QString output = runProgram(
++        QStringLiteral("ps"),
++        {QStringLiteral("-eo"),
++         QStringLiteral("pid=,pcpu=,pmem=,rss=,comm=,args=")},
++        2500);
++    if (output.isEmpty()) {
++        cachedTop = QJsonArray{};
++        return cachedTop;
++    }
++
++    QList<TopProcess> rows;
++    const QRegularExpression rx(QStringLiteral("^\\s*(\\d+)\\s+([0-9.]+)\\s+([0-9.]+)\\s+(\\d+)\\s+(\\S+)\\s*(.*)$"));
++    for (const QString &line : output.split(QLatin1Char('\n'))) {
++        const QRegularExpressionMatch m = rx.match(line);
++        if (!m.hasMatch())
++            continue;
++        TopProcess row;
++        row.pid = m.captured(1).toInt();
++        row.cpu = m.captured(2).toDouble();
++        row.mem = m.captured(3).toDouble();
++        row.rssKiB = m.captured(4).toLongLong();
++        row.name = m.captured(5).trimmed();
++        row.command = m.captured(6).trimmed();
++        if (row.pid > 0 && !row.name.isEmpty())
++            rows.append(row);
++    }
++
++    QHash<int, TopProcess> selected;
++    for (const TopProcess &row : topN(rows, false, 12))
++        selected.insert(row.pid, row);
++    for (const TopProcess &row : topN(rows, true, 12))
++        selected.insert(row.pid, row);
++
++    QJsonArray arr;
++    for (const TopProcess &row : selected) {
++        QJsonObject p;
++        p.insert(QStringLiteral("pid"), row.pid);
++        p.insert(QStringLiteral("cpu"), row.cpu);
++        p.insert(QStringLiteral("mem"), row.mem);
++        p.insert(QStringLiteral("rss"), qint64(row.rssKiB));
++        p.insert(QStringLiteral("name"), row.name.left(64));
++        p.insert(QStringLiteral("cmd"), row.command.left(240));
++        arr.append(p);
++    }
++    cachedTop = arr;
++    return cachedTop;
++}
++
+ bool usableDomainName(const QString &domain)
+ {
+     if (domain.isEmpty()
+@@ -316,7 +401,8 @@ QJsonObject helloObject(int intervalMs)
+         << QStringLiteral("proc")
+         << QStringLiteral("uptime") << QStringLiteral("net")
+         << QStringLiteral("net_ports")
+-        << QStringLiteral("disk")
++        << QStringLiteral("disk")
++        << QStringLiteral("top")
+         << QStringLiteral("health");
+     o.insert(QStringLiteral("monitors"), mon);
+     return o;
+@@ -442,6 +528,7 @@ QJsonObject sampleObject()
+     proc.insert(QStringLiteral("users"),     p.users);
+     o.insert(QStringLiteral("proc"), proc);
+     o.insert(QStringLiteral("health"), healthObject());
++    o.insert(QStringLiteral("top"), topProcessArray());
+ 
+     return o;
+ }

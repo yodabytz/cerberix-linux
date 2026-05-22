@@ -1,0 +1,16 @@
+diff -ruN a/src/theme/Theme.cpp b/src/theme/Theme.cpp
+--- a/src/theme/Theme.cpp	2026-05-15 08:02:36.000000000 -0400
++++ b/src/theme/Theme.cpp	2026-05-20 07:15:32.312648243 -0400
+@@ -104,6 +104,12 @@
+         paths << QDir(configHome).filePath(QStringLiteral("krellix/themes"));
+ 
+ #ifdef Q_OS_MACOS
++    const QString home = QDir::homePath();
++    if (!home.isEmpty()) {
++        paths << QDir(home).filePath(QStringLiteral(".config/krellix/themes"));
++        paths << QDir(home).filePath(QStringLiteral(".config/krelix/themes"));
++    }
++
+     paths << QDir(QCoreApplication::applicationDirPath())
+                  .filePath(QStringLiteral("../Resources/themes"));
+ #endif

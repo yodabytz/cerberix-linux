@@ -62,7 +62,7 @@ sed -i '/^)$/i\
 cat > "${ARCHISO_PROFILE}/airootfs/etc/motd" << 'MOTDEOF'
 
   ============================================
-   Cerberix Linux 0.1.0 (Styx) — Live
+   Cerberix Linux 0.1.1 (Styx) — Live
   ============================================
 
    To install:  sudo cerberix-install
@@ -76,9 +76,9 @@ cat > "${ARCHISO_PROFILE}/airootfs/etc/os-release" << 'OSEOF'
 NAME="Cerberix Linux"
 ID=cerberix
 ID_LIKE=arch
-VERSION="0.1.0 (Styx)"
-VERSION_ID=0.1.0
-PRETTY_NAME="Cerberix Linux 0.1.0 (Styx)"
+VERSION="0.1.1 (Styx)"
+VERSION_ID=0.1.1
+PRETTY_NAME="Cerberix Linux 0.1.1 (Styx)"
 HOME_URL="https://cerberix.org"
 OSEOF
 
@@ -151,6 +151,10 @@ mkdir -p /mnt/boot
 mount "${PART}1" /mnt/boot
 
 msg "Bootstrapping Chaotic-AUR on live ISO (required for pacstrap)..."
+# Entropy daemon — prevents pacman-key --init from stalling for hours
+# on low-entropy VMs. Runs in the live environment only; harmless if absent.
+systemctl start haveged.service 2>/dev/null || true
+
 if ! grep -q '^\[chaotic-aur\]' /etc/pacman.conf; then
     pacman-key --init 2>/dev/null || true
     pacman-key --recv-key 3056513887B78AEB --keyserver keyserver.ubuntu.com 2>/dev/null
@@ -274,8 +278,9 @@ systemctl enable bluetooth
 systemctl enable sshd
 systemctl enable docker
 systemctl enable vmtoolsd 2>/dev/null || true
+systemctl enable haveged 2>/dev/null || true
 
-# Enable Cerberix timers (daily rkhunter scan, weekly update check)
+# Enable Cerberix timers (daily rkhunter scan, delayed update check)
 systemctl enable cerberix-rkhunter.timer 2>/dev/null || true
 systemctl enable cerberix-update.timer 2>/dev/null || true
 
@@ -284,9 +289,9 @@ cat > /etc/os-release <<OSEOF2
 NAME="Cerberix Linux"
 ID=cerberix
 ID_LIKE=arch
-VERSION="0.1.0 (Styx)"
-VERSION_ID=0.1.0
-PRETTY_NAME="Cerberix Linux 0.1.0 (Styx)"
+VERSION="0.1.1 (Styx)"
+VERSION_ID=0.1.1
+PRETTY_NAME="Cerberix Linux 0.1.1 (Styx)"
 HOME_URL="https://cerberix.org"
 OSEOF2
 rm -f /etc/arch-release
@@ -382,7 +387,7 @@ mkarchiso -v -w "${WORK_DIR}" -o "${OUT_DIR}" "${ARCHISO_PROFILE}"
 echo ""
 cd "${OUT_DIR}"
 for f in cerberix-linux-*.iso; do
-    [ -f "$f" ] && mv "$f" "cerberix-linux-0.1.0-x86_64.iso" 2>/dev/null
+    [ -f "$f" ] && mv "$f" "cerberix-linux-0.1.1-x86_64.iso" 2>/dev/null
 done
 
 echo "============================================"

@@ -6,7 +6,7 @@ iso_name="cerberix-linux"
 iso_label="CERBERIX_$(date --date="@${SOURCE_DATE_EPOCH:-$(date +%s)}" +%Y%m)"
 iso_publisher="Cerberus Systems <https://cerberix.io>"
 iso_application="Cerberix Linux Live"
-iso_version="0.1.0"
+iso_version="0.1.1"
 install_dir="arch"
 buildmodes=('iso')
 bootmodes=('bios.syslinux'

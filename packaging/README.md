@@ -1,7 +1,6 @@
 # Cerberix pacman repos
 
-Two repositories ship alongside the distro, both hosted on
-SourceForge and reachable over HTTPS:
+Two repositories ship alongside the distro:
 
 - **`cerberix`** — official, distro-blessed packages (currently
   empty; reserved for `cerberix-shield`, `cerberix-connect`,
@@ -29,13 +28,13 @@ Add to `/etc/pacman.conf`:
 ```
 [cerberix-extra]
 SigLevel = Required DatabaseOptional
-Server = https://cerberix.org/repo/cerberix-extra/$arch/
+Server = https://repo.cerberix.org/$arch/
 Server = https://downloads.sourceforge.net/project/cerberix-linux/cerberix/cerberix-extra/$arch/
 ```
 
-The first `Server` line (cerberix.org) is the primary — we control
-the bytes, no CDN propagation lag. The SF line is a secondary mirror;
-pacman will fall back to it if cerberix.org is unreachable.
+The first `Server` line is the primary Cloudflare R2-backed repo. The
+SourceForge line is a secondary mirror; pacman will fall back to it if
+`repo.cerberix.org` is unreachable.
 
 Then:
 
@@ -74,6 +73,7 @@ pull the same tools.
 make extra-build     # build all packages in a clean Arch container
 make extra-sign      # gpg-sign each package + the db
 make extra-test      # install them all into a fresh Arch container to verify
+make extra-publish   # upload pacman, Debian, RPM, and macOS repo files to R2
 make extra-sync SF_USER=yodabytz   # rsync to SourceForge
 ```
 
@@ -112,7 +112,8 @@ packaging/
    existing one
 2. Run `make extra-build` — confirm it builds clean
 3. Run `make extra-test` — confirm it installs from a fresh container
-4. Run `make extra-sync SF_USER=yodabytz` — push to SF
+4. Run `make extra-publish` — push the primary repo to R2
+5. Run `make extra-sync SF_USER=yodabytz` — push the secondary mirror to SF
 
 ### Version bumps
 
@@ -122,7 +123,8 @@ packaging/
    ```
    curl -sL https://github.com/yodabytz/<name>/archive/refs/tags/v<new>.tar.gz | sha256sum
    ```
-4. `make extra-sync SF_USER=yodabytz`
+4. `make extra-publish`
+5. `make extra-sync SF_USER=yodabytz`
 
 ### Signing key
 

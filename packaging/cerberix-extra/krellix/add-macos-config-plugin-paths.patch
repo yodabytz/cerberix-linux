@@ -1,0 +1,55 @@
+diff -ruN a/plugins/krellmoon/KrellmoonPlugin.cpp b/plugins/krellmoon/KrellmoonPlugin.cpp
+--- a/plugins/krellmoon/KrellmoonPlugin.cpp	2026-05-14 09:42:19.000000000 -0400
++++ b/plugins/krellmoon/KrellmoonPlugin.cpp	2026-05-20 07:23:02.919612730 -0400
+@@ -4,6 +4,8 @@
+ #include "widgets/Panel.h"
+ 
+ #include <QDateTime>
++#include <QCoreApplication>
++#include <QDir>
+ #include <QFileInfo>
+ #include <QHBoxLayout>
+ #include <QLabel>
+@@ -184,6 +186,21 @@
+         QStandardPaths::writableLocation(QStandardPaths::AppLocalDataLocation);
+     if (!userData.isEmpty())
+         dirs << userData + QStringLiteral("/plugins/krellmoon");
++#ifdef Q_OS_MACOS
++    const QString configHome =
++        QStandardPaths::writableLocation(QStandardPaths::GenericConfigLocation);
++    if (!configHome.isEmpty())
++        dirs << configHome + QStringLiteral("/krellix/plugins/krellmoon");
++
++    const QString home = QDir::homePath();
++    if (!home.isEmpty()) {
++        dirs << QDir(home).filePath(QStringLiteral(".config/krellix/plugins/krellmoon"));
++        dirs << QDir(home).filePath(QStringLiteral(".config/krelix/plugins/krellmoon"));
++    }
++
++    dirs << QDir(QCoreApplication::applicationDirPath())
++                .filePath(QStringLiteral("../Resources/plugins/krellmoon"));
++#endif
+     dirs << QStringLiteral("/usr/share/krellix/plugins/krellmoon");
+     dirs << QStringLiteral("/usr/local/share/krellix/plugins/krellmoon");
+     return dirs;
+diff -ruN a/src/krellix/PluginLoader.cpp b/src/krellix/PluginLoader.cpp
+--- a/src/krellix/PluginLoader.cpp	2026-05-15 08:02:36.000000000 -0400
++++ b/src/krellix/PluginLoader.cpp	2026-05-20 07:22:34.990747737 -0400
+@@ -41,6 +41,17 @@
+         paths << QDir(dataHome).filePath(QStringLiteral("krellix/plugins"));
+ 
+ #ifdef Q_OS_MACOS
++    const QString configHome =
++        QStandardPaths::writableLocation(QStandardPaths::GenericConfigLocation);
++    if (!configHome.isEmpty())
++        paths << QDir(configHome).filePath(QStringLiteral("krellix/plugins"));
++
++    const QString home = QDir::homePath();
++    if (!home.isEmpty()) {
++        paths << QDir(home).filePath(QStringLiteral(".config/krellix/plugins"));
++        paths << QDir(home).filePath(QStringLiteral(".config/krelix/plugins"));
++    }
++
+     paths << QDir(QCoreApplication::applicationDirPath())
+                  .filePath(QStringLiteral("../PlugIns/krellix"));
+ #endif

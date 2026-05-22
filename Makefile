@@ -126,7 +126,7 @@ publish: site
 
 # ── Mirror: SourceForge (run with: make mirror-sourceforge SF_USER=yourname) ─
 SF_USER ?= yourname
-SF_VERSION ?= 0.1.0
+SF_VERSION ?= 0.1.1
 mirror-sourceforge:
 	@test "$(SF_USER)" != "yourname" || (echo "set SF_USER=yourname"; exit 1)
 	@echo "Uploading to sourceforge.net/projects/cerberix-linux/files/$(SF_VERSION)/"
@@ -137,6 +137,41 @@ mirror-sourceforge:
 		/var/www/cerberix.org/gpg.asc \
 		$(SF_USER)@frs.sourceforge.net:/home/frs/project/cerberix-linux/$(SF_VERSION)/
 	@echo "Done. Available at: https://sourceforge.net/projects/cerberix-linux/files/$(SF_VERSION)/"
+
+# ── Pacman repo (cerberix-extra) ────────────────────────────
+.PHONY: extra-build extra-build-pkg extra-sign extra-sign-pkg extra-test extra-publish extra-sync
+extra-build:
+	@bash packaging/build-all.sh
+
+extra-build-pkg:
+	@test -n "$(PKG)" || (echo "set PKG=package-name, e.g. make extra-build-pkg PKG=krellix"; exit 1)
+	@bash packaging/build-all.sh "$(PKG)"
+
+extra-sign: extra-build
+	@bash packaging/sign-repo.sh
+
+extra-sign-pkg: extra-build-pkg
+	@bash packaging/sign-repo.sh
+
+extra-test: extra-sign
+	@bash packaging/test-repo.sh
+
+# Publish the primary package repo and cross-platform Krellix downloads
+# to the Cloudflare R2 bucket behind repo.cerberix.org.
+extra-publish:
+	@test -d packaging/repo/cerberix-extra/x86_64 || (echo "no repo built — run 'make extra-sign' first"; exit 1)
+	@bash packaging/publish-r2.sh
+	@echo "Published. Primary repo URL: https://repo.cerberix.org/\$$arch/"
+
+# Secondary sync to SourceForge — best-effort mirror only. Symlinks
+# must be dereferenced (-L) because SF FRS doesn't serve them.
+extra-sync:
+	@test "$(SF_USER)" != "yourname" || (echo "set SF_USER=yodabytz"; exit 1)
+	@test -d packaging/repo/cerberix-extra/x86_64 || (echo "no repo built — run 'make extra-sign' first"; exit 1)
+	rsync -avPL --delete -e ssh \
+		packaging/repo/cerberix-extra/ \
+		$(SF_USER)@frs.sourceforge.net:/home/frs/project/cerberix-linux/cerberix/cerberix-extra/
+	@echo "SF mirror done: https://sourceforge.net/projects/cerberix-linux/files/cerberix/cerberix-extra/"
 
 # ── Clean ───────────────────────────────────────────────────
 clean: down
