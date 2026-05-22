@@ -4,6 +4,7 @@ Description=Cerberix Update Check
 Type=oneshot
 Nice=10
 IOSchedulingClass=idle
-ExecStart=/usr/bin/checkupdates
-# checkupdates exits 2 when no updates are available — not a failure.
-SuccessExitStatus=0 2
+# This timer is only a best-effort update check. checkupdates exits 1 when a
+# mirror or repo fetch fails and 2 when no updates are available; neither
+# should leave a systemd failure behind for a background probe.
+ExecStart=/bin/sh -c '/usr/bin/checkupdates 2>/dev/null || exit 0'
