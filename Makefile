@@ -157,11 +157,17 @@ extra-test: extra-sign
 	@bash packaging/test-repo.sh
 
 # Publish the primary package repo and cross-platform Krellix downloads
-# to the Cloudflare R2 bucket behind repo.cerberix.org.
+# to Cloudflare R2, then refresh the cerberix.org compatibility mirror.
 extra-publish:
 	@test -d packaging/repo/cerberix-extra/x86_64 || (echo "no repo built — run 'make extra-sign' first"; exit 1)
 	@bash packaging/publish-r2.sh
+	sudo mkdir -p /var/www/cerberix.org/repo/cerberix-extra
+	sudo rsync -aL --delete \
+		packaging/repo/cerberix-extra/ \
+		/var/www/cerberix.org/repo/cerberix-extra/
+	sudo chown -R www-data:www-data /var/www/cerberix.org/repo
 	@echo "Published. Primary repo URL: https://repo.cerberix.org/\$$arch/"
+	@echo "Updated origin mirror: https://cerberix.org/repo/cerberix-extra/\$$arch/"
 
 # Secondary sync to SourceForge — best-effort mirror only. Symlinks
 # must be dereferenced (-L) because SF FRS doesn't serve them.

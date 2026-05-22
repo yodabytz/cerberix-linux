@@ -34,7 +34,9 @@ Server = https://downloads.sourceforge.net/project/cerberix-linux/cerberix/cerbe
 
 The first `Server` line is the primary Cloudflare R2-backed repo. The
 SourceForge line is a secondary mirror; pacman will fall back to it if
-`repo.cerberix.org` is unreachable.
+`repo.cerberix.org` is unreachable. The older
+`https://cerberix.org/repo/cerberix-extra/$arch/` server path is also kept
+current as an origin compatibility mirror for existing installs.
 
 Then:
 
@@ -73,7 +75,7 @@ pull the same tools.
 make extra-build     # build all packages in a clean Arch container
 make extra-sign      # gpg-sign each package + the db
 make extra-test      # install them all into a fresh Arch container to verify
-make extra-publish   # upload pacman, Debian, RPM, and macOS repo files to R2
+make extra-publish   # upload to R2 and refresh the cerberix.org pacman mirror
 make extra-sync SF_USER=yodabytz   # rsync to SourceForge
 ```
 
@@ -112,7 +114,7 @@ packaging/
    existing one
 2. Run `make extra-build` — confirm it builds clean
 3. Run `make extra-test` — confirm it installs from a fresh container
-4. Run `make extra-publish` — push the primary repo to R2
+4. Run `make extra-publish` — push the primary repo to R2 and refresh origin
 5. Run `make extra-sync SF_USER=yodabytz` — push the secondary mirror to SF
 
 ### Version bumps

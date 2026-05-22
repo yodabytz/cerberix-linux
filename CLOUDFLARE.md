@@ -9,9 +9,11 @@ Cerberix package downloads are served from the Cloudflare R2 bucket
 - Pacman x86_64 objects: `x86_64/cerberix-extra.db`, packages, signatures
 - Other repo prefixes: `debian/`, `rpm/`, `macos/`
 
-The origin web server at `cerberix.org` still serves the site. It is not the
-primary package mirror. Keep package links and pacman config examples pointed
-at `repo.cerberix.org` so the web origin is not used for package bandwidth.
+The origin web server at `cerberix.org` still serves the site and a maintained
+compatibility mirror at `https://cerberix.org/repo/cerberix-extra/`. Keep
+package links and pacman config examples pointed at `repo.cerberix.org` so R2
+remains the primary package path and the web origin is not used for normal
+package bandwidth.
 
 ## Login
 
@@ -35,7 +37,8 @@ make extra-test
 make extra-publish
 ```
 
-`make extra-publish` calls `packaging/publish-r2.sh`. It uploads:
+`make extra-publish` calls `packaging/publish-r2.sh`, then refreshes the
+origin compatibility mirror. The R2 upload writes:
 
 - `packaging/repo/cerberix-extra/` to the bucket root, so pacman sees
   `x86_64/cerberix-extra.db`
@@ -45,7 +48,9 @@ make extra-publish
 
 The uploader writes current artifacts. Pacman chooses current package versions
 from the signed repo database, so old package objects may remain in R2 until
-they are cleaned up deliberately.
+they are cleaned up deliberately. The origin mirror is replaced from the local
+signed pacman repo so existing clients using the older `cerberix.org/repo/...`
+server line still receive current metadata.
 
 ## Publish the site
 
@@ -59,12 +64,14 @@ The site pages should link package downloads to `repo.cerberix.org`.
 
 ## Verify
 
-Check the public R2-backed URLs after publishing:
+Check the public R2-backed URLs and the origin compatibility mirror after
+publishing:
 
 ```bash
 curl -sI https://repo.cerberix.org/x86_64/cerberix-extra.db
 curl -sI https://repo.cerberix.org/x86_64/cerberix-extra.db.sig
 curl -sI https://repo.cerberix.org/macos/x86_64/krellix-0.1.1-Darwin-x86_64-selfcontained.dmg
+curl -sI https://cerberix.org/repo/cerberix-extra/x86_64/cerberix-extra.db
 ```
 
 Pacman config for users:
