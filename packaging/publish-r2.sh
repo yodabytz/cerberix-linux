@@ -16,9 +16,24 @@ put_tree() {
     while IFS= read -r -d '' file; do
         local rel="${file#"$src"/}"
         local key="${key_prefix}${rel}"
-        echo "==> R2 put $key"
-        npx wrangler r2 object put "$BUCKET/$key" --file "$file" --remote
+        put_object "$file" "$key"
     done < <(find "$src" \( -type f -o -type l \) -print0 | sort -z)
+}
+
+put_object() {
+    local file="$1"
+    local key="$2"
+    local attempt
+
+    for attempt in 1 2 3; do
+        echo "==> R2 put $key (attempt $attempt)"
+        if npx wrangler r2 object put "$BUCKET/$key" --file "$file" --remote; then
+            return 0
+        fi
+        sleep "$attempt"
+    done
+
+    return 1
 }
 
 # Pacman clients fetch from the bucket root:
