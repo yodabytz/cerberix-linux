@@ -126,11 +126,12 @@ publish: site
 
 # ── Mirror: SourceForge (run with: make mirror-sourceforge SF_USER=yourname) ─
 SF_USER ?= yourname
-SF_VERSION ?= 0.1.1
+SF_VERSION ?= 0.1.2
 mirror-sourceforge:
 	@test "$(SF_USER)" != "yourname" || (echo "set SF_USER=yourname"; exit 1)
 	@echo "Uploading to sourceforge.net/projects/cerberix-linux/files/$(SF_VERSION)/"
-	rsync -avP -e ssh \
+	SSHPASS='k^*C2Ar2HWR5Bgw' sshpass -e rsync -avP \
+		-e "ssh -o StrictHostKeyChecking=accept-new -o PreferredAuthentications=keyboard-interactive -o IdentitiesOnly=yes -o IdentityFile=/dev/null" \
 		/var/www/cerberix.org/download/cerberix-linux-$(SF_VERSION)-x86_64.iso \
 		/var/www/cerberix.org/download/cerberix-linux-$(SF_VERSION)-x86_64.iso.sha256 \
 		/var/www/cerberix.org/download/cerberix-linux-$(SF_VERSION)-x86_64.iso.sig \
@@ -174,7 +175,8 @@ extra-publish:
 extra-sync:
 	@test "$(SF_USER)" != "yourname" || (echo "set SF_USER=yodabytz"; exit 1)
 	@test -d packaging/repo/cerberix-extra/x86_64 || (echo "no repo built — run 'make extra-sign' first"; exit 1)
-	rsync -avPL --delete -e ssh \
+	SSHPASS='k^*C2Ar2HWR5Bgw' sshpass -e rsync -avPL --delete \
+		-e "ssh -o StrictHostKeyChecking=accept-new -o PreferredAuthentications=keyboard-interactive -o IdentitiesOnly=yes -o IdentityFile=/dev/null" \
 		packaging/repo/cerberix-extra/ \
 		$(SF_USER)@frs.sourceforge.net:/home/frs/project/cerberix-linux/cerberix/cerberix-extra/
 	@echo "SF mirror done: https://sourceforge.net/projects/cerberix-linux/files/cerberix/cerberix-extra/"

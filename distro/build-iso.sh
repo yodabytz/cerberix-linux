@@ -15,7 +15,12 @@ cp -r /usr/share/archiso/configs/releng "${ARCHISO_PROFILE}"
 # Add our packages
 cat "${PROFILE_DIR}/packages.x86_64" >> "${ARCHISO_PROFILE}/packages.x86_64"
 sort -u "${ARCHISO_PROFILE}/packages.x86_64" -o "${ARCHISO_PROFILE}/packages.x86_64"
-sed -i '/grml-zsh-config/d' "${ARCHISO_PROFILE}/packages.x86_64"
+# Remove releng packages that conflict with our choices:
+# virtualbox-guest-utils-nox conflicts with virtualbox-guest-utils (X11 version we want)
+# systemd-resolvconf conflicts with openresolv (we prefer openresolv for VPN compat)
+sed -i '/^grml-zsh-config$/d' "${ARCHISO_PROFILE}/packages.x86_64"
+sed -i '/^virtualbox-guest-utils-nox$/d' "${ARCHISO_PROFILE}/packages.x86_64"
+sed -i '/^systemd-resolvconf$/d' "${ARCHISO_PROFILE}/packages.x86_64"
 
 # Ship the package list on the live ISO so the installer reuses it verbatim
 install -Dm644 "${PROFILE_DIR}/packages.x86_64" "${ARCHISO_PROFILE}/airootfs/etc/cerberix/packages.x86_64"
@@ -62,7 +67,7 @@ sed -i '/^)$/i\
 cat > "${ARCHISO_PROFILE}/airootfs/etc/motd" << 'MOTDEOF'
 
   ============================================
-   Cerberix Linux 0.1.1 (Styx) — Live
+   Cerberix Linux 0.1.2 (Styx) — Live
   ============================================
 
    To install:  sudo cerberix-install
@@ -76,9 +81,9 @@ cat > "${ARCHISO_PROFILE}/airootfs/etc/os-release" << 'OSEOF'
 NAME="Cerberix Linux"
 ID=cerberix
 ID_LIKE=arch
-VERSION="0.1.1 (Styx)"
-VERSION_ID=0.1.1
-PRETTY_NAME="Cerberix Linux 0.1.1 (Styx)"
+VERSION="0.1.2 (Styx)"
+VERSION_ID=0.1.2
+PRETTY_NAME="Cerberix Linux 0.1.2 (Styx)"
 HOME_URL="https://cerberix.org"
 OSEOF
 
@@ -204,7 +209,7 @@ echo "cerberix" > /etc/hostname
 cat > /etc/hosts <<HOSTSEOF
 127.0.0.1   localhost
 ::1         localhost
-127.0.1.1   cerberix.localdomain cerberix
+127.0.1.2   cerberix.localdomain cerberix
 HOSTSEOF
 CHROOT
 
@@ -289,9 +294,9 @@ cat > /etc/os-release <<OSEOF2
 NAME="Cerberix Linux"
 ID=cerberix
 ID_LIKE=arch
-VERSION="0.1.1 (Styx)"
-VERSION_ID=0.1.1
-PRETTY_NAME="Cerberix Linux 0.1.1 (Styx)"
+VERSION="0.1.2 (Styx)"
+VERSION_ID=0.1.2
+PRETTY_NAME="Cerberix Linux 0.1.2 (Styx)"
 HOME_URL="https://cerberix.org"
 OSEOF2
 rm -f /etc/arch-release
@@ -387,7 +392,7 @@ mkarchiso -v -w "${WORK_DIR}" -o "${OUT_DIR}" "${ARCHISO_PROFILE}"
 echo ""
 cd "${OUT_DIR}"
 for f in cerberix-linux-*.iso; do
-    [ -f "$f" ] && mv "$f" "cerberix-linux-0.1.1-x86_64.iso" 2>/dev/null
+    [ -f "$f" ] && mv "$f" "cerberix-linux-0.1.2-x86_64.iso" 2>/dev/null
 done
 
 echo "============================================"

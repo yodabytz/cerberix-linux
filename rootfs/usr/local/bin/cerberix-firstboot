@@ -36,7 +36,9 @@ Run <tt>cerberix-update</tt> when you want to update.
 You won't see this dialog again." \
     2>/dev/null
 
-# Mark done no matter what — never nag again.
+# Mark done and pull the autostart trigger — never nag again even if the
+# session manager tries to restore the zenity window on next login.
 mkdir -p "$(dirname "$MARKER")"
 touch "$MARKER"
+rm -f "$HOME/.config/autostart/cerberix-firstboot.desktop"
 exit 0

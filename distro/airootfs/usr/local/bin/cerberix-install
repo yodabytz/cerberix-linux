@@ -19,7 +19,7 @@ banner() {
     echo -e "${BLUE}"
     echo "  ============================================"
     echo "   Cerberix Linux Installer"
-    echo "   Version 0.1.0 (Styx)"
+    echo "   Version 0.1.2 (Styx)"
     echo "  ============================================"
     echo -e "${NC}"
 }

@@ -4,7 +4,7 @@
 # ============================================================
 # Builds the Cerberix Linux ISO using Docker.
 # Run: bash distro/build.sh
-# Output: output/cerberix-linux-0.1.1-x86_64.iso
+# Output: output/cerberix-linux-0.1.2-x86_64.iso
 # ============================================================
 
 set -euo pipefail

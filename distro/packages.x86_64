@@ -56,7 +56,7 @@ file-roller
 firefox
 
 # Mail
-evolution
+thunderbird
 
 # Fonts
 ttf-jetbrains-mono-nerd
@@ -71,8 +71,6 @@ libayatana-appindicator
 
 # Dock
 plank
-snixembed
-
 # Cerberix Shield / Connect / Firstboot runtime deps
 gtk3
 python-gobject
@@ -175,8 +173,13 @@ gnome-disk-utility
 cloud-guest-utils
 syslog-ng
 
+# Screensaver (xscreensaver used instead of xfce4-screensaver)
+xscreensaver
+
 # VM Support
 open-vm-tools
+virtualbox-guest-utils
+spice-vdagent
 mesa
 vulkan-swrast
 
