@@ -1,0 +1,165 @@
+diff --git a/src/monitors/SensorsMonitor.cpp b/src/monitors/SensorsMonitor.cpp
+index 13d90f0..89a2586 100644
+--- a/src/monitors/SensorsMonitor.cpp
++++ b/src/monitors/SensorsMonitor.cpp
+@@ -64,6 +64,11 @@ void SensorsMonitor::tick()
+                        .arg(r.label)
+                        .arg(r.value, 0, 'f', 2);
+             break;
++        case SensorReading::Percent:
++            text = QStringLiteral("%1  %2%")
++                       .arg(r.label)
++                       .arg(r.value, 0, 'f', 0);
++            break;
+         }
+         it.value()->setText(text);
+     }
+diff --git a/src/sysdep/SensorStat.cpp b/src/sysdep/SensorStat.cpp
+index 0143b9d..cbf2e39 100644
+--- a/src/sysdep/SensorStat.cpp
++++ b/src/sysdep/SensorStat.cpp
+@@ -4,7 +4,9 @@
+ #include <QFile>
+ #include <QFileInfo>
+ #include <QLoggingCategory>
++#include <QProcess>
+ #include <QRegularExpression>
++#include <QStandardPaths>
+ 
+ Q_LOGGING_CATEGORY(lcSensor, "krellix.sysdep.sensor")
+ 
+@@ -19,14 +21,8 @@ QString readTrimmed(const QString &path)
+     return QString::fromLatin1(f.read(256)).trimmed();
+ }
+ 
+-} // namespace
+-
+-void SensorStat::setReadOverride(SensorStat::ReadFn fn) { g_readOverride = fn; }
+-
+-QList<SensorReading> SensorStat::read()
++QList<SensorReading> readLinuxHwmon()
+ {
+-    if (g_readOverride) return g_readOverride();
+-
+     QList<SensorReading> out;
+ 
+     QDir hwmon(QStringLiteral("/sys/class/hwmon"));
+@@ -71,3 +67,87 @@ QList<SensorReading> SensorStat::read()
+     }
+     return out;
+ }
++
++#if defined(Q_OS_DARWIN)
++QString runProgram(const QString &program, const QStringList &args, int timeoutMs = 1200)
++{
++    const QString exe = QStandardPaths::findExecutable(program);
++    if (exe.isEmpty()) return QString();
++
++    QProcess p;
++    p.setProgram(exe);
++    p.setArguments(args);
++    p.start();
++    if (!p.waitForFinished(timeoutMs)) {
++        p.kill();
++        p.waitForFinished(200);
++        return QString();
++    }
++    if (p.exitStatus() != QProcess::NormalExit || p.exitCode() != 0)
++        return QString();
++    return QString::fromLocal8Bit(p.readAllStandardOutput()).trimmed();
++}
++
++QList<SensorReading> readDarwinSensors()
++{
++    QList<SensorReading> out;
++
++    // Homebrew's osx-cpu-temp reads the SMC without requiring root. Prefer it
++    // when present because it is an actual Celsius temperature.
++    const QString cpuTemp = runProgram(QStringLiteral("osx-cpu-temp"), {});
++    static const QRegularExpression tempRx(QStringLiteral("(-?\\d+(?:\\.\\d+)?)"));
++    const auto tempMatch = tempRx.match(cpuTemp);
++    if (tempMatch.hasMatch()) {
++        SensorReading r;
++        r.chip = QStringLiteral("macOS");
++        r.label = QStringLiteral("CPU");
++        r.value = tempMatch.captured(1).toDouble();
++        r.type = SensorReading::Temp;
++        out.append(r);
++    }
++
++    // Stock macOS exposes thermal pressure levels through sysctl even when
++    // SMC temperatures are unavailable to regular users. These are percentages,
++    // not degrees, so keep the unit explicit in the UI.
++    const QString sysctl = runProgram(QStringLiteral("sysctl"),
++                                      {QStringLiteral("-n"),
++                                       QStringLiteral("machdep.xcpm.cpu_thermal_level"),
++                                       QStringLiteral("machdep.xcpm.gpu_thermal_level"),
++                                       QStringLiteral("machdep.xcpm.io_thermal_level")});
++    const QStringList labels{
++        QStringLiteral("CPU thermal"),
++        QStringLiteral("GPU thermal"),
++        QStringLiteral("I/O thermal"),
++    };
++    const QStringList values = sysctl.split(QLatin1Char('\n'), Qt::SkipEmptyParts);
++    for (int i = 0; i < values.size() && i < labels.size(); ++i) {
++        bool ok = false;
++        const double value = values.at(i).trimmed().toDouble(&ok);
++        if (!ok) continue;
++        SensorReading r;
++        r.chip = QStringLiteral("macOS");
++        r.label = labels.at(i);
++        r.value = value;
++        r.type = SensorReading::Percent;
++        out.append(r);
++    }
++
++    return out;
++}
++#endif
++
++} // namespace
++
++void SensorStat::setReadOverride(SensorStat::ReadFn fn) { g_readOverride = fn; }
++
++QList<SensorReading> SensorStat::read()
++{
++    if (g_readOverride) return g_readOverride();
++
++    QList<SensorReading> out = readLinuxHwmon();
++#if defined(Q_OS_DARWIN)
++    if (out.isEmpty())
++        out = readDarwinSensors();
++#endif
++    return out;
++}
+diff --git a/src/sysdep/SensorStat.h b/src/sysdep/SensorStat.h
+index b2281cd..67ee1ba 100644
+--- a/src/sysdep/SensorStat.h
++++ b/src/sysdep/SensorStat.h
+@@ -4,20 +4,20 @@
+ #include <QString>
+ 
+ struct SensorReading {
+-    enum Type { Temp, Fan, Voltage };
++    enum Type { Temp, Fan, Voltage, Percent };
+ 
+     QString chip;       // hwmon chip name ("coretemp", "k10temp", "nvme", ...)
+-    QString label;      // human label from temp{N}_label or "tempN"
+-    double  value = 0;  // °C for Temp, RPM for Fan, V for Voltage
++    QString label;      // human label from temp{N}_label, sysctl key, etc.
++    double  value = 0;  // °C for Temp, RPM for Fan, V for Voltage, % for Percent
+     Type    type  = Temp;
+ };
+ 
+ class SensorStat
+ {
+ public:
+-    // Walks /sys/class/hwmon/hwmon*/ and returns the temperatures it can
+-    // read. (Fan and voltage support is stubbed in the type but not
+-    // populated in this first pass.) Empty list on failure.
++    // Reads platform sensor data. Linux walks /sys/class/hwmon/hwmon*/.
++    // macOS uses native/installed command probes when direct hwmon data is
++    // unavailable. Empty list on failure.
+     static QList<SensorReading> read();
+ 
+     using ReadFn = QList<SensorReading> (*)();

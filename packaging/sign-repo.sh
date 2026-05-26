@@ -40,7 +40,7 @@ rm -f "$REPO_NAME.db" "$REPO_NAME.db.sig" \
 docker run --rm \
   -v "$OUT_DIR":/build/out \
   cerberix-pkgbuild:latest \
-  bash -c "cd /build/out && sudo chown builder:builder . && repo-add --new $REPO_NAME.db.tar.zst ./*.pkg.tar.zst"
+  bash -c "cd /build/out && sudo chown builder:builder . && repo-add --new $REPO_NAME.db.tar.zst \$(printf '%s\n' ./*.pkg.tar.zst | sort -V)"
 
 echo
 echo "==> Signing $REPO_NAME.db and $REPO_NAME.files"
