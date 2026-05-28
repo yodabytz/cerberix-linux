@@ -1,0 +1,8 @@
+--- a/plugins/krellweather/KrellweatherPlugin.cpp
++++ b/plugins/krellweather/KrellweatherPlugin.cpp
+@@ -1,7 +1,7 @@
+ QString KrellweatherPlugin::pluginId() const
+ {
+-    return QStringLiteral("krellweather");
++    return QStringLiteral("io.krellix.krellweather");
+ }

@@ -1,0 +1,8 @@
+--- a/plugins/krellwire/KrellwirePlugin.cpp
++++ b/plugins/krellwire/KrellwirePlugin.cpp
+@@ -1,7 +1,7 @@
+ QString KrellwirePlugin::pluginId() const
+ {
+-    return QStringLiteral("krellwire");
++    return QStringLiteral("io.krellix.krellwire");
+ }

@@ -1,7 +1,7 @@
 # Maintainer: yodabytz <hello@cerberix.org>
 pkgname=krellix-krellweather
 pkgver=0.1.1
-pkgrel=1
+pkgrel=2
 arch=('x86_64' 'aarch64')
 url='https://github.com/yodabytz/krellix'
 license=('GPL-3.0-or-later')
@@ -9,8 +9,15 @@ pkgdesc='Krellweather compact METAR weather station plugin for Krellix'
 depends=('krellix>=0.1.1' 'qt6-base')
 makedepends=('cmake' 'ninja' 'qt6-tools' 'qt6-base')
 options=('!debug')
-source=("krellix-$pkgver.tar.gz")
-sha256sums=('1c2d29205bb3749410e6288e8bb13d06b41ac3467687c80d14101d3c1073c3de')
+source=("krellix-$pkgver.tar.gz"
+        "fix-plugin-id.patch")
+sha256sums=('1c2d29205bb3749410e6288e8bb13d06b41ac3467687c80d14101d3c1073c3de'
+            'SKIP')
+
+prepare() {
+    cd "krellix-$pkgver"
+    patch -p1 < "$srcdir/fix-plugin-id.patch"
+}
 
 build() {
     cd "krellix-$pkgver"

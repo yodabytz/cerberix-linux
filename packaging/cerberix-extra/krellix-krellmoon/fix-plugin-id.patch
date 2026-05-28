@@ -1,0 +1,8 @@
+--- a/plugins/krellmoon/KrellmoonPlugin.cpp
++++ b/plugins/krellmoon/KrellmoonPlugin.cpp
+@@ -1,7 +1,7 @@
+ QString KrellmoonPlugin::pluginId() const
+ {
+-    return QStringLiteral("krellmoon");
++    return QStringLiteral("io.krellix.krellmoon");
+ }
