@@ -15,8 +15,8 @@ source=("$pkgbase-$pkgver.tar.gz"
         "fix-remote-close-noise.patch"
         "krellix.png"
         "org.cerberix.krellix.desktop")
-sha256sums=('c54c13ba12c86945a6a09796b14903577934e0f862994232ec83b19101296b68'
-            'ca2d3a4c247a2c72dcb2ee1feb37ba15cfb93ca35e784ebeb4b2a522a41700ad'
+sha256sums=('6d34e8034db9843c5a579e99ba55a47ce21e2d045eb69ee5bb60ede32a578fd5'
+            'dce721b36039e5911cd2b27bb47e3ccfbdb4fe3548d08642d53b3d4ab28a1290'
             'f9a94c40f77cd6f7b08ed87b9d9d846af0896366e2629244187a7678620bbd8b'
             '6494310adf6d783fff01e59f623383050295c402ec0877394afdca1fffc2fbe1'
             '79bbbbcc5e9110eb5328b7b4b88afd32ecf0a3ae7ea4eaf2f2a2d7939ec4fd36'

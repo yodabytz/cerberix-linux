@@ -1,0 +1,28 @@
+# Maintainer: yodabytz <hello@cerberix.org>
+pkgname=krellix-krellstock
+pkgver=0.1.2
+pkgrel=1
+arch=('x86_64' 'aarch64')
+url='https://github.com/yodabytz/krellix'
+license=('GPL-3.0-or-later')
+pkgdesc='KrellStock: stock quote ticker and panel for Krellix (Yahoo Finance, crypto, global markets)'
+depends=('krellix>=0.1.2' 'qt6-base')
+makedepends=('cmake' 'ninja' 'qt6-tools' 'qt6-base')
+options=('!debug')
+source=("krellix-$pkgver.tar.gz")
+sha256sums=('6d34e8034db9843c5a579e99ba55a47ce21e2d045eb69ee5bb60ede32a578fd5')
+
+build() {
+    cd "krellix-$pkgver"
+    cmake -GNinja -B build -S . \
+        -DCMAKE_BUILD_TYPE=Release \
+        -DCMAKE_INSTALL_PREFIX=/usr
+    cmake --build build --target krellstock
+}
+
+package() {
+    cd "krellix-$pkgver"
+    install -Dm755 build/plugins/libkrellstock.so \
+        "$pkgdir/usr/lib/krellix/plugins/libkrellstock.so"
+    install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+}
