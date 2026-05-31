@@ -1,8 +1,8 @@
 # Maintainer: yodabytz <hello@cerberix.org>
 pkgbase=krellix
 pkgname=('krellix' 'krellix-server')
-pkgver=0.1.1
-pkgrel=10
+pkgver=0.1.2
+pkgrel=1
 arch=('x86_64' 'aarch64')
 url='https://github.com/yodabytz/krellix'
 license=('GPL-3.0-or-later')
@@ -13,15 +13,13 @@ source=("$pkgbase-$pkgver.tar.gz"
         "add-remote-top-processes.patch"
         "fix-theme-resize-after-switch.patch"
         "fix-remote-close-noise.patch"
-        "add-darwin-sensor-backend.patch"
         "krellix.png"
         "org.cerberix.krellix.desktop")
-sha256sums=('1c2d29205bb3749410e6288e8bb13d06b41ac3467687c80d14101d3c1073c3de'
-            '9b9d6aac557fafef4d9a9ac3c136a13cb83ba80ca74ef5b112c526fa50327151'
+sha256sums=('541d651ab64f1e3eb4d0b299d572b096c34e467ddd2c15b1bf4ff7781c57a6fb'
+            'ca2d3a4c247a2c72dcb2ee1feb37ba15cfb93ca35e784ebeb4b2a522a41700ad'
             'f9a94c40f77cd6f7b08ed87b9d9d846af0896366e2629244187a7678620bbd8b'
             '6494310adf6d783fff01e59f623383050295c402ec0877394afdca1fffc2fbe1'
             '79bbbbcc5e9110eb5328b7b4b88afd32ecf0a3ae7ea4eaf2f2a2d7939ec4fd36'
-            'a50b071499267668e0bab4fd412fe0b66834a5f9cc83598f01a9cc3ff281ae15'
             'a3b72db41322c141127e1cd8ff63d7cbee5f385a4ade9399c7066cd850c02a87'
             'c1f32284129e30258edb5c7cc99f1576177887fe8498d400422b955ed8848ef7')
 
@@ -31,7 +29,6 @@ prepare() {
     patch -Np1 -i "$srcdir/add-remote-top-processes.patch"
     patch -Np1 -i "$srcdir/fix-theme-resize-after-switch.patch"
     patch -Np1 -i "$srcdir/fix-remote-close-noise.patch"
-    patch -Np1 -i "$srcdir/add-darwin-sensor-backend.patch"
 }
 
 build() {
