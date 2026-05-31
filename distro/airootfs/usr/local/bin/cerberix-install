@@ -198,6 +198,14 @@ systemctl enable bluetooth
 systemctl enable docker
 systemctl enable ufw
 
+# NM wait-online slows boot significantly (syslog-ng times out waiting for it).
+# The network is up long before the timeout on any modern system; disabling is safe.
+systemctl disable NetworkManager-wait-online.service 2>/dev/null || true
+
+# Mask the lightdm user-manager so systemd doesn't try to start a full user
+# session for the lightdm system account (uid 964 / nologin), which times out.
+ln -sf /dev/null /etc/systemd/system/user@964.service
+
 # Remove Arch branding
 rm -f /etc/arch-release 2>/dev/null
 CHROOT
