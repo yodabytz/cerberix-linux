@@ -1,17 +1,17 @@
 # Maintainer: yodabytz <hello@cerberix.org>
 pkgname=krellix-krellwifi
-pkgver=0.1.1
+pkgver=0.1.2
 pkgrel=1
 arch=('x86_64' 'aarch64')
 url='https://github.com/yodabytz/krellix'
 license=('GPL-3.0-or-later')
 pkgdesc='KrellWiFi wireless analyzer plugin for Krellix'
-depends=('krellix>=0.1.1' 'qt6-base')
+depends=('krellix>=0.1.2' 'qt6-base')
 optdepends=('networkmanager: nmcli WiFi scan backend')
 makedepends=('cmake' 'ninja' 'qt6-tools' 'qt6-base')
 options=('!debug')
 source=("krellix-$pkgver.tar.gz")
-sha256sums=('1c2d29205bb3749410e6288e8bb13d06b41ac3467687c80d14101d3c1073c3de')
+sha256sums=('24630a076fa22ad9b49a6c6f6b479a5cdc68d611ff537f8c6c64d6adf3c5e994')
 
 build() {
     cd "krellix-$pkgver"
