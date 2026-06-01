@@ -1,7 +1,7 @@
 # Maintainer: yodabytz <hello@cerberix.org>
 pkgname=krellix-krellstock
 pkgver=0.1.2
-pkgrel=1
+pkgrel=2
 arch=('x86_64' 'aarch64')
 url='https://github.com/yodabytz/krellix'
 license=('GPL-3.0-or-later')
@@ -10,7 +10,7 @@ depends=('krellix>=0.1.2' 'qt6-base')
 makedepends=('cmake' 'ninja' 'qt6-tools' 'qt6-base')
 options=('!debug')
 source=("krellix-$pkgver.tar.gz")
-sha256sums=('2c78a8549912a901eb1de6b42d7e238d33957fc43bccde67e1c2cbfe9d73176d')
+sha256sums=('24630a076fa22ad9b49a6c6f6b479a5cdc68d611ff537f8c6c64d6adf3c5e994')
 
 build() {
     cd "krellix-$pkgver"
