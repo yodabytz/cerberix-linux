@@ -1,6 +1,6 @@
---- krellix-0.1.2-orig/src/krellix/SettingsDialog.cpp	2026-05-31 19:00:37.185350726 -0400
-+++ krellix-0.1.2/src/krellix/SettingsDialog.cpp	2026-05-31 19:00:50.507280449 -0400
-@@ -86,6 +86,7 @@
+--- krellix-0.1.2-orig/src/krellix/SettingsDialog.cpp	2026-05-31 21:01:29.984392753 -0400
++++ krellix-0.1.2/src/krellix/SettingsDialog.cpp	2026-05-31 21:01:30.006392650 -0400
+@@ -87,6 +87,7 @@
      {QStringLiteral("host"),    QStringLiteral("Host")},
      {QStringLiteral("cpu"),     QStringLiteral("CPU")},
      {QStringLiteral("proc"),    QStringLiteral("Proc")},
@@ -8,3 +8,30 @@
      {QStringLiteral("mem"),     QStringLiteral("Memory + Swap")},
      {QStringLiteral("uptime"),  QStringLiteral("Uptime")},
      {QStringLiteral("net"),     QStringLiteral("Net")},
+@@ -1008,6 +1009,9 @@
+         addSimplePluginPage(QStringLiteral("krellhealth"), QStringLiteral("KrellHealth"),
+                             QStringLiteral("Compact health summary with tooltip details for failed services, storage, SMART, package transactions, certificates, time sync, backups, and reboot state."),
+                             &m_krellhealthEnabled);
++        addSimplePluginPage(QStringLiteral("krelltop"), QStringLiteral("KrellTop"),
++                            QStringLiteral("Top CPU processes in the panel with CPU and memory details in the tooltip."),
++                            &m_krelltopEnabled);
+         if (hasPlugin(QStringLiteral("krellstack"))) {
+             auto *pluginPage = new QWidget(m_pluginStack);
+             auto *pluginLayout = new QVBoxLayout(pluginPage);
+@@ -1638,6 +1642,7 @@
+     }
+     wireSimplePlugin(m_krellwifiEnabled, QStringLiteral("plugins/krellwifi/enabled"));
+     wireSimplePlugin(m_krellhealthEnabled, QStringLiteral("plugins/krellhealth/enabled"));
++    wireSimplePlugin(m_krelltopEnabled, QStringLiteral("plugins/krelltop/enabled"));
+     wireSimplePlugin(m_krellstackEnabled, QStringLiteral("plugins/krellstack/enabled"));
+     if (m_krellstackHosts) {
+         connect(m_krellstackHosts, &QLineEdit::editingFinished, this, [this]() {
+@@ -1903,6 +1908,8 @@
+         m_krellwifiEnabled->setChecked(s.value(QStringLiteral("plugins/krellwifi/enabled"), false).toBool());
+     if (m_krellhealthEnabled)
+         m_krellhealthEnabled->setChecked(s.value(QStringLiteral("plugins/krellhealth/enabled"), false).toBool());
++    if (m_krelltopEnabled)
++        m_krelltopEnabled->setChecked(s.value(QStringLiteral("plugins/krelltop/enabled"), false).toBool());
+     if (m_krellstackEnabled)
+         m_krellstackEnabled->setChecked(s.value(QStringLiteral("plugins/krellstack/enabled"), false).toBool());
+     if (m_krellstackHosts)

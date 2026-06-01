@@ -2,7 +2,7 @@
 pkgbase=krellix
 pkgname=('krellix' 'krellix-server')
 pkgver=0.1.2
-pkgrel=2
+pkgrel=3
 arch=('x86_64' 'aarch64')
 url='https://github.com/yodabytz/krellix'
 license=('GPL-3.0-or-later')
@@ -15,8 +15,8 @@ source=("$pkgbase-$pkgver.tar.gz"
         "fix-remote-close-noise.patch"
         "krellix.png"
         "org.cerberix.krellix.desktop")
-sha256sums=('6d34e8034db9843c5a579e99ba55a47ce21e2d045eb69ee5bb60ede32a578fd5'
-            'dce721b36039e5911cd2b27bb47e3ccfbdb4fe3548d08642d53b3d4ab28a1290'
+sha256sums=('2c78a8549912a901eb1de6b42d7e238d33957fc43bccde67e1c2cbfe9d73176d'
+            '4e15ab17f3588c799e6473822f1182701a086fb9a5f56cd1ac43387a5022280f'
             'f9a94c40f77cd6f7b08ed87b9d9d846af0896366e2629244187a7678620bbd8b'
             '6494310adf6d783fff01e59f623383050295c402ec0877394afdca1fffc2fbe1'
             '79bbbbcc5e9110eb5328b7b4b88afd32ecf0a3ae7ea4eaf2f2a2d7939ec4fd36'
