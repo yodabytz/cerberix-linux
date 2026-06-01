@@ -26,6 +26,30 @@ npx wrangler whoami
 
 Do not commit Cloudflare tokens or OAuth callback URLs.
 
+If publishing starts failing with `403: Forbidden` or Wrangler cannot fetch
+account IDs, refresh the local Wrangler OAuth login on this machine. For remote
+sessions, use browserless login:
+
+```bash
+npx wrangler login --browser=false --callback-host 127.0.0.1 --callback-port 8976
+```
+
+Open the printed Cloudflare authorization URL in a browser. After approving,
+the browser may fail to connect to `localhost`; copy the full
+`http://localhost:8976/oauth/callback?...` URL and submit it from this machine:
+
+```bash
+curl 'http://localhost:8976/oauth/callback?...'
+```
+
+If `npx` fails with `ENOTEMPTY` while installing/updating Wrangler, clear the
+broken local npx cache first. In the June 1, 2026 recovery this directory had
+root-owned files:
+
+```bash
+sudo rm -rf ~/.npm/_npx/32026684e21afda6
+```
+
 ## Publish packages
 
 Build and sign the pacman repo first:
