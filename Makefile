@@ -119,6 +119,7 @@ publish: site
 	sudo rsync -a --delete \
 		--exclude='download/' \
 		--exclude='posts/' \
+		--exclude='repo/' \
 		--exclude='tools/' \
 		site/ /var/www/cerberix.org/
 	sudo chown -R www-data:www-data /var/www/cerberix.org
