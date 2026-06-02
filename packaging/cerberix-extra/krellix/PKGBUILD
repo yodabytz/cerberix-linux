@@ -11,7 +11,7 @@ options=('!debug')
 source=("$pkgbase-$pkgver.tar.gz"
         "krellix.png"
         "org.cerberix.krellix.desktop")
-sha256sums=("7d27e45c2ff2fe88f12e52c6eed3c3da817dff7d2dcf19320e8670eb48ec5eba"
+sha256sums=("71d4fe94d15805dc328b84a5915a65b046d875f23bab16d3d58d2ef68d739f16"
             "a3b72db41322c141127e1cd8ff63d7cbee5f385a4ade9399c7066cd850c02a87"
             "c1f32284129e30258edb5c7cc99f1576177887fe8498d400422b955ed8848ef7")
 
