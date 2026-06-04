@@ -41,7 +41,8 @@ EOF
       krellix-krellkam krellix-krelldacious krellix-krellweather \
       krellix-krellwire krellix-krellspectrum krellix-krellmail \
       krellix-krellhealth krellix-krellmoon krellix-krellpkg \
-      krellix-krelltop krellix-krellwifi krellix-krellstack
+      krellix-krelltop krellix-krellstock krellix-krellwifi \
+      krellix-krellstack
     echo
     echo '== Binary resolution =='
     for b in netscope swapwatch modsentry ft snitch krellix krellixd; do
