@@ -2,7 +2,7 @@
 pkgbase=krellix
 pkgname=('krellix' 'krellix-server')
 pkgver=0.1.2
-pkgrel=9
+pkgrel=12
 arch=('x86_64' 'aarch64')
 url='https://github.com/yodabytz/krellix'
 license=('GPL-3.0-or-later')
@@ -11,7 +11,7 @@ options=('!debug')
 source=("$pkgbase-$pkgver.tar.gz"
         "krellix.png"
         "org.cerberix.krellix.desktop")
-sha256sums=("336f36c31e924246c56c9e0e8e2169975f518292bd71050a32c2e5ebafe3987d"
+sha256sums=("1aef51100d57481ccf4b1ff5ee610c8c84439ef8c5632d90a02fc9d950af020c"
             "a3b72db41322c141127e1cd8ff63d7cbee5f385a4ade9399c7066cd850c02a87"
             "c1f32284129e30258edb5c7cc99f1576177887fe8498d400422b955ed8848ef7")
 
