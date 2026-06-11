@@ -1,36 +1,40 @@
 diff -ruN a/src/krellix/main.cpp b/src/krellix/main.cpp
 --- a/src/krellix/main.cpp	2026-06-09 17:39:32.000000000 -0400
-+++ b/src/krellix/main.cpp	2026-06-11 07:14:08.094466736 -0400
-@@ -37,6 +37,24 @@
-     return s;
- }
++++ b/src/krellix/main.cpp	2026-06-11 08:00:35.486200563 -0400
+@@ -79,26 +79,24 @@
+         QStringLiteral("host"),
+         QStringLiteral("Connect to a remote krellixd instance at HOST[:PORT] "
+                        "and display its readings instead of the local system. "
+-                       "Implies a per-host instance namespace."),
++                       "Reuses the default user settings unless --instance is also provided."),
+         QStringLiteral("host[:port]"));
+     parser.addOption(hostOpt);
  
-+void seedMissingInstanceSettings(const QString &orgName, const QString &appName)
-+{
-+    const QString baseApp = QStringLiteral("krellix");
-+    if (appName == baseApp)
-+        return;
-+
-+    QSettings base(QSettings::IniFormat, QSettings::UserScope, orgName, baseApp);
-+    if (base.allKeys().isEmpty())
-+        return;
-+
-+    QSettings instance(QSettings::IniFormat, QSettings::UserScope, orgName, appName);
-+    for (const QString &key : base.allKeys()) {
-+        if (!instance.contains(key))
-+            instance.setValue(key, base.value(key));
-+    }
-+    instance.sync();
-+}
-+
- } // namespace
+     parser.process(app);
  
- int main(int argc, char *argv[])
-@@ -101,6 +119,7 @@
+-    // Resolve the per-instance application name. Precedence:
++    // Resolve the application name used by QSettings. Precedence:
+     //   --instance NAME  -> krellix-<slug(NAME)>
+-    //   --host HOST      -> krellix-<slug(HOST)>
+-    //   neither          -> krellix (the default config namespace)
+-    // Settings paths (~/.config/krellix/, ~/.config/krellix-foo/, ...) are
+-    // therefore distinct per instance, so windows can hold independent
+-    // theme, monitor enable/disable, and per-iface choices.
++    //   --host HOST      -> krellix (reuse the default config namespace)
++    //   neither          -> krellix
++    // Remote windows should reuse the same ~/.config/krellix settings as the
++    // local window so theme, plugin enablement, monitor order, and other user
++    // preferences carry over automatically. Only explicit --instance requests
++    // a separate namespace.
+     QString appName = QStringLiteral("krellix");
+     if (parser.isSet(instanceOpt)) {
+         const QString slug = slugify(parser.value(instanceOpt));
          if (!slug.isEmpty()) appName = QStringLiteral("krellix-") + slug;
+-    } else if (parser.isSet(hostOpt)) {
+-        const QString slug = slugify(parser.value(hostOpt));
+-        if (!slug.isEmpty()) appName = QStringLiteral("krellix-") + slug;
      }
      QApplication::setApplicationName(appName);
-+    seedMissingInstanceSettings(QApplication::organizationName(), appName);
  
      auto *theme = new Theme(&app);
      const QString themeName = parser.isSet(themeOpt)
