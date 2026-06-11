@@ -2,7 +2,7 @@
 pkgbase=krellix
 pkgname=('krellix' 'krellix-server')
 pkgver=0.1.2
-pkgrel=13
+pkgrel=14
 arch=('x86_64' 'aarch64')
 url='https://github.com/yodabytz/krellix'
 license=('GPL-3.0-or-later')
@@ -11,11 +11,13 @@ options=('!debug')
 source=("$pkgbase-$pkgver.tar.gz"
         "add-macos-config-plugin-paths.patch"
         "add-macos-config-theme-paths.patch"
+        "fix-instance-settings-and-macos-monitors.patch"
         "krellix.png"
         "org.cerberix.krellix.desktop")
 sha256sums=("1aef51100d57481ccf4b1ff5ee610c8c84439ef8c5632d90a02fc9d950af020c"
             "a014ba418d55dd1d900e1fa86419cea83d8f8f01e8d6d4995326cc0d3fcb2e0f"
             "6b41c0d3b342841e4aca88b417235382db85178aec1c8ead384b12e43290a8ea"
+            "b759de23bc72d8634d1440ddb0ebd3a0b5b2705a07ea49d786d59890df858525"
             "a3b72db41322c141127e1cd8ff63d7cbee5f385a4ade9399c7066cd850c02a87"
             "c1f32284129e30258edb5c7cc99f1576177887fe8498d400422b955ed8848ef7")
 
@@ -42,7 +44,8 @@ prepare() {
     local patch
     for patch in \
         "$srcdir/add-macos-config-plugin-paths.patch" \
-        "$srcdir/add-macos-config-theme-paths.patch"; do
+        "$srcdir/add-macos-config-theme-paths.patch" \
+        "$srcdir/fix-instance-settings-and-macos-monitors.patch"; do
         apply_patch_if_needed "$patch"
     done
 }

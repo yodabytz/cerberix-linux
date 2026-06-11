@@ -1,0 +1,430 @@
+diff -ruN a/src/krellix/main.cpp b/src/krellix/main.cpp
+--- a/src/krellix/main.cpp	2026-06-09 17:39:32.000000000 -0400
++++ b/src/krellix/main.cpp	2026-06-11 07:14:08.094466736 -0400
+@@ -37,6 +37,24 @@
+     return s;
+ }
+ 
++void seedMissingInstanceSettings(const QString &orgName, const QString &appName)
++{
++    const QString baseApp = QStringLiteral("krellix");
++    if (appName == baseApp)
++        return;
++
++    QSettings base(QSettings::IniFormat, QSettings::UserScope, orgName, baseApp);
++    if (base.allKeys().isEmpty())
++        return;
++
++    QSettings instance(QSettings::IniFormat, QSettings::UserScope, orgName, appName);
++    for (const QString &key : base.allKeys()) {
++        if (!instance.contains(key))
++            instance.setValue(key, base.value(key));
++    }
++    instance.sync();
++}
++
+ } // namespace
+ 
+ int main(int argc, char *argv[])
+@@ -101,6 +119,7 @@
+         if (!slug.isEmpty()) appName = QStringLiteral("krellix-") + slug;
+     }
+     QApplication::setApplicationName(appName);
++    seedMissingInstanceSettings(QApplication::organizationName(), appName);
+ 
+     auto *theme = new Theme(&app);
+     const QString themeName = parser.isSet(themeOpt)
+diff -ruN a/src/sysdep/BatteryStat.cpp b/src/sysdep/BatteryStat.cpp
+--- a/src/sysdep/BatteryStat.cpp	2026-06-09 17:39:32.000000000 -0400
++++ b/src/sysdep/BatteryStat.cpp	2026-06-11 07:14:29.859472514 -0400
+@@ -3,6 +3,8 @@
+ #include <QDir>
+ #include <QFile>
+ #include <QFileInfo>
++#include <QProcess>
++#include <QRegularExpression>
+ #include <QStringList>
+ 
+ namespace {
+@@ -18,6 +20,9 @@
+ 
+ bool acIsOnline()
+ {
++#if defined(Q_OS_MACOS)
++    return false;
++#else
+     QDir ps(QStringLiteral("/sys/class/power_supply"));
+     if (!ps.exists()) return false;
+     const QFileInfoList entries =
+@@ -30,7 +35,91 @@
+         }
+     }
+     return false;
++#endif
++}
++
++#if defined(Q_OS_MACOS)
++QString runProgram(const QString &program, const QStringList &args, int timeoutMs = 1200)
++{
++    QProcess p;
++    p.start(program, args);
++    if (!p.waitForFinished(timeoutMs)) {
++        p.kill();
++        p.waitForFinished(200);
++        return {};
++    }
++    if (p.exitStatus() != QProcess::NormalExit || p.exitCode() != 0)
++        return {};
++    return QString::fromLocal8Bit(p.readAllStandardOutput()).trimmed();
++}
++
++QString normalizeStatus(const QString &raw)
++{
++    const QString status = raw.trimmed().toLower();
++    if (status.contains(QStringLiteral("charged")) || status.contains(QStringLiteral("full")))
++        return QStringLiteral("Full");
++    if (status.contains(QStringLiteral("discharg")))
++        return QStringLiteral("Discharging");
++    if (status.contains(QStringLiteral("charg")) && !status.contains(QStringLiteral("discharg")))
++        return QStringLiteral("Charging");
++    return QStringLiteral("Unknown");
++}
++
++qint64 parseRemainingSeconds(const QString &text)
++{
++    static const QRegularExpression rx(QStringLiteral("(\\d+):(\\d+)"));
++    const auto match = rx.match(text);
++    if (!match.hasMatch())
++        return -1;
++    return match.captured(1).toLongLong() * 3600
++         + match.captured(2).toLongLong() * 60;
++}
++
++BatteryInfo readMacBattery()
++{
++    BatteryInfo out;
++    const QString output = runProgram(QStringLiteral("pmset"),
++                                      {QStringLiteral("-g"), QStringLiteral("batt")});
++    if (output.isEmpty() || output.contains(QStringLiteral("No batteries available"),
++                                            Qt::CaseInsensitive)) {
++        return out;
++    }
++
++    out.acOnline = output.contains(QStringLiteral("AC Power"), Qt::CaseInsensitive);
++
++    static const QRegularExpression lineRx(
++        QStringLiteral("^\\s*-?([^\\(]+?)\\s*(?:\\(id=.*?\\))?\\s+(\\d+)%;\\s*(.*)$"));
++
++    const QStringList lines = output.split(QLatin1Char('\n'), Qt::SkipEmptyParts);
++    for (const QString &line : lines) {
++        if (!line.contains(QLatin1Char('%')))
++            continue;
++
++        const auto match = lineRx.match(line.trimmed());
++        if (!match.hasMatch())
++            continue;
++
++        out.present = true;
++        out.batteryName = match.captured(1).trimmed();
++        out.percent = match.captured(2).toInt();
++
++        const QStringList fields = match.captured(3).split(QLatin1Char(';'),
++                                                           Qt::SkipEmptyParts);
++        if (!fields.isEmpty())
++            out.status = normalizeStatus(fields.first());
++        for (const QString &field : fields) {
++            const qint64 remain = parseRemainingSeconds(field);
++            if (remain >= 0) {
++                out.timeRemainSec = remain;
++                break;
++            }
++        }
++        break;
++    }
++
++    return out;
+ }
++#endif
+ 
+ } // namespace
+ 
+@@ -41,6 +130,9 @@
+     if (g_readOverride) return g_readOverride();
+ 
+     BatteryInfo out;
++#if defined(Q_OS_MACOS)
++    return readMacBattery();
++#else
+     QDir ps(QStringLiteral("/sys/class/power_supply"));
+     if (!ps.exists()) return out;
+ 
+@@ -75,4 +167,5 @@
+     }
+     out.acOnline = acIsOnline();
+     return out;
++#endif
+ }
+diff -ruN a/src/sysdep/NetPortStat.cpp b/src/sysdep/NetPortStat.cpp
+--- a/src/sysdep/NetPortStat.cpp	2026-06-09 17:39:32.000000000 -0400
++++ b/src/sysdep/NetPortStat.cpp	2026-06-11 07:14:29.860472514 -0400
+@@ -5,6 +5,7 @@
+ #include <QFile>
+ #include <QHostAddress>
+ #include <QLoggingCategory>
++#include <QProcess>
+ 
+ Q_LOGGING_CATEGORY(lcNetPortStat, "krellix.sysdep.netport")
+ 
+@@ -105,6 +106,78 @@
+     }
+ }
+ 
++#if defined(Q_OS_MACOS)
++void parseBsdEndpoint(const QString &endpoint, QString &address, quint16 &port)
++{
++    address.clear();
++    port = 0;
++
++    const QString value = endpoint.trimmed();
++    if (value.isEmpty() || value == QStringLiteral("*.*"))
++        return;
++
++    const int dot = value.lastIndexOf(QLatin1Char('.'));
++    if (dot < 0) {
++        address = value;
++        return;
++    }
++
++    address = value.left(dot);
++    if (address == QStringLiteral("*"))
++        address.clear();
++
++    const QString portText = value.mid(dot + 1);
++    if (portText == QStringLiteral("*"))
++        return;
++
++    bool ok = false;
++    const uint raw = portText.toUInt(&ok);
++    if (ok && raw <= 65535)
++        port = static_cast<quint16>(raw);
++}
++
++void readMacSocketTable(const QString &protocol, QList<NetPortSample> &out)
++{
++    QProcess p;
++    p.start(QStringLiteral("netstat"),
++            {QStringLiteral("-an"), QStringLiteral("-p"), protocol});
++    if (!p.waitForFinished(2000)
++        || p.exitStatus() != QProcess::NormalExit
++        || p.exitCode() != 0) {
++        return;
++    }
++
++    const QStringList lines = QString::fromLocal8Bit(p.readAllStandardOutput())
++                                  .split(QLatin1Char('\n'), Qt::SkipEmptyParts);
++    for (const QString &line : lines) {
++        const QString trimmed = line.trimmed();
++        if (!trimmed.startsWith(protocol))
++            continue;
++
++        const QStringList parts = trimmed.simplified().split(QLatin1Char(' '));
++        if ((protocol == QStringLiteral("tcp") && parts.size() < 6)
++            || (protocol == QStringLiteral("udp") && parts.size() < 5)) {
++            continue;
++        }
++
++        NetPortSample s;
++        s.protocol = protocol;
++        QString localAddress;
++        parseBsdEndpoint(parts.at(3), localAddress, s.localPort);
++        quint16 remotePort = 0;
++        QString remoteAddress;
++        parseBsdEndpoint(parts.at(4), remoteAddress, remotePort);
++        s.remotePort = remotePort;
++        if (!remoteAddress.isEmpty())
++            s.remoteAddress = remoteAddress;
++        if (protocol == QStringLiteral("tcp"))
++            s.state = parts.last().toUpper();
++        if (s.localPort > 0)
++            out.append(s);
++    }
++}
++#endif
++
+ } // namespace
+ 
+ void NetPortStat::setReadOverride(NetPortStat::ReadFn fn)
+@@ -117,9 +190,14 @@
+     if (g_readOverride) return g_readOverride();
+ 
+     QList<NetPortSample> out;
++#if defined(Q_OS_MACOS)
++    readMacSocketTable(QStringLiteral("tcp"), out);
++    readMacSocketTable(QStringLiteral("udp"), out);
++#else
+     readSocketFile(QStringLiteral("/proc/net/tcp"),  QStringLiteral("tcp"), out);
+     readSocketFile(QStringLiteral("/proc/net/tcp6"), QStringLiteral("tcp"), out);
+     readSocketFile(QStringLiteral("/proc/net/udp"),  QStringLiteral("udp"), out);
+     readSocketFile(QStringLiteral("/proc/net/udp6"), QStringLiteral("udp"), out);
++#endif
+     return out;
+ }
+diff -ruN a/src/sysdep/NetStat.cpp b/src/sysdep/NetStat.cpp
+--- a/src/sysdep/NetStat.cpp	2026-06-09 17:39:32.000000000 -0400
++++ b/src/sysdep/NetStat.cpp	2026-06-11 07:14:08.096466736 -0400
+@@ -10,6 +10,12 @@
+ #include <QLoggingCategory>
+ #include <QStringList>
+ 
++#if defined(Q_OS_MACOS)
++#include <ifaddrs.h>
++#include <net/if.h>
++#include <net/if_dl.h>
++#endif
++
+ Q_LOGGING_CATEGORY(lcNetStat, "krellix.sysdep.net")
+ 
+ namespace {
+@@ -33,6 +39,49 @@
+     if (!d.exists()) return {};
+     return d.entryList(QDir::AllEntries | QDir::NoDotAndDotDot);
+ }
++
++#if defined(Q_OS_MACOS)
++QList<NetSample> readMacNetStat()
++{
++    QList<NetSample> samples;
++    ifaddrs *ifaddr = nullptr;
++    if (getifaddrs(&ifaddr) != 0)
++        return samples;
++
++    QHash<QString, int> indexByName;
++    for (ifaddrs *ifa = ifaddr; ifa; ifa = ifa->ifa_next) {
++        if (!ifa->ifa_name || !ifa->ifa_addr || !ifa->ifa_data)
++            continue;
++        if (ifa->ifa_addr->sa_family != AF_LINK)
++            continue;
++        if ((ifa->ifa_flags & IFF_UP) == 0 || (ifa->ifa_flags & IFF_LOOPBACK) != 0)
++            continue;
++
++        auto *data = reinterpret_cast<if_data *>(ifa->ifa_data);
++        if (!data)
++            continue;
++
++        const QString name = QString::fromLocal8Bit(ifa->ifa_name);
++        int index = indexByName.value(name, -1);
++        if (index < 0) {
++            index = samples.size();
++            indexByName.insert(name, index);
++            NetSample s;
++            s.name = name;
++            samples.append(s);
++        }
++
++        NetSample &s = samples[index];
++        s.rxBytes = data->ifi_ibytes;
++        s.txBytes = data->ifi_obytes;
++        s.rxPackets = data->ifi_ipackets;
++        s.txPackets = data->ifi_opackets;
++    }
++
++    freeifaddrs(ifaddr);
++    return samples;
++}
++#endif
+ }
+ 
+ void NetStat::setReadOverride(NetStat::ReadFn fn) { g_readOverride = fn; }
+@@ -55,6 +104,9 @@
+ QList<NetSample> NetStat::read()
+ {
+     if (g_readOverride) return g_readOverride();
++#if defined(Q_OS_MACOS)
++    return readMacNetStat();
++#else
+     QFile f(QStringLiteral("/proc/net/dev"));
+     if (!f.open(QIODevice::ReadOnly | QIODevice::Text)) {
+         qCWarning(lcNetStat) << "cannot open /proc/net/dev:" << f.errorString();
+@@ -181,4 +233,5 @@
+     }
+ 
+     return samples;
++#endif
+ }
+diff -ruN a/src/sysdep/ProcStat.cpp b/src/sysdep/ProcStat.cpp
+--- a/src/sysdep/ProcStat.cpp	2026-06-09 17:39:32.000000000 -0400
++++ b/src/sysdep/ProcStat.cpp	2026-06-11 07:14:08.095466736 -0400
+@@ -3,6 +3,7 @@
+ #include <QByteArray>
+ #include <QDir>
+ #include <QFileInfo>
++#include <QProcess>
+ #include <QSet>
+ #include <QString>
+ 
+@@ -34,6 +35,17 @@
+ 
+     ProcInfo out;
+ 
++#if defined(Q_OS_MACOS)
++    QProcess p;
++    p.start(QStringLiteral("ps"), {QStringLiteral("-A"), QStringLiteral("-o"), QStringLiteral("pid=")});
++    if (p.waitForFinished(1500)
++        && p.exitStatus() == QProcess::NormalExit
++        && p.exitCode() == 0) {
++        const QStringList lines = QString::fromLocal8Bit(p.readAllStandardOutput())
++                                      .split(QLatin1Char('\n'), Qt::SkipEmptyParts);
++        out.processes = lines.size();
++    }
++#else
+     const QFileInfoList procEntries =
+         QDir(QStringLiteral("/proc")).entryInfoList(QDir::Dirs
+                                                     | QDir::NoDotAndDotDot
+@@ -42,6 +54,7 @@
+         if (isPidDir(entry.fileName()))
+             ++out.processes;
+     }
++#endif
+ 
+     QSet<QString> users;
+     setutxent();
+diff -ruN a/src/sysdep/UptimeStat.cpp b/src/sysdep/UptimeStat.cpp
+--- a/src/sysdep/UptimeStat.cpp	2026-06-09 17:39:32.000000000 -0400
++++ b/src/sysdep/UptimeStat.cpp	2026-06-11 07:14:08.095466736 -0400
+@@ -1,8 +1,13 @@
+ #include "UptimeStat.h"
+ 
+ #include <QByteArray>
++#include <QDateTime>
+ #include <QFile>
+ 
++#if defined(Q_OS_MACOS)
++#include <sys/sysctl.h>
++#endif
++
+ namespace { UptimeStat::ReadFn g_readOverride = nullptr; }
+ 
+ void UptimeStat::setReadOverride(UptimeStat::ReadFn fn) { g_readOverride = fn; }
+@@ -10,6 +15,16 @@
+ qint64 UptimeStat::secondsSinceBoot()
+ {
+     if (g_readOverride) return g_readOverride();
++#if defined(Q_OS_MACOS)
++    timeval boottime{};
++    size_t size = sizeof(boottime);
++    const int mib[2] = {CTL_KERN, KERN_BOOTTIME};
++    if (sysctl(const_cast<int *>(mib), 2, &boottime, &size, nullptr, 0) != 0
++        || boottime.tv_sec <= 0) {
++        return -1;
++    }
++    return QDateTime::currentSecsSinceEpoch() - static_cast<qint64>(boottime.tv_sec);
++#else
+     QFile f(QStringLiteral("/proc/uptime"));
+     if (!f.open(QIODevice::ReadOnly | QIODevice::Text)) return -1;
+     const QByteArray bytes = f.read(64);
+@@ -19,4 +34,5 @@
+     const double secs = first.toDouble(&ok);
+     if (!ok || secs < 0.0) return -1;
+     return static_cast<qint64>(secs);
++#endif
+ }
