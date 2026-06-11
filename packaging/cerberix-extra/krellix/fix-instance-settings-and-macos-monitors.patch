@@ -1,7 +1,40 @@
 diff -ruN a/src/krellix/main.cpp b/src/krellix/main.cpp
 --- a/src/krellix/main.cpp	2026-06-09 17:39:32.000000000 -0400
-+++ b/src/krellix/main.cpp	2026-06-11 08:00:35.486200563 -0400
-@@ -79,26 +79,24 @@
++++ b/src/krellix/main.cpp	2026-06-11 16:29:04.327210154 -0400
+@@ -37,6 +37,32 @@
+     return s;
+ }
+ 
++void importSettings(QSettings &dst, const QSettings &src, bool overwriteExisting)
++{
++    const QStringList keys = src.allKeys();
++    for (const QString &key : keys) {
++        if (overwriteExisting || !dst.contains(key))
++            dst.setValue(key, src.value(key));
++    }
++}
++
++void migrateLegacySettings(const QString &orgName, const QString &appName)
++{
++    QSettings ini(QSettings::IniFormat, QSettings::UserScope, orgName, appName);
++
++    // If the live INI profile still looks like an unmigrated skeleton, let the
++    // legacy .conf profiles replace those placeholder values on first import.
++    const bool needsFullMigration = !ini.contains(QStringLiteral("theme/name"))
++        || !ini.contains(QStringLiteral("monitors/order"));
++
++    QSettings nativeOrg(QSettings::NativeFormat, QSettings::UserScope, orgName, appName);
++    importSettings(ini, nativeOrg, needsFullMigration);
++
++    QSettings nativeAppOnly(QSettings::NativeFormat, QSettings::UserScope, QString(), appName);
++    importSettings(ini, nativeAppOnly, needsFullMigration);
++    ini.sync();
++}
++
+ } // namespace
+ 
+ int main(int argc, char *argv[])
+@@ -79,28 +105,27 @@
          QStringLiteral("host"),
          QStringLiteral("Connect to a remote krellixd instance at HOST[:PORT] "
                         "and display its readings instead of the local system. "
@@ -35,6 +68,7 @@ diff -ruN a/src/krellix/main.cpp b/src/krellix/main.cpp
 -        if (!slug.isEmpty()) appName = QStringLiteral("krellix-") + slug;
      }
      QApplication::setApplicationName(appName);
++    migrateLegacySettings(QApplication::organizationName(), appName);
  
      auto *theme = new Theme(&app);
      const QString themeName = parser.isSet(themeOpt)
