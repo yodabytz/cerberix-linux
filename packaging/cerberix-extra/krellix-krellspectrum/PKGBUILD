@@ -1,18 +1,25 @@
 # Maintainer: yodabytz <hello@cerberix.org>
 pkgname=krellix-krellspectrum
-pkgver=0.1.1
+pkgver=0.1.2
 pkgrel=1
 arch=('x86_64' 'aarch64')
 url='https://github.com/yodabytz/krellix'
 license=('GPL-3.0-or-later')
 pkgdesc='KrellSpectrum real-time audio spectrum visualizer plugin for Krellix'
-depends=('krellix>=0.1.1' 'qt6-base')
+depends=('krellix>=0.1.2' 'qt6-base')
 optdepends=('pipewire: PipeWire capture backend via pw-record'
             'pulseaudio: PulseAudio capture backend via parec')
 makedepends=('cmake' 'ninja' 'qt6-tools' 'qt6-base')
 options=('!debug')
-source=("krellix-$pkgver.tar.gz")
-sha256sums=('1c2d29205bb3749410e6288e8bb13d06b41ac3467687c80d14101d3c1073c3de')
+source=("krellix-$pkgver.tar.gz"
+        "disable-spectrum-in-remote-mode.patch")
+sha256sums=('18bc7af94d5db7bec2d50c8cb09e14fb244f994152d1006669efa51792e1ba45'
+            '7becb364f2ad42b4d1ab9067e56ab55494c23be566bbc9d25166dcf6c20ae3fc')
+
+prepare() {
+    cd "krellix-$pkgver"
+    patch -Np1 -i "$srcdir/disable-spectrum-in-remote-mode.patch"
+}
 
 build() {
     cd "krellix-$pkgver"

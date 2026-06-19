@@ -1,0 +1,21 @@
+--- a/plugins/krellspectrum/KrellSpectrumPlugin.cpp
++++ b/plugins/krellspectrum/KrellSpectrumPlugin.cpp
+@@ -1,5 +1,6 @@
+ #include "KrellSpectrumPlugin.h"
+ 
++#include "remote/RemoteSource.h"
+ #include "theme/Theme.h"
+ #include "widgets/Decal.h"
+ #include "widgets/Panel.h"
+@@ -878,6 +879,11 @@ QString KrellSpectrumPlugin::pluginVersion() const
+ 
+ QList<MonitorBase *> KrellSpectrumPlugin::createMonitors(Theme *theme, QObject *parent)
+ {
++    // KrellSpectrum is a local audio visualizer. In --host mode it would
++    // capture local audio for every remote window and add avoidable UI load.
++    if (RemoteSource::instance())
++        return {};
++
+     if (!QSettings().value(QStringLiteral("plugins/krellspectrum/enabled"), false).toBool())
+         return {};
+     return {new KrellSpectrumMonitor(theme, parent)};

@@ -1,97 +1,28 @@
-diff --git a/src/remote/RemoteSource.h b/src/remote/RemoteSource.h
-index 73fc584..b268e92 100644
---- a/src/remote/RemoteSource.h
-+++ b/src/remote/RemoteSource.h
-@@ -33,6 +33,15 @@ struct HealthInfo {
-     QList<HealthFindingInfo> findings;
- };
- 
-+struct TopProcessInfo {
-+    int pid = 0;
-+    double cpu = 0.0;
-+    double mem = 0.0;
-+    qint64 rssKiB = 0;
-+    QString name;
-+    QString command;
-+};
-+
- // Client-side counterpart of krellixd. Maintains a TCP connection,
- // parses JSON-lines messages, and caches the latest sample so that the
- // per-monitor sysdep::read() overrides can return remote data
-@@ -67,6 +76,7 @@ public:
-     ProcInfo          procInfo()    const { return m_proc; }
-     StackInfo         stackInfo()   const { return m_stack; }
-     HealthInfo        healthInfo()  const { return m_health; }
-+    QList<TopProcessInfo> topProcesses() const { return m_top; }
- 
- signals:
-     void connectionStateChanged(bool connected);
-@@ -104,6 +114,7 @@ private:
-     ProcInfo          m_proc;
-     StackInfo         m_stack;
-     HealthInfo        m_health;
-+    QList<TopProcessInfo> m_top;
- 
-     int               m_consecutiveParseErrors = 0;
-     int               m_reconnectDelayMs       = 1000;
-diff --git a/src/remote/RemoteSource.cpp b/src/remote/RemoteSource.cpp
-index 335ef05..a638d09 100644
---- a/src/remote/RemoteSource.cpp
-+++ b/src/remote/RemoteSource.cpp
-@@ -280,6 +280,21 @@ void RemoteSource::parseLine(const QByteArray &line)
-     }
-     m_health = health;
- 
-+    QList<TopProcessInfo> top;
-+    for (const QJsonValue &v : obj.value(QStringLiteral("top")).toArray()) {
-+        const QJsonObject p = v.toObject();
-+        TopProcessInfo row;
-+        row.pid = p.value(QStringLiteral("pid")).toInt();
-+        row.cpu = p.value(QStringLiteral("cpu")).toDouble();
-+        row.mem = p.value(QStringLiteral("mem")).toDouble();
-+        row.rssKiB = static_cast<qint64>(p.value(QStringLiteral("rss")).toDouble());
-+        row.name = p.value(QStringLiteral("name")).toString();
-+        row.command = p.value(QStringLiteral("cmd")).toString();
-+        if (row.pid > 0 && !row.name.isEmpty())
-+            top.append(row);
-+    }
-+    m_top = top;
-+
-     emit sampleReceived();
- }
- 
-@@ -293,6 +308,7 @@ void RemoteSource::resetCachedState()
-     m_proc = ProcInfo{};
-     m_stack = StackInfo{};
-     m_health = HealthInfo{};
-+    m_top.clear();
-     // -1 is the "unknown" sentinel UptimeMonitor uses to render "?".
-     // Zero would render as "00:00" — actively misleading during a
-     // disconnect window.
 diff --git a/src/krellixd/ClientSession.cpp b/src/krellixd/ClientSession.cpp
-index 4c1219e..39c9d6a 100644
 --- a/src/krellixd/ClientSession.cpp
 +++ b/src/krellixd/ClientSession.cpp
-@@ -13,6 +13,7 @@
- #include <QFileInfo>
+@@ -11,14 +11,18 @@
+ #include <QDateTime>
  #include <QHostAddress>
  #include <QHostInfo>
 +#include <QHash>
  #include <QJsonArray>
  #include <QJsonDocument>
  #include <QJsonObject>
-@@ -26,6 +27,8 @@
- 
- #include <netdb.h>
+ #include <QLoggingCategory>
++#include <QProcess>
++#include <QRegularExpression>
+ #include <QSysInfo>
+ #include <QTcpSocket>
+ #include <QTimer>
  
 +#include <algorithm>
-+
- Q_LOGGING_CATEGORY(lcSession, "krellixd.session")
+ #include <netdb.h>
  
- namespace {
-@@ -39,6 +42,15 @@ struct HealthFinding {
-     QString detail;
- };
+ Q_LOGGING_CATEGORY(lcSession, "krellixd.session")
+@@ -29,6 +33,15 @@
+ // them. We never need to read more than a hello byte.
+ constexpr qint64 kMaxClientSendBytes = 4 * 1024;
  
 +struct TopProcess {
 +    int pid = 0;
@@ -102,11 +33,11 @@ index 4c1219e..39c9d6a 100644
 +    QString command;
 +};
 +
- QString runProgram(const QString &program, const QStringList &args, int timeoutMs = 1500)
+ bool usableDomainName(const QString &domain)
  {
-     if (QStandardPaths::findExecutable(program).isEmpty())
-@@ -263,6 +272,79 @@ QJsonObject stackObject(const QList<NetSample> &netSamples)
-     return o;
+     if (domain.isEmpty()
+@@ -73,6 +86,88 @@
+     return host;
  }
  
 +QList<TopProcess> topN(QList<TopProcess> rows, bool byMemory, int limit)
@@ -134,12 +65,21 @@ index 4c1219e..39c9d6a 100644
 +        return cachedTop;
 +    nextProbeMs = nowMs + 5000;
 +
-+    const QString output = runProgram(
-+        QStringLiteral("ps"),
-+        {QStringLiteral("-eo"),
-+         QStringLiteral("pid=,pcpu=,pmem=,rss=,comm=,args=")},
-+        2500);
-+    if (output.isEmpty()) {
++    QProcess proc;
++    proc.setProgram(QStringLiteral("ps"));
++    proc.setArguments({QStringLiteral("-eo"),
++                       QStringLiteral("pid=,pcpu=,pmem=,rss=,comm=,args=")});
++    proc.setProcessChannelMode(QProcess::MergedChannels);
++    proc.start();
++    if (!proc.waitForFinished(2500)) {
++        proc.kill();
++        proc.waitForFinished(300);
++        cachedTop = QJsonArray{};
++        return cachedTop;
++    }
++
++    const QString output = QString::fromLocal8Bit(proc.readAll());
++    if (proc.exitCode() != 0 || output.isEmpty()) {
 +        cachedTop = QJsonArray{};
 +        return cachedTop;
 +    }
@@ -182,24 +122,92 @@ index 4c1219e..39c9d6a 100644
 +    return cachedTop;
 +}
 +
- bool usableDomainName(const QString &domain)
+ QJsonObject helloObject(int intervalMs)
  {
-     if (domain.isEmpty()
-@@ -316,7 +401,8 @@ QJsonObject helloObject(int intervalMs)
+     QJsonObject o;
+@@ -88,7 +183,8 @@
          << QStringLiteral("proc")
          << QStringLiteral("uptime") << QStringLiteral("net")
          << QStringLiteral("net_ports")
--        << QStringLiteral("disk")
+-        << QStringLiteral("disk");
 +        << QStringLiteral("disk")
-+        << QStringLiteral("top")
-         << QStringLiteral("health");
++        << QStringLiteral("top");
      o.insert(QStringLiteral("monitors"), mon);
      return o;
-@@ -442,6 +528,7 @@ QJsonObject sampleObject()
-     proc.insert(QStringLiteral("users"),     p.users);
-     o.insert(QStringLiteral("proc"), proc);
-     o.insert(QStringLiteral("health"), healthObject());
+ }
+@@ -185,6 +281,7 @@
+         diskArr.append(d);
+     }
+     o.insert(QStringLiteral("disk"), diskArr);
 +    o.insert(QStringLiteral("top"), topProcessArray());
  
-     return o;
- }
+     const ProcInfo p = ProcStat::read();
+     QJsonObject proc;
+diff --git a/src/remote/RemoteSource.cpp b/src/remote/RemoteSource.cpp
+--- a/src/remote/RemoteSource.cpp
++++ b/src/remote/RemoteSource.cpp
+@@ -259,6 +259,21 @@
+     }
+     m_disk = disk;
+ 
++    QList<TopProcessInfo> top;
++    for (const QJsonValue &v : obj.value(QStringLiteral("top")).toArray()) {
++        const QJsonObject p = v.toObject();
++        TopProcessInfo row;
++        row.pid = p.value(QStringLiteral("pid")).toInt();
++        row.cpu = p.value(QStringLiteral("cpu")).toDouble();
++        row.mem = p.value(QStringLiteral("mem")).toDouble();
++        row.rssKiB = static_cast<qint64>(p.value(QStringLiteral("rss")).toDouble());
++        row.name = p.value(QStringLiteral("name")).toString();
++        row.command = p.value(QStringLiteral("cmd")).toString();
++        if (row.pid > 0 && !row.name.isEmpty())
++            top.append(row);
++    }
++    m_top = top;
++
+     const QJsonObject p = obj.value(QStringLiteral("proc")).toObject();
+     ProcInfo pi;
+     pi.processes = p.value(QStringLiteral("processes")).toInt();
+@@ -274,6 +289,7 @@
+     m_mem  = MemInfo{};
+     m_net.clear();
+     m_netPorts.clear();
++    m_top.clear();
+     m_disk.clear();
+     m_proc = ProcInfo{};
+     // -1 is the "unknown" sentinel UptimeMonitor uses to render "?".
+diff --git a/src/remote/RemoteSource.h b/src/remote/RemoteSource.h
+--- a/src/remote/RemoteSource.h
++++ b/src/remote/RemoteSource.h
+@@ -16,6 +16,15 @@
+ class QTcpSocket;
+ class QTimer;
+ 
++struct TopProcessInfo {
++    int pid = 0;
++    double cpu = 0.0;
++    double mem = 0.0;
++    qint64 rssKiB = 0;
++    QString name;
++    QString command;
++};
++
+ // Client-side counterpart of krellixd. Maintains a TCP connection,
+ // parses JSON-lines messages, and caches the latest sample so that the
+ // per-monitor sysdep::read() overrides can return remote data
+@@ -48,6 +57,7 @@
+     QList<NetSample>  netSamples()  const { return m_net; }
+     QList<NetPortSample> netPortSamples() const { return m_netPorts; }
+     QList<DiskSample> diskSamples() const { return m_disk; }
++    QList<TopProcessInfo> topProcesses() const { return m_top; }
+     ProcInfo          procInfo()    const { return m_proc; }
+ 
+ signals:
+@@ -82,6 +92,7 @@
+     QList<NetSample>  m_net;
+     QList<NetPortSample> m_netPorts;
+     QList<DiskSample> m_disk;
++    QList<TopProcessInfo> m_top;
+     ProcInfo          m_proc;
+ 
+     int               m_consecutiveParseErrors = 0;

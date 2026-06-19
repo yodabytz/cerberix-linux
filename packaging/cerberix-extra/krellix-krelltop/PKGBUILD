@@ -1,7 +1,7 @@
 # Maintainer: yodabytz <hello@cerberix.org>
 pkgname=krellix-krelltop
 pkgver=0.1.2
-pkgrel=1
+pkgrel=2
 arch=('x86_64' 'aarch64')
 url='https://github.com/yodabytz/krellix'
 license=('GPL-3.0-or-later')
@@ -9,8 +9,36 @@ pkgdesc='KrellTop top CPU and memory process monitor plugin for Krellix'
 depends=('krellix>=0.1.2' 'qt6-base' 'procps-ng')
 makedepends=('cmake' 'ninja' 'qt6-tools' 'qt6-base')
 options=('!debug')
-source=("krellix-$pkgver.tar.gz")
-sha256sums=('71d4fe94d15805dc328b84a5915a65b046d875f23bab16d3d58d2ef68d739f16')
+source=("krellix-$pkgver.tar.gz"
+        "add-krelltop-plugin.patch"
+        "add-remote-top-processes.patch")
+sha256sums=('1aef51100d57481ccf4b1ff5ee610c8c84439ef8c5632d90a02fc9d950af020c'
+            '7c3eb2fa41694b0d0403b65c176cd6e6c1084b91c43d21913a0e98874c727239'
+            '4e90f63c47d8d042cd8241ea873361f148d464e066fe1118beeecfe6f8801817')
+
+prepare() {
+    cd "krellix-$pkgver"
+
+    apply_patch_if_needed() {
+        local patch_file="$1"
+
+        if patch -Np1 --dry-run -i "$patch_file" >/dev/null 2>&1; then
+            patch -Np1 -i "$patch_file"
+            return
+        fi
+
+        if patch -RNp1 --dry-run -i "$patch_file" >/dev/null 2>&1; then
+            echo "==> Skipping already-applied patch: $(basename "$patch_file")"
+            return
+        fi
+
+        echo "==> ERROR: patch no longer applies cleanly: $(basename "$patch_file")" >&2
+        return 1
+    }
+
+    apply_patch_if_needed "$srcdir/add-krelltop-plugin.patch"
+    apply_patch_if_needed "$srcdir/add-remote-top-processes.patch"
+}
 
 build() {
     cd "krellix-$pkgver"

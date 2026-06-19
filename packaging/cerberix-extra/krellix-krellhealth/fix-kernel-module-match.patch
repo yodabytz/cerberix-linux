@@ -100,3 +100,61 @@
              }
          }
      }
+--- a/plugins/krellhealth/KrellhealthPlugin.h
++++ b/plugins/krellhealth/KrellhealthPlugin.h
+@@ -22,6 +22,7 @@
+     QString displayName() const override { return QStringLiteral("KrellHealth"); }
+     int tickIntervalMs() const override { return 60000; }
+     QWidget *createWidget(QWidget *parent) override;
++    void shutdown() override;
+     void tick() override;
+ 
+ private:
+--- a/plugins/krellhealth/KrellhealthPlugin.cpp
++++ b/plugins/krellhealth/KrellhealthPlugin.cpp
+@@ -5,6 +5,7 @@
+ #include "widgets/Decal.h"
+ #include "widgets/Panel.h"
+ 
++#include <QCoreApplication>
+ #include <QDir>
+ #include <QDirIterator>
+ #include <QFile>
+@@ -183,6 +184,26 @@
+ {
+ }
+ 
++void KrellhealthMonitor::shutdown()
++{
++    m_updating = false;
++    m_pendingJobs.clear();
++    m_findings.clear();
++    QCoreApplication::removePostedEvents(this);
++
++    if (m_process) {
++        m_process->disconnect(this);
++        if (m_process->state() != QProcess::NotRunning)
++            m_process->kill();
++        m_process->deleteLater();
++        m_process = nullptr;
++    }
++
++    m_summary = nullptr;
++    m_detail = nullptr;
++    m_panel = nullptr;
++}
++
+ QWidget *KrellhealthMonitor::createWidget(QWidget *parent)
+ {
+     auto *panel = new Panel(theme(), parent);
+--- a/plugins/krellhealth/KrellhealthPlugin.cpp
++++ b/plugins/krellhealth/KrellhealthPlugin.cpp
+@@ -475,6 +475,8 @@
+ QList<MonitorBase *> KrellhealthPlugin::createMonitors(Theme *theme, QObject *parent)
+ {
+     if (!QSettings().value(QStringLiteral("plugins/krellhealth/enabled"), false).toBool())
+         return {};
++    if (RemoteSource::instance())
++        return {};
+     return {new KrellhealthMonitor(theme, parent)};
+ }

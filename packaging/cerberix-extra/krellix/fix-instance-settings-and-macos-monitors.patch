@@ -1,7 +1,7 @@
 diff -ruN a/src/krellix/main.cpp b/src/krellix/main.cpp
 --- a/src/krellix/main.cpp	2026-06-09 17:39:32.000000000 -0400
 +++ b/src/krellix/main.cpp	2026-06-11 16:29:04.327210154 -0400
-@@ -37,6 +37,32 @@
+@@ -37,6 +37,37 @@
      return s;
  }
  
@@ -18,16 +18,21 @@ diff -ruN a/src/krellix/main.cpp b/src/krellix/main.cpp
 +{
 +    QSettings ini(QSettings::IniFormat, QSettings::UserScope, orgName, appName);
 +
-+    // If the live INI profile still looks like an unmigrated skeleton, let the
-+    // legacy .conf profiles replace those placeholder values on first import.
-+    const bool needsFullMigration = !ini.contains(QStringLiteral("theme/name"))
-+        || !ini.contains(QStringLiteral("monitors/order"));
++    const QString migrationKey = QStringLiteral("migration/legacy_conf_imported");
++    const bool legacyAlreadyImported = ini.value(migrationKey, false).toBool();
 +
 +    QSettings nativeOrg(QSettings::NativeFormat, QSettings::UserScope, orgName, appName);
-+    importSettings(ini, nativeOrg, needsFullMigration);
-+
 +    QSettings nativeAppOnly(QSettings::NativeFormat, QSettings::UserScope, QString(), appName);
-+    importSettings(ini, nativeAppOnly, needsFullMigration);
++
++    if (!legacyAlreadyImported) {
++        importSettings(ini, nativeOrg, true);
++        importSettings(ini, nativeAppOnly, true);
++        ini.setValue(migrationKey, true);
++    } else {
++        importSettings(ini, nativeOrg, false);
++        importSettings(ini, nativeAppOnly, false);
++    }
++
 +    ini.sync();
 +}
 +
@@ -466,3 +471,127 @@ diff -ruN a/src/sysdep/UptimeStat.cpp b/src/sysdep/UptimeStat.cpp
      return static_cast<qint64>(secs);
 +#endif
  }
+diff -ruN a/src/krellix/MainWindow.cpp b/src/krellix/MainWindow.cpp
+--- a/src/krellix/MainWindow.cpp	2026-06-09 17:39:32.000000000 -0400
++++ b/src/krellix/MainWindow.cpp	2026-06-13 21:05:54.849006181 -0400
+@@ -503,62 +503,12 @@
+         return;
+     m_rebuildingPanels = true;
+ 
+-    if (!m_topStrip) {
+-        m_topStrip = new Panel(m_theme, this);
+-        m_topStrip->setSurfaceKey(QStringLiteral("panel_bg_top"));
+-        m_layout->addWidget(m_topStrip);
+-    }
+-    applyTopStripFromTheme();
+-
+-    const QList<MonitorBase *> pluginMonitors =
+-        m_pluginLoader->createMonitorsForAll(m_theme, this);
+-    QHash<QString, MonitorBase *> newPlugins;
+-    for (MonitorBase *m : pluginMonitors) {
+-        if (!m) continue;
+-        if (findLiveMonitor(m->id()) || newPlugins.contains(m->id())) {
+-            m->shutdown();
+-            m->deleteLater();
+-        } else {
+-            newPlugins.insert(m->id(), m);
+-        }
+-    }
+-
+-    const QStringList desired = desiredPanelOrder(pluginMonitors);
+-    for (const QString &id : desired) {
+-        if (findLiveMonitor(id)) continue;
+-        if (isBuiltinMonitorId(id)) {
+-            (void) addBuiltinMonitor(id);
+-        } else if (MonitorBase *m = newPlugins.take(id)) {
+-            addMonitor(m);
+-        }
+-    }
+-    for (MonitorBase *m : std::as_const(newPlugins)) {
+-        if (!m) continue;
+-        m->shutdown();
+-        m->deleteLater();
+-    }
+-
+-    for (const LiveMonitor &lm : m_monitors) {
+-        if (lm.widget) {
+-            m_layout->removeWidget(lm.widget);
+-            lm.widget->setVisible(false);
+-        }
+-        if (lm.timer)
+-            lm.timer->stop();
+-    }
+-
+-    for (const QString &id : desired) {
+-        LiveMonitor *lm = findLiveMonitor(id);
+-        if (!lm || !lm->widget) continue;
+-        m_layout->addWidget(lm->widget);
+-        lm->widget->setVisible(true);
+-        if (lm->timer && lm->monitor)
+-            lm->timer->start(qMax(lm->monitor->tickIntervalMs(),
+-                                  qMax(100, QSettings().value(
+-                                      QStringLiteral("update/interval_ms"), 1000).toInt())));
+-        if (lm->monitor)
+-            lm->monitor->tick();
+-    }
++    // Some settings alter a monitor's internal panel topology rather than
++    // just its display values. Recreating the full stack ensures CPU/core,
++    // per-interface, and plugin-backed monitor changes apply immediately and
++    // do not leave stale live-monitor objects behind until the next restart.
++    clearPanelStack();
++    buildPanelStack(m_cliEnabledIds);
+ 
+     applyFrameMargins();
+     applyFixedWidth();
+diff -ruN a/src/krellix/MainWindow.h b/src/krellix/MainWindow.h
+--- a/src/krellix/MainWindow.h	2026-06-09 17:39:32.000000000 -0400
++++ b/src/krellix/MainWindow.h	2026-06-18 21:04:00.000000000 -0400
+@@ -72,6 +72,7 @@
+     void buildPanelStack(const QStringList &enabledIds);
+     void clearPanelStack();
+     void rebuildPanels();
++    void schedulePanelRebuild();
+     QStringList desiredPanelOrder(const QList<MonitorBase *> &pluginMonitors) const;
+     LiveMonitor *findLiveMonitor(const QString &id);
+     bool addBuiltinMonitor(const QString &id);
+@@ -99,6 +100,7 @@
+     class Panel   *m_topStrip     = nullptr;   // optional decorative header
+     QList<LiveMonitor> m_monitors;
+     bool m_rebuildingPanels = false;
++    bool m_panelRebuildQueued = false;
+ 
+     bool   m_dragging   = false;
+     QPoint m_dragOffset;
+diff -ruN a/src/krellix/MainWindow.cpp b/src/krellix/MainWindow.cpp
+--- a/src/krellix/MainWindow.cpp	2026-06-09 17:39:32.000000000 -0400
++++ b/src/krellix/MainWindow.cpp	2026-06-18 21:04:00.000000000 -0400
+@@ -518,5 +518,19 @@
+     m_rebuildingPanels = false;
+ }
++
++void MainWindow::schedulePanelRebuild()
++{
++    if (m_panelRebuildQueued)
++        return;
++    m_panelRebuildQueued = true;
++    QTimer::singleShot(0, this, [this]() {
++        m_panelRebuildQueued = false;
++        if (!isVisible())
++            return;
++        applySettingsOverridesToTheme();
++        rebuildPanels();
++    });
++}
+ 
+ void MainWindow::refreshMonitorTimers()
+ {
+@@ -836,8 +850,7 @@
+             });
+     connect(dlg, &SettingsDialog::panelStackChanged, this,
+             [this]() {
+-                applySettingsOverridesToTheme();
+-                rebuildPanels();
++                schedulePanelRebuild();
+             });
+ 
+     dlg->open();
