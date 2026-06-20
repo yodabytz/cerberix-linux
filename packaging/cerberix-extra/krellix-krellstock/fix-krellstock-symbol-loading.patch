@@ -1,6 +1,6 @@
 diff -ruN krellstock-orig/plugins/krellstock/KrellstockPlugin.cpp krellstock-work/plugins/krellstock/KrellstockPlugin.cpp
 --- krellstock-orig/plugins/krellstock/KrellstockPlugin.cpp	2026-06-09 17:39:32.000000000 -0400
-+++ krellstock-work/plugins/krellstock/KrellstockPlugin.cpp	2026-06-20 10:53:04.918991695 -0400
++++ krellstock-work/plugins/krellstock/KrellstockPlugin.cpp	2026-06-20 11:52:19.473333480 -0400
 @@ -9,10 +9,12 @@
  #include <QJsonDocument>
  #include <QJsonObject>
@@ -17,7 +17,7 @@ diff -ruN krellstock-orig/plugins/krellstock/KrellstockPlugin.cpp krellstock-wor
 @@ -33,18 +35,39 @@
  constexpr int kDefaultIntervalMs = 300000;  // 5 minutes
  constexpr int kFetchTimeoutMs = 3500;
- 
+
 +QString normalizeConfiguredSymbol(QString symbol)
 +{
 +    symbol = symbol.trimmed().toUpper();
@@ -59,30 +59,55 @@ diff -ruN krellstock-orig/plugins/krellstock/KrellstockPlugin.cpp krellstock-wor
          }
      }
      if (out.isEmpty()) {
-@@ -55,6 +78,22 @@
+@@ -55,6 +78,47 @@
      return out;
  }
- 
-+QStringList quoteCandidates(const QString &symbol)
+
++bool isCryptoBase(const QString &symbol)
 +{
-+    QStringList out{symbol};
 +    static const QSet<QString> crypto = {
 +        QStringLiteral("BTC"), QStringLiteral("ETH"), QStringLiteral("DOGE"),
 +        QStringLiteral("SOL"), QStringLiteral("XRP"), QStringLiteral("ADA"),
 +        QStringLiteral("LTC"), QStringLiteral("BCH"), QStringLiteral("DOT"),
 +        QStringLiteral("LINK"), QStringLiteral("XLM"), QStringLiteral("AVAX")
 +    };
-+    if (crypto.contains(symbol))
-+        out << symbol + QStringLiteral("-USD");
++    return crypto.contains(symbol);
++}
++
++bool isCryptoPair(const QString &symbol)
++{
++    const QStringList parts = symbol.split(QLatin1Char('-'));
++    return parts.size() == 2 && isCryptoBase(parts.at(0));
++}
++
++QStringList quoteCandidates(const QString &symbol)
++{
++    QStringList querySymbols{symbol};
++    if (isCryptoBase(symbol))
++        querySymbols << symbol + QStringLiteral("-USD");
 +    if (QRegularExpression(QStringLiteral("^[A-Z]{1,5}\\.[A-Z]$")).match(symbol).hasMatch())
-+        out << QString(symbol).replace(QLatin1Char('.'), QLatin1Char('-'));
++        querySymbols << QString(symbol).replace(QLatin1Char('.'), QLatin1Char('-'));
++
++    QStringList out;
++    for (const QString &querySymbol : querySymbols) {
++        if (!out.contains(QStringLiteral("yahoo1m|") + querySymbol))
++            out << QStringLiteral("yahoo1m|") + querySymbol;
++    }
++    for (const QString &querySymbol : querySymbols) {
++        if (!out.contains(QStringLiteral("yahoo5d|") + querySymbol))
++            out << QStringLiteral("yahoo5d|") + querySymbol;
++    }
++    for (const QString &querySymbol : querySymbols) {
++        if (isCryptoPair(querySymbol) && !out.contains(QStringLiteral("coinbase|") + querySymbol))
++            out << QStringLiteral("coinbase|") + querySymbol;
++    }
 +    return out;
 +}
 +
  // Display-ready symbol: strip "-USD"/"-EUR" suffix from crypto, cap length.
  QString displaySym(const QString &raw)
  {
-@@ -130,7 +169,8 @@
+@@ -130,7 +194,8 @@
      lines.reserve(quotes.size());
      for (const StockQuote &q : quotes) {
          if (!q.valid) {
@@ -92,7 +117,7 @@ diff -ruN krellstock-orig/plugins/krellstock/KrellstockPlugin.cpp krellstock-wor
              continue;
          }
          const QString pct = QStringLiteral("%1%2%")
-@@ -170,6 +210,8 @@
+@@ -170,6 +235,8 @@
  {
      if (m_fetching || symbols.isEmpty()) return;
      m_fetching = true;
@@ -101,7 +126,7 @@ diff -ruN krellstock-orig/plugins/krellstock/KrellstockPlugin.cpp krellstock-wor
      m_building.clear();
      m_requestedOrder.clear();
      for (const QString &rawSymbol : symbols) {
-@@ -178,7 +220,15 @@
+@@ -178,11 +245,18 @@
              m_requestedOrder << symbol;
      }
      m_pending = m_requestedOrder;
@@ -114,80 +139,200 @@ diff -ruN krellstock-orig/plugins/krellstock/KrellstockPlugin.cpp krellstock-wor
 +    }
      m_inFlight.clear();
 +    publishBuilding();
- 
-     // Yahoo's batch quote endpoint currently rejects anonymous clients from
-     // some networks. Use chart metadata directly, but publish each response as
-@@ -201,9 +251,18 @@
+
+-    // Yahoo's batch quote endpoint currently rejects anonymous clients from
+-    // some networks. Use chart metadata directly, but publish each response as
+-    // it lands so one slow symbol cannot make the whole panel look stuck.
++    // Publish each response as it lands so one slow or blocked symbol cannot
++    // make the whole panel look stuck.
+     startNext();
+ }
+
+@@ -201,38 +275,71 @@
          if (symbol.isEmpty())
              continue;
- 
-+        QStringList candidates = quoteCandidates(symbol);
+
+-        const QString escaped =
+-            QString::fromLatin1(QUrl::toPercentEncoding(symbol));
+-        QUrl url(QStringLiteral("https://query1.finance.yahoo.com/v8/finance/chart/")
+-                 + escaped);
+-        QUrlQuery query;
+-        query.addQueryItem(QStringLiteral("interval"), QStringLiteral("1d"));
+-        query.addQueryItem(QStringLiteral("range"), QStringLiteral("5d"));
+-        url.setQuery(query);
++        const QStringList candidates = quoteCandidates(symbol);
 +        const int attempt = m_attempts.value(symbol, 0);
 +        if (attempt >= candidates.size()) {
 +            m_failed.insert(symbol);
 +            continue;
 +        }
 +        m_attempts.insert(symbol, attempt + 1);
-+        const QString querySymbol = candidates.at(attempt);
 +
-         const QString escaped =
--            QString::fromLatin1(QUrl::toPercentEncoding(symbol));
--        QUrl url(QStringLiteral("https://query1.finance.yahoo.com/v8/finance/chart/")
-+            QString::fromLatin1(QUrl::toPercentEncoding(querySymbol));
-+        QUrl url(QStringLiteral("https://query2.finance.yahoo.com/v8/finance/chart/")
-                  + escaped);
-         QUrlQuery query;
-         query.addQueryItem(QStringLiteral("interval"), QStringLiteral("1d"));
-@@ -216,12 +275,13 @@
++        const QString candidate = candidates.at(attempt);
++        const int sep = candidate.indexOf(QLatin1Char('|'));
++        const QString provider = sep >= 0 ? candidate.left(sep) : QStringLiteral("yahoo1m");
++        const QString querySymbol = sep >= 0 ? candidate.mid(sep + 1) : candidate;
++
++        QUrl url;
++        if (provider == QStringLiteral("coinbase")) {
++            url = QUrl(QStringLiteral("https://api.coinbase.com/v2/prices/")
++                + QString::fromLatin1(QUrl::toPercentEncoding(querySymbol))
++                + QStringLiteral("/spot"));
++        } else {
++            const QString escaped =
++                QString::fromLatin1(QUrl::toPercentEncoding(querySymbol));
++            url = QUrl(QStringLiteral("https://query1.finance.yahoo.com/v8/finance/chart/")
++                     + escaped);
++            QUrlQuery query;
++            if (provider == QStringLiteral("yahoo5d")) {
++                query.addQueryItem(QStringLiteral("interval"), QStringLiteral("1d"));
++                query.addQueryItem(QStringLiteral("range"), QStringLiteral("5d"));
++            } else {
++                query.addQueryItem(QStringLiteral("interval"), QStringLiteral("1m"));
++                query.addQueryItem(QStringLiteral("range"), QStringLiteral("1d"));
++            }
++            url.setQuery(query);
++        }
+
+         QNetworkRequest req{url};
+         req.setRawHeader("User-Agent",
+             "Mozilla/5.0 (X11; Linux x86_64; rv:125.0) Gecko/20100101 Firefox/125.0");
          req.setRawHeader("Accept",          "application/json,*/*;q=0.9");
          req.setRawHeader("Accept-Language", "en-US,en;q=0.9");
-         req.setRawHeader("Referer",         "https://finance.yahoo.com/quote/"
+-        req.setRawHeader("Referer",         "https://finance.yahoo.com/quote/"
 -            + symbol.toUtf8());
-+            + querySymbol.toUtf8());
++        if (provider.startsWith(QStringLiteral("yahoo")))
++            req.setRawHeader("Referer", "https://finance.yahoo.com/quote/"
++                + querySymbol.toUtf8());
          req.setTransferTimeout(kFetchTimeoutMs);
          req.setMaximumRedirectsAllowed(3);
- 
+
          QNetworkReply *reply = m_net.get(req);
 -        m_inFlight.insert(reply, QStringLiteral("chart:") + symbol);
-+        m_inFlight.insert(reply, QStringLiteral("chart:") + symbol
++        m_inFlight.insert(reply, provider + QStringLiteral(":") + symbol
 +            + QStringLiteral("|") + querySymbol);
      }
  }
- 
-@@ -229,9 +289,12 @@
+
+ void KrellstockFetcher::onReplyFinished(QNetworkReply *reply)
  {
      const QString requestId = m_inFlight.take(reply);
-     const bool isChart = requestId.startsWith(QStringLiteral("chart:"));
+-    const bool isChart = requestId.startsWith(QStringLiteral("chart:"));
 -    const QString requested = isChart
 -        ? requestId.mid(6)
 -        : requestId.mid(requestId.startsWith(QStringLiteral("quote:")) ? 6 : 0);
-+    QString requested = requestId.mid(requestId.startsWith(QStringLiteral("quote:")) ? 6 : 0);
-+    if (isChart) {
-+        const QString chartPayload = requestId.mid(6);
-+        const int sep = chartPayload.indexOf(QLatin1Char('|'));
-+        requested = sep >= 0 ? chartPayload.left(sep) : chartPayload;
-+    }
-     const QStringList requestedOrder = requested.split(QLatin1Char(','), Qt::SkipEmptyParts);
+-    const QStringList requestedOrder = requested.split(QLatin1Char(','), Qt::SkipEmptyParts);
++    const int providerSep = requestId.indexOf(QLatin1Char(':'));
++    const QString provider = providerSep >= 0
++        ? requestId.left(providerSep)
++        : QStringLiteral("yahoo1m");
++    const QString payload = providerSep >= 0 ? requestId.mid(providerSep + 1) : requestId;
++    const int symbolSep = payload.indexOf(QLatin1Char('|'));
++    const QString requested = (symbolSep >= 0 ? payload.left(symbolSep) : payload)
++        .trimmed().toUpper();
++    const QString querySymbol = (symbolSep >= 0 ? payload.mid(symbolSep + 1) : requested)
++        .trimmed().toUpper();
++    const QStringList requestedOrder = QStringList{requested};
      const QByteArray data = reply->readAll();
      const bool ok = (reply->error() == QNetworkReply::NoError);
-@@ -315,10 +378,10 @@
+     reply->deleteLater();
+@@ -241,50 +348,8 @@
+     if (ok && !data.isEmpty()) {
+         QJsonParseError perr;
+         const QJsonDocument doc = QJsonDocument::fromJson(data, &perr);
+-        if (perr.error == QJsonParseError::NoError && !isChart) {
+-            const QJsonArray quotes = doc.object()
+-                .value(QStringLiteral("quoteResponse")).toObject()
+-                .value(QStringLiteral("result")).toArray();
+-            QHash<QString, StockQuote> bySymbol;
+-            for (const QJsonValue &value : quotes) {
+-                const QJsonObject obj = value.toObject();
+-                const QString symbol = obj.value(QStringLiteral("symbol")).toString().toUpper();
+-                const double price = obj.value(QStringLiteral("regularMarketPrice")).toDouble();
+-                if (symbol.isEmpty() || price <= 0)
+-                    continue;
+-
+-                const double prevClose =
+-                    obj.value(QStringLiteral("regularMarketPreviousClose")).toDouble();
+-                double change =
+-                    obj.value(QStringLiteral("regularMarketChange")).toDouble();
+-                double changePct =
+-                    obj.value(QStringLiteral("regularMarketChangePercent")).toDouble();
+-                if (change == 0 && prevClose > 0)
+-                    change = price - prevClose;
+-                if (changePct == 0 && prevClose > 0)
+-                    changePct = (price - prevClose) / prevClose * 100.0;
+-
+-                StockQuote q;
+-                q.symbol    = symbol;
+-                q.shortName = obj.value(QStringLiteral("shortName")).toString().left(30);
+-                if (q.shortName.isEmpty())
+-                    q.shortName = obj.value(QStringLiteral("longName")).toString().left(30);
+-                q.price     = price;
+-                q.change    = change;
+-                q.changePct = changePct;
+-                q.currency  = obj.value(QStringLiteral("currency")).toString();
+-                q.marketState = obj.value(QStringLiteral("marketState")).toString();
+-                q.valid     = true;
+-                bySymbol.insert(symbol, q);
+-                gotQuote = true;
+-            }
+-
+-            for (const QString &symbol : requestedOrder) {
+-                const QString key = symbol.trimmed().toUpper();
+-                if (bySymbol.contains(key))
+-                    m_building << bySymbol.value(key);
+-            }
+-        } else if (perr.error == QJsonParseError::NoError && isChart) {
++        if (perr.error == QJsonParseError::NoError
++            && provider.startsWith(QStringLiteral("yahoo"))) {
+             const QJsonArray results = doc.object()
+                 .value(QStringLiteral("chart")).toObject()
+                 .value(QStringLiteral("result")).toArray();
+@@ -315,10 +380,9 @@
                      }
- 
+
                      StockQuote q;
 -                    q.symbol = meta.value(QStringLiteral("symbol")).toString()
 -                        .toUpper();
-+                    q.symbol = requested.trimmed().toUpper();
-                     if (q.symbol.isEmpty())
+-                    if (q.symbol.isEmpty())
 -                        q.symbol = requested.trimmed().toUpper();
-+                        q.symbol = meta.value(QStringLiteral("symbol")).toString()
-+                            .toUpper();
++                    q.symbol = requested.isEmpty()
++                        ? meta.value(QStringLiteral("symbol")).toString().toUpper()
++                        : requested;
                      q.shortName =
                          meta.value(QStringLiteral("shortName")).toString().left(30);
                      if (q.shortName.isEmpty())
-@@ -341,12 +404,15 @@
+@@ -338,15 +402,41 @@
+                     gotQuote = true;
+                 }
+             }
++        } else if (perr.error == QJsonParseError::NoError
++                   && provider == QStringLiteral("coinbase")) {
++            const QJsonObject priceData = doc.object()
++                .value(QStringLiteral("data")).toObject();
++            const double price = priceData.value(QStringLiteral("amount"))
++                .toString().toDouble();
++            if (price > 0) {
++                const QString base = priceData.value(QStringLiteral("base"))
++                    .toString(querySymbol.section(QLatin1Char('-'), 0, 0));
++                const QString currency = priceData.value(QStringLiteral("currency"))
++                    .toString(querySymbol.section(QLatin1Char('-'), 1, 1));
++                StockQuote q;
++                q.symbol = requested;
++                q.shortName = QStringLiteral("%1/%2").arg(base, currency).left(30);
++                q.price = price;
++                q.change = 0;
++                q.changePct = 0;
++                q.currency = currency;
++                q.marketState = QStringLiteral("REGULAR");
++                q.valid = true;
++                m_building << q;
++                gotQuote = true;
++            }
          }
      }
- 
+
 -    if (!isChart && !gotQuote) {
 +    if (!gotQuote && !m_failed.contains(requested)) {
 +        const int before = m_attempts.value(requested, 0);
@@ -196,14 +341,14 @@ diff -ruN krellstock-orig/plugins/krellstock/KrellstockPlugin.cpp krellstock-wor
 +        if (m_attempts.value(requested, 0) > before && !m_inFlight.isEmpty())
              return;
      }
- 
+
 +    publishBuilding();
 +
      // All in-flight done: publish results.
      if (m_inFlight.isEmpty() && m_pending.isEmpty()) {
          m_fetching = false;
-@@ -361,8 +427,14 @@
- 
+@@ -361,8 +451,14 @@
+
      QHash<QString, StockQuote> bySymbol;
      for (const StockQuote &q : m_building) {
 -        if (!q.symbol.isEmpty())
@@ -217,9 +362,9 @@ diff -ruN krellstock-orig/plugins/krellstock/KrellstockPlugin.cpp krellstock-wor
 +        if (item.valid || !bySymbol.contains(key))
 +            bySymbol.insert(key, item);
      }
- 
+
      QList<StockQuote> ordered;
-@@ -374,7 +446,9 @@
+@@ -374,7 +470,9 @@
          } else {
              StockQuote missing;
              missing.symbol = key;
@@ -230,16 +375,16 @@ diff -ruN krellstock-orig/plugins/krellstock/KrellstockPlugin.cpp krellstock-wor
              missing.valid = false;
              ordered << missing;
          }
-@@ -505,7 +579,7 @@
- 
+@@ -505,7 +603,7 @@
+
          if (!q.valid) {
              addSeg(displaySym(q.symbol), cPrimary, true);
 -            addSeg(QStringLiteral("  No data"), cDim, false);
 +            addSeg(QStringLiteral("  ") + (q.shortName.isEmpty() ? QStringLiteral("Fetching...") : q.shortName), cDim, false);
              continue;
          }
- 
-@@ -747,7 +821,8 @@
+
+@@ -747,7 +845,8 @@
              p.setFont(base);
              p.setPen(cDim);
              const int symW = bfm.horizontalAdvance(symText);
@@ -251,21 +396,23 @@ diff -ruN krellstock-orig/plugins/krellstock/KrellstockPlugin.cpp krellstock-wor
          }
 diff -ruN krellstock-orig/plugins/krellstock/KrellstockPlugin.h krellstock-work/plugins/krellstock/KrellstockPlugin.h
 --- krellstock-orig/plugins/krellstock/KrellstockPlugin.h	2026-06-09 17:39:32.000000000 -0400
-+++ krellstock-work/plugins/krellstock/KrellstockPlugin.h	2026-06-20 10:05:27.122190534 -0400
++++ krellstock-work/plugins/krellstock/KrellstockPlugin.h	2026-06-20 11:52:19.474333481 -0400
 @@ -5,6 +5,7 @@
- 
+
  #include <QElapsedTimer>
  #include <QHash>
 +#include <QSet>
  #include <QList>
  #include <QNetworkAccessManager>
  #include <QPointer>
-@@ -65,6 +66,8 @@
+@@ -64,7 +65,9 @@
+     QList<StockQuote>              m_lastQuotes;
      QStringList                    m_requestedOrder;
      QList<QString>                 m_pending;    // symbols still to fetch
-     QHash<QNetworkReply*, QString> m_inFlight;   // reply → "quote:..." or "chart:..."
+-    QHash<QNetworkReply*, QString> m_inFlight;   // reply → "quote:..." or "chart:..."
++    QHash<QNetworkReply*, QString> m_inFlight;   // reply -> "provider:requested|query"
 +    QHash<QString, int>            m_attempts;   // requested symbol → next candidate index
 +    QSet<QString>                  m_failed;     // requested symbols with all fallbacks tried
      QList<StockQuote>              m_building;   // accumulates this round
      bool                           m_fetching = false;
- 
+
