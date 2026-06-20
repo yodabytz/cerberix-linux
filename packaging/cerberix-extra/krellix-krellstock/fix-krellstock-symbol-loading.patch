@@ -1,6 +1,6 @@
 diff -ruN krellstock-orig/plugins/krellstock/KrellstockPlugin.cpp krellstock-work/plugins/krellstock/KrellstockPlugin.cpp
 --- krellstock-orig/plugins/krellstock/KrellstockPlugin.cpp	2026-06-09 17:39:32.000000000 -0400
-+++ krellstock-work/plugins/krellstock/KrellstockPlugin.cpp	2026-06-20 10:07:15.475262169 -0400
++++ krellstock-work/plugins/krellstock/KrellstockPlugin.cpp	2026-06-20 10:53:04.918991695 -0400
 @@ -9,10 +9,12 @@
  #include <QJsonDocument>
  #include <QJsonObject>
@@ -82,7 +82,17 @@ diff -ruN krellstock-orig/plugins/krellstock/KrellstockPlugin.cpp krellstock-wor
  // Display-ready symbol: strip "-USD"/"-EUR" suffix from crypto, cap length.
  QString displaySym(const QString &raw)
  {
-@@ -170,6 +209,8 @@
+@@ -130,7 +169,8 @@
+     lines.reserve(quotes.size());
+     for (const StockQuote &q : quotes) {
+         if (!q.valid) {
+-            lines << QStringLiteral("%1  No data").arg(displaySym(q.symbol));
++            lines << QStringLiteral("%1  %2").arg(displaySym(q.symbol),
++                                                  q.shortName.isEmpty() ? QStringLiteral("Fetching...") : q.shortName);
+             continue;
+         }
+         const QString pct = QStringLiteral("%1%2%")
+@@ -170,6 +210,8 @@
  {
      if (m_fetching || symbols.isEmpty()) return;
      m_fetching = true;
@@ -91,14 +101,14 @@ diff -ruN krellstock-orig/plugins/krellstock/KrellstockPlugin.cpp krellstock-wor
      m_building.clear();
      m_requestedOrder.clear();
      for (const QString &rawSymbol : symbols) {
-@@ -178,7 +219,15 @@
+@@ -178,7 +220,15 @@
              m_requestedOrder << symbol;
      }
      m_pending = m_requestedOrder;
 +    for (const QString &symbol : m_requestedOrder) {
 +        StockQuote missing;
 +        missing.symbol = symbol;
-+        missing.shortName = QStringLiteral("Loading");
++        missing.shortName = QStringLiteral("Fetching...");
 +        missing.valid = false;
 +        m_building << missing;
 +    }
@@ -107,7 +117,7 @@ diff -ruN krellstock-orig/plugins/krellstock/KrellstockPlugin.cpp krellstock-wor
  
      // Yahoo's batch quote endpoint currently rejects anonymous clients from
      // some networks. Use chart metadata directly, but publish each response as
-@@ -201,8 +250,17 @@
+@@ -201,9 +251,18 @@
          if (symbol.isEmpty())
              continue;
  
@@ -122,11 +132,13 @@ diff -ruN krellstock-orig/plugins/krellstock/KrellstockPlugin.cpp krellstock-wor
 +
          const QString escaped =
 -            QString::fromLatin1(QUrl::toPercentEncoding(symbol));
+-        QUrl url(QStringLiteral("https://query1.finance.yahoo.com/v8/finance/chart/")
 +            QString::fromLatin1(QUrl::toPercentEncoding(querySymbol));
-         QUrl url(QStringLiteral("https://query1.finance.yahoo.com/v8/finance/chart/")
++        QUrl url(QStringLiteral("https://query2.finance.yahoo.com/v8/finance/chart/")
                   + escaped);
          QUrlQuery query;
-@@ -216,12 +274,13 @@
+         query.addQueryItem(QStringLiteral("interval"), QStringLiteral("1d"));
+@@ -216,12 +275,13 @@
          req.setRawHeader("Accept",          "application/json,*/*;q=0.9");
          req.setRawHeader("Accept-Language", "en-US,en;q=0.9");
          req.setRawHeader("Referer",         "https://finance.yahoo.com/quote/"
@@ -142,7 +154,7 @@ diff -ruN krellstock-orig/plugins/krellstock/KrellstockPlugin.cpp krellstock-wor
      }
  }
  
-@@ -229,9 +288,12 @@
+@@ -229,9 +289,12 @@
  {
      const QString requestId = m_inFlight.take(reply);
      const bool isChart = requestId.startsWith(QStringLiteral("chart:"));
@@ -158,7 +170,7 @@ diff -ruN krellstock-orig/plugins/krellstock/KrellstockPlugin.cpp krellstock-wor
      const QStringList requestedOrder = requested.split(QLatin1Char(','), Qt::SkipEmptyParts);
      const QByteArray data = reply->readAll();
      const bool ok = (reply->error() == QNetworkReply::NoError);
-@@ -315,10 +377,10 @@
+@@ -315,10 +378,10 @@
                      }
  
                      StockQuote q;
@@ -172,7 +184,7 @@ diff -ruN krellstock-orig/plugins/krellstock/KrellstockPlugin.cpp krellstock-wor
                      q.shortName =
                          meta.value(QStringLiteral("shortName")).toString().left(30);
                      if (q.shortName.isEmpty())
-@@ -341,12 +403,15 @@
+@@ -341,12 +404,15 @@
          }
      }
  
@@ -190,15 +202,53 @@ diff -ruN krellstock-orig/plugins/krellstock/KrellstockPlugin.cpp krellstock-wor
      // All in-flight done: publish results.
      if (m_inFlight.isEmpty() && m_pending.isEmpty()) {
          m_fetching = false;
-@@ -361,7 +426,7 @@
+@@ -361,8 +427,14 @@
  
      QHash<QString, StockQuote> bySymbol;
      for (const StockQuote &q : m_building) {
 -        if (!q.symbol.isEmpty())
-+        if (!q.symbol.isEmpty() && (q.valid || !bySymbol.contains(q.symbol.toUpper())))
-             bySymbol.insert(q.symbol.toUpper(), q);
+-            bySymbol.insert(q.symbol.toUpper(), q);
++        if (q.symbol.isEmpty())
++            continue;
++        StockQuote item = q;
++        const QString key = item.symbol.toUpper();
++        if (!item.valid && m_failed.contains(key))
++            item.shortName = QStringLiteral("Unavailable");
++        if (item.valid || !bySymbol.contains(key))
++            bySymbol.insert(key, item);
      }
  
+     QList<StockQuote> ordered;
+@@ -374,7 +446,9 @@
+         } else {
+             StockQuote missing;
+             missing.symbol = key;
+-            missing.shortName = QStringLiteral("No data");
++            missing.shortName = m_failed.contains(key)
++                ? QStringLiteral("Unavailable")
++                : QStringLiteral("Fetching...");
+             missing.valid = false;
+             ordered << missing;
+         }
+@@ -505,7 +579,7 @@
+ 
+         if (!q.valid) {
+             addSeg(displaySym(q.symbol), cPrimary, true);
+-            addSeg(QStringLiteral("  No data"), cDim, false);
++            addSeg(QStringLiteral("  ") + (q.shortName.isEmpty() ? QStringLiteral("Fetching...") : q.shortName), cDim, false);
+             continue;
+         }
+ 
+@@ -747,7 +821,8 @@
+             p.setFont(base);
+             p.setPen(cDim);
+             const int symW = bfm.horizontalAdvance(symText);
+-            p.drawText(QPoint(pad + symW + 8, yBase), QStringLiteral("No data"));
++            p.drawText(QPoint(pad + symW + 8, yBase),
++                       q.shortName.isEmpty() ? QStringLiteral("Fetching...") : q.shortName);
+             p.restore();
+             return;
+         }
 diff -ruN krellstock-orig/plugins/krellstock/KrellstockPlugin.h krellstock-work/plugins/krellstock/KrellstockPlugin.h
 --- krellstock-orig/plugins/krellstock/KrellstockPlugin.h	2026-06-09 17:39:32.000000000 -0400
 +++ krellstock-work/plugins/krellstock/KrellstockPlugin.h	2026-06-20 10:05:27.122190534 -0400
