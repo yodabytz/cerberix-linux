@@ -1,0 +1,221 @@
+diff -ruN krellstock-orig/plugins/krellstock/KrellstockPlugin.cpp krellstock-work/plugins/krellstock/KrellstockPlugin.cpp
+--- krellstock-orig/plugins/krellstock/KrellstockPlugin.cpp	2026-06-09 17:39:32.000000000 -0400
++++ krellstock-work/plugins/krellstock/KrellstockPlugin.cpp	2026-06-20 10:07:15.475262169 -0400
+@@ -9,10 +9,12 @@
+ #include <QJsonDocument>
+ #include <QJsonObject>
+ #include <QLocale>
++#include <QMap>
+ #include <QNetworkReply>
+ #include <QNetworkRequest>
+ #include <QPainter>
+ #include <QRegularExpression>
++#include <QSet>
+ #include <QSettings>
+ #include <QTimer>
+ #include <QUrl>
+@@ -33,18 +35,39 @@
+ constexpr int kDefaultIntervalMs = 300000;  // 5 minutes
+ constexpr int kFetchTimeoutMs = 3500;
+ 
++QString normalizeConfiguredSymbol(QString symbol)
++{
++    symbol = symbol.trimmed().toUpper();
++    if (symbol.startsWith(QLatin1Char('$')))
++        symbol.remove(0, 1);
++    return symbol;
++}
++
+ QStringList configuredSymbols()
+ {
+     QSettings s;
+-    QStringList out;
++    QMap<int, QString> configured;
++    const QRegularExpression keyRe(QStringLiteral("^plugins/krellstock/symbol(\\d+)$"));
++    for (const QString &key : s.allKeys()) {
++        const QRegularExpressionMatch m = keyRe.match(key);
++        if (m.hasMatch())
++            configured.insert(m.captured(1).toInt(), s.value(key).toString());
++    }
+     for (int i = 1; i <= kMaxSymbols; ++i) {
+-        const QString raw = s.value(
+-            QStringLiteral("plugins/krellstock/symbol%1").arg(i)).toString().trimmed().toUpper();
++        const QString key = QStringLiteral("plugins/krellstock/symbol%1").arg(i);
++        if (!configured.contains(i) && s.contains(key))
++            configured.insert(i, s.value(key).toString());
++    }
++
++    QStringList out;
++    for (auto it = configured.cbegin(); it != configured.cend(); ++it) {
++        const QString raw = normalizeConfiguredSymbol(it.value());
+         const QStringList parts = raw.split(
+             QRegularExpression(QStringLiteral("[,;\\s]+")), Qt::SkipEmptyParts);
+         for (const QString &part : parts) {
+-            if (!out.contains(part))
+-                out << part;
++            const QString symbol = normalizeConfiguredSymbol(part);
++            if (!symbol.isEmpty() && !out.contains(symbol))
++                out << symbol;
+         }
+     }
+     if (out.isEmpty()) {
+@@ -55,6 +78,22 @@
+     return out;
+ }
+ 
++QStringList quoteCandidates(const QString &symbol)
++{
++    QStringList out{symbol};
++    static const QSet<QString> crypto = {
++        QStringLiteral("BTC"), QStringLiteral("ETH"), QStringLiteral("DOGE"),
++        QStringLiteral("SOL"), QStringLiteral("XRP"), QStringLiteral("ADA"),
++        QStringLiteral("LTC"), QStringLiteral("BCH"), QStringLiteral("DOT"),
++        QStringLiteral("LINK"), QStringLiteral("XLM"), QStringLiteral("AVAX")
++    };
++    if (crypto.contains(symbol))
++        out << symbol + QStringLiteral("-USD");
++    if (QRegularExpression(QStringLiteral("^[A-Z]{1,5}\\.[A-Z]$")).match(symbol).hasMatch())
++        out << QString(symbol).replace(QLatin1Char('.'), QLatin1Char('-'));
++    return out;
++}
++
+ // Display-ready symbol: strip "-USD"/"-EUR" suffix from crypto, cap length.
+ QString displaySym(const QString &raw)
+ {
+@@ -170,6 +209,8 @@
+ {
+     if (m_fetching || symbols.isEmpty()) return;
+     m_fetching = true;
++    m_attempts.clear();
++    m_failed.clear();
+     m_building.clear();
+     m_requestedOrder.clear();
+     for (const QString &rawSymbol : symbols) {
+@@ -178,7 +219,15 @@
+             m_requestedOrder << symbol;
+     }
+     m_pending = m_requestedOrder;
++    for (const QString &symbol : m_requestedOrder) {
++        StockQuote missing;
++        missing.symbol = symbol;
++        missing.shortName = QStringLiteral("Loading");
++        missing.valid = false;
++        m_building << missing;
++    }
+     m_inFlight.clear();
++    publishBuilding();
+ 
+     // Yahoo's batch quote endpoint currently rejects anonymous clients from
+     // some networks. Use chart metadata directly, but publish each response as
+@@ -201,8 +250,17 @@
+         if (symbol.isEmpty())
+             continue;
+ 
++        QStringList candidates = quoteCandidates(symbol);
++        const int attempt = m_attempts.value(symbol, 0);
++        if (attempt >= candidates.size()) {
++            m_failed.insert(symbol);
++            continue;
++        }
++        m_attempts.insert(symbol, attempt + 1);
++        const QString querySymbol = candidates.at(attempt);
++
+         const QString escaped =
+-            QString::fromLatin1(QUrl::toPercentEncoding(symbol));
++            QString::fromLatin1(QUrl::toPercentEncoding(querySymbol));
+         QUrl url(QStringLiteral("https://query1.finance.yahoo.com/v8/finance/chart/")
+                  + escaped);
+         QUrlQuery query;
+@@ -216,12 +274,13 @@
+         req.setRawHeader("Accept",          "application/json,*/*;q=0.9");
+         req.setRawHeader("Accept-Language", "en-US,en;q=0.9");
+         req.setRawHeader("Referer",         "https://finance.yahoo.com/quote/"
+-            + symbol.toUtf8());
++            + querySymbol.toUtf8());
+         req.setTransferTimeout(kFetchTimeoutMs);
+         req.setMaximumRedirectsAllowed(3);
+ 
+         QNetworkReply *reply = m_net.get(req);
+-        m_inFlight.insert(reply, QStringLiteral("chart:") + symbol);
++        m_inFlight.insert(reply, QStringLiteral("chart:") + symbol
++            + QStringLiteral("|") + querySymbol);
+     }
+ }
+ 
+@@ -229,9 +288,12 @@
+ {
+     const QString requestId = m_inFlight.take(reply);
+     const bool isChart = requestId.startsWith(QStringLiteral("chart:"));
+-    const QString requested = isChart
+-        ? requestId.mid(6)
+-        : requestId.mid(requestId.startsWith(QStringLiteral("quote:")) ? 6 : 0);
++    QString requested = requestId.mid(requestId.startsWith(QStringLiteral("quote:")) ? 6 : 0);
++    if (isChart) {
++        const QString chartPayload = requestId.mid(6);
++        const int sep = chartPayload.indexOf(QLatin1Char('|'));
++        requested = sep >= 0 ? chartPayload.left(sep) : chartPayload;
++    }
+     const QStringList requestedOrder = requested.split(QLatin1Char(','), Qt::SkipEmptyParts);
+     const QByteArray data = reply->readAll();
+     const bool ok = (reply->error() == QNetworkReply::NoError);
+@@ -315,10 +377,10 @@
+                     }
+ 
+                     StockQuote q;
+-                    q.symbol = meta.value(QStringLiteral("symbol")).toString()
+-                        .toUpper();
++                    q.symbol = requested.trimmed().toUpper();
+                     if (q.symbol.isEmpty())
+-                        q.symbol = requested.trimmed().toUpper();
++                        q.symbol = meta.value(QStringLiteral("symbol")).toString()
++                            .toUpper();
+                     q.shortName =
+                         meta.value(QStringLiteral("shortName")).toString().left(30);
+                     if (q.shortName.isEmpty())
+@@ -341,12 +403,15 @@
+         }
+     }
+ 
+-    if (!isChart && !gotQuote) {
++    if (!gotQuote && !m_failed.contains(requested)) {
++        const int before = m_attempts.value(requested, 0);
+         startChartFallback(requestedOrder);
+-        if (!m_inFlight.isEmpty())
++        if (m_attempts.value(requested, 0) > before && !m_inFlight.isEmpty())
+             return;
+     }
+ 
++    publishBuilding();
++
+     // All in-flight done: publish results.
+     if (m_inFlight.isEmpty() && m_pending.isEmpty()) {
+         m_fetching = false;
+@@ -361,7 +426,7 @@
+ 
+     QHash<QString, StockQuote> bySymbol;
+     for (const StockQuote &q : m_building) {
+-        if (!q.symbol.isEmpty())
++        if (!q.symbol.isEmpty() && (q.valid || !bySymbol.contains(q.symbol.toUpper())))
+             bySymbol.insert(q.symbol.toUpper(), q);
+     }
+ 
+diff -ruN krellstock-orig/plugins/krellstock/KrellstockPlugin.h krellstock-work/plugins/krellstock/KrellstockPlugin.h
+--- krellstock-orig/plugins/krellstock/KrellstockPlugin.h	2026-06-09 17:39:32.000000000 -0400
++++ krellstock-work/plugins/krellstock/KrellstockPlugin.h	2026-06-20 10:05:27.122190534 -0400
+@@ -5,6 +5,7 @@
+ 
+ #include <QElapsedTimer>
+ #include <QHash>
++#include <QSet>
+ #include <QList>
+ #include <QNetworkAccessManager>
+ #include <QPointer>
+@@ -65,6 +66,8 @@
+     QStringList                    m_requestedOrder;
+     QList<QString>                 m_pending;    // symbols still to fetch
+     QHash<QNetworkReply*, QString> m_inFlight;   // reply → "quote:..." or "chart:..."
++    QHash<QString, int>            m_attempts;   // requested symbol → next candidate index
++    QSet<QString>                  m_failed;     // requested symbols with all fallbacks tried
+     QList<StockQuote>              m_building;   // accumulates this round
+     bool                           m_fetching = false;
+ 
