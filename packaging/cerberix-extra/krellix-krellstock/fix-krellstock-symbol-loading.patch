@@ -8,7 +8,7 @@
  #include <QElapsedTimer>
  #include <QJsonArray>
  #include <QJsonDocument>
-@@ -30,8 +31,11 @@
+@@ -30,16 +31,21 @@
  constexpr int kGapPx        = 80;      // gap between end and restart of ticker
  constexpr int kQuoteAdvanceMs = 4000;
  constexpr int kQuoteSlideMs   = 360;
@@ -21,8 +21,24 @@
  
  QStringList configuredSymbols()
  {
-@@ -50,11 +54,76 @@
-     if (out.isEmpty()) {
+     QSettings s;
+     QStringList out;
++    bool hasConfiguredKeys = false;
+     for (int i = 1; i <= kMaxSymbols; ++i) {
+-        const QString raw = s.value(
+-            QStringLiteral("plugins/krellstock/symbol%1").arg(i)).toString().trimmed().toUpper();
++        const QString key = QStringLiteral("plugins/krellstock/symbol%1").arg(i);
++        hasConfiguredKeys = hasConfiguredKeys || s.contains(key);
++        const QString raw = s.value(key).toString().trimmed().toUpper();
+         const QStringList parts = raw.split(
+             QRegularExpression(QStringLiteral("[,;\\s]+")), Qt::SkipEmptyParts);
+         for (const QString &part : parts) {
+@@ -47,14 +53,79 @@
+                 out << part;
+         }
+     }
+-    if (out.isEmpty()) {
++    if (!hasConfiguredKeys && out.isEmpty()) {
          out << QStringLiteral("AAPL")
              << QStringLiteral("MSFT")
 -            << QStringLiteral("BTC-USD");
@@ -99,7 +115,7 @@
  // Display-ready symbol: strip "-USD"/"-EUR" suffix from crypto, cap length.
  QString displaySym(const QString &raw)
  {
-@@ -130,7 +199,8 @@
+@@ -130,7 +201,8 @@
      lines.reserve(quotes.size());
      for (const StockQuote &q : quotes) {
          if (!q.valid) {
@@ -109,7 +125,7 @@
              continue;
          }
          const QString pct = QStringLiteral("%1%2%")
-@@ -169,6 +239,13 @@
+@@ -169,6 +241,13 @@
  void KrellstockFetcher::requestFetch(const QStringList &symbols)
  {
      if (m_fetching || symbols.isEmpty()) return;
@@ -123,7 +139,7 @@
      m_fetching = true;
      m_building.clear();
      m_requestedOrder.clear();
-@@ -177,12 +254,36 @@
+@@ -177,12 +256,36 @@
          if (!symbol.isEmpty() && !m_requestedOrder.contains(symbol))
              m_requestedOrder << symbol;
      }
@@ -164,7 +180,7 @@
      startNext();
  }
  
-@@ -196,173 +297,151 @@
+@@ -196,173 +299,151 @@
  
  void KrellstockFetcher::startChartFallback(const QStringList &symbols)
  {
@@ -433,7 +449,7 @@
      }
  
      QList<StockQuote> ordered;
-@@ -374,7 +453,7 @@
+@@ -374,7 +455,7 @@
          } else {
              StockQuote missing;
              missing.symbol = key;
@@ -442,7 +458,7 @@
              missing.valid = false;
              ordered << missing;
          }
-@@ -505,7 +584,7 @@
+@@ -505,7 +586,7 @@
  
          if (!q.valid) {
              addSeg(displaySym(q.symbol), cPrimary, true);
@@ -451,7 +467,7 @@
              continue;
          }
  
-@@ -747,7 +826,8 @@
+@@ -747,7 +828,8 @@
              p.setFont(base);
              p.setPen(cDim);
              const int symW = bfm.horizontalAdvance(symText);
