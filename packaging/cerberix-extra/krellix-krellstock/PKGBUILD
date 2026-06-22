@@ -1,18 +1,18 @@
 # Maintainer: yodabytz <hello@cerberix.org>
 pkgname=krellix-krellstock
 pkgver=0.1.2
-pkgrel=19
+pkgrel=20
 arch=('x86_64' 'aarch64')
 url='https://github.com/yodabytz/krellix'
 license=('GPL-3.0-or-later')
-pkgdesc='KrellStock: stock quote ticker and panel for Krellix (Yahoo Finance, crypto, global markets)'
+pkgdesc='KrellStock: stock quote ticker and panel for Krellix (Twelve Data stocks and crypto)'
 depends=('krellix>=0.1.2' 'qt6-base')
 makedepends=('cmake' 'ninja' 'qt6-tools' 'qt6-base')
 options=('!debug')
 source=("krellix-$pkgver.tar.gz"
         "fix-krellstock-symbol-loading.patch")
 sha256sums=("1aef51100d57481ccf4b1ff5ee610c8c84439ef8c5632d90a02fc9d950af020c"
-            "62acd4e4a9e084f261978733936c85828a87ad1de2453519c35b80cd5e57d668")
+            "d2c45d36e205ffd0c46d8c551d56c1407427078ef227c72975efe7776cbb997c")
 
 prepare() {
     cd "krellix-$pkgver"
