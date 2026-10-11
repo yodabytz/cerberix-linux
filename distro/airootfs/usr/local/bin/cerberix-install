@@ -190,6 +190,11 @@ fi
 # Custom GRUB theme
 sed -i 's/GRUB_DISTRIBUTOR=.*/GRUB_DISTRIBUTOR="Cerberix"/' /etc/default/grub
 sed -i 's/GRUB_TIMEOUT=.*/GRUB_TIMEOUT=3/' /etc/default/grub
+sed -i 's/^GRUB_CMDLINE_LINUX_DEFAULT=.*/GRUB_CMDLINE_LINUX_DEFAULT="loglevel=4 vmwgfx.enable_fbdev=1"/' /etc/default/grub
+mkdir -p /etc/modprobe.d
+cat > /etc/modprobe.d/vmware.conf <<VMWAREEOF
+options vmwgfx enable_fbdev=1
+VMWAREEOF
 grub-mkconfig -o /boot/grub/grub.cfg
 
 # Enable services
@@ -201,6 +206,7 @@ systemctl enable ufw
 # NM wait-online slows boot significantly (syslog-ng times out waiting for it).
 # The network is up long before the timeout on any modern system; disabling is safe.
 systemctl disable NetworkManager-wait-online.service 2>/dev/null || true
+systemctl disable syslog-ng.service syslog-ng@default.service 2>/dev/null || true
 
 # Mask the lightdm user-manager so systemd doesn't try to start a full user
 # session for the lightdm system account (uid 964 / nologin), which times out.

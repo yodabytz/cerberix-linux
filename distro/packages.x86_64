@@ -171,7 +171,6 @@ mtr
 gparted
 gnome-disk-utility
 cloud-guest-utils
-syslog-ng
 
 # Screensaver (xscreensaver used instead of xfce4-screensaver)
 xscreensaver

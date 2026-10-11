@@ -18,9 +18,12 @@ sort -u "${ARCHISO_PROFILE}/packages.x86_64" -o "${ARCHISO_PROFILE}/packages.x86
 # Remove releng packages that conflict with our choices:
 # virtualbox-guest-utils-nox conflicts with virtualbox-guest-utils (X11 version we want)
 # systemd-resolvconf conflicts with openresolv (we prefer openresolv for VPN compat)
+# broadcom-wl is no longer consistently available in Arch repos; do not let a
+# stale releng entry block the desktop ISO build.
 sed -i '/^grml-zsh-config$/d' "${ARCHISO_PROFILE}/packages.x86_64"
 sed -i '/^virtualbox-guest-utils-nox$/d' "${ARCHISO_PROFILE}/packages.x86_64"
 sed -i '/^systemd-resolvconf$/d' "${ARCHISO_PROFILE}/packages.x86_64"
+sed -i '/^broadcom-wl$/d' "${ARCHISO_PROFILE}/packages.x86_64"
 
 # Ship the package list on the live ISO so the installer reuses it verbatim
 install -Dm644 "${PROFILE_DIR}/packages.x86_64" "${ARCHISO_PROFILE}/airootfs/etc/cerberix/packages.x86_64"
@@ -37,6 +40,9 @@ fi
 sed -i 's/Arch Linux/Cerberix Linux/g' "${ARCHISO_PROFILE}/syslinux/"*.cfg 2>/dev/null || true
 sed -i 's/Arch Linux/Cerberix Linux/g' "${ARCHISO_PROFILE}/efiboot/loader/entries/"*.conf 2>/dev/null || true
 sed -i 's/Arch Linux/Cerberix Linux/g' "${ARCHISO_PROFILE}/grub/grub.cfg" 2>/dev/null || true
+sed -i 's/ quiet splash/ loglevel=4 vmwgfx.enable_fbdev=1/g' "${ARCHISO_PROFILE}/syslinux/"*.cfg 2>/dev/null || true
+sed -i 's/ quiet splash/ loglevel=4 vmwgfx.enable_fbdev=1/g' "${ARCHISO_PROFILE}/efiboot/loader/entries/"*.conf 2>/dev/null || true
+sed -i 's/ quiet splash/ loglevel=4 vmwgfx.enable_fbdev=1/g' "${ARCHISO_PROFILE}/grub/grub.cfg" 2>/dev/null || true
 rm -f "${ARCHISO_PROFILE}/efiboot/loader/entries/02-archiso-speech-linux.conf" 2>/dev/null
 rm -f "${ARCHISO_PROFILE}/efiboot/loader/entries/03-archiso-memtest86+x64.conf" 2>/dev/null
 
@@ -259,7 +265,7 @@ chmod 440 /etc/sudoers.d/wheel
 mkdir -p /etc/lightdm
 cat > /etc/lightdm/lightdm.conf <<LDMEOF2
 [LightDM]
-logind-check-graphical=true
+logind-check-graphical=false
 
 [Seat:*]
 user-session=xfce
@@ -267,8 +273,16 @@ session-wrapper=/etc/lightdm/Xsession
 greeter-session=lightdm-gtk-greeter
 LDMEOF2
 
+# VMware guests can otherwise boot to a dark console/greeter while vmwgfx is
+# still negotiating framebuffer handoff with Fusion/Workstation.
+mkdir -p /etc/modprobe.d
+cat > /etc/modprobe.d/vmware.conf <<VMWAREEOF
+options vmwgfx enable_fbdev=1
+VMWAREEOF
+
 # GRUB
 sed -i 's/GRUB_DISTRIBUTOR=.*/GRUB_DISTRIBUTOR="Cerberix"/' /etc/default/grub
+sed -i 's/^GRUB_CMDLINE_LINUX_DEFAULT=.*/GRUB_CMDLINE_LINUX_DEFAULT="loglevel=4 vmwgfx.enable_fbdev=1"/' /etc/default/grub
 if [[ "$BOOT_MODE" == "uefi" ]]; then
     grub-install --target=x86_64-efi --efi-directory=/boot --bootloader-id=Cerberix
 else
@@ -284,6 +298,8 @@ systemctl enable sshd
 systemctl enable docker
 systemctl enable vmtoolsd 2>/dev/null || true
 systemctl enable haveged 2>/dev/null || true
+systemctl disable NetworkManager-wait-online.service 2>/dev/null || true
+systemctl disable syslog-ng.service syslog-ng@default.service 2>/dev/null || true
 
 # Enable Cerberix timers (daily rkhunter scan, delayed update check)
 systemctl enable cerberix-rkhunter.timer 2>/dev/null || true
@@ -330,7 +346,7 @@ mkdir -p /etc/NetworkManager/conf.d
 cat > /etc/NetworkManager/conf.d/00-cerberix-mac-randomization.conf <<'NMEOF'
 [connection-mac-randomization]
 wifi.cloned-mac-address=random
-ethernet.cloned-mac-address=random
+ethernet.cloned-mac-address=preserve
 
 [device-mac-randomization]
 wifi.scan-rand-mac-address=yes
@@ -391,9 +407,10 @@ mkarchiso -v -w "${WORK_DIR}" -o "${OUT_DIR}" "${ARCHISO_PROFILE}"
 
 echo ""
 cd "${OUT_DIR}"
-for f in cerberix-linux-*.iso; do
-    [ -f "$f" ] && mv "$f" "cerberix-linux-0.1.2-x86_64.iso" 2>/dev/null
-done
+latest_iso="$(ls -t cerberix-linux-*.iso | head -n 1)"
+if [ -n "${latest_iso}" ] && [ "${latest_iso}" != "cerberix-linux-0.1.2-x86_64.iso" ]; then
+    mv -f "${latest_iso}" "cerberix-linux-0.1.2-x86_64.iso"
+fi
 
 echo "============================================"
 echo " Cerberix Linux XFCE ISO built!"
