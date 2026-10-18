@@ -1,0 +1,30 @@
+Startup defaults, October 2026
+
+Observed on an installed Cerberix VMware guest: syslog-ng opened months of
+archived journals and hit startup/stop timeouts under severe host disk latency.
+After moving 737 MiB of archived journals to a private backup outside the active
+journal directory, logging restarted in 0.144 seconds. The following guest
+reboot measured 21.430 seconds versus 211.680 seconds before remediation.
+These are warm-host guest-reboot measurements, not a guarantee for all hardware.
+
+New images and installations:
+- Persistent journal budget 128 MiB, runtime journal budget 64 MiB.
+- Both installer paths explicitly carry the retention drop-in into /mnt.
+- Daily rootkit scan begins 30-35 minutes after boot, then once per day while
+  running. It no longer catches up immediately at boot. Very short sessions
+  may end before the first scan; users can still start the service manually.
+- Builds reject runtime journals, syslog-ng persistence files and populated
+  machine IDs in the custom overlay. No logs are silently deleted.
+
+Validation: python3 scripts/test-startup-defaults.py
+
+Existing installations do not receive these settings merely from this source
+commit. Back up current settings and deploy the retention drop-in, timer and
+notification script explicitly, then daemon-reload/restart the timer and
+journald. Do not automatically delete or move existing users' audit logs.
+Investigate existing log-reader startup delays before archiving old journals;
+preserve archives outside the active journal tree, readable by root only.
+No VPN configuration, keys or networking policy is changed by these defaults.
+
+Release status: source changes only. Build and boot-test a new ISO before
+signing/publishing it. Existing published ISO files are unchanged.

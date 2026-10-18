@@ -1,10 +1,11 @@
 [Unit]
-Description=Daily rkhunter scan (03:00) with notification
+Description=Daily rkhunter scan after startup
 
 [Timer]
-OnCalendar=*-*-* 03:00:00
-RandomizedDelaySec=300
-Persistent=true
+# Avoid persistent calendar catch-up scans competing with desktop startup.
+OnBootSec=30min
+OnUnitActiveSec=1d
+RandomizedDelaySec=5min
 Unit=cerberix-rkhunter.service
 
 [Install]

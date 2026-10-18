@@ -139,6 +139,10 @@ pacstrap -K /mnt base linux-hardened linux-firmware linux-hardened-headers \
     noto-fonts ttf-jetbrains-mono-nerd \
     git vim fastfetch btop
 
+# Carry bounded journal retention into the installed system.
+install -Dm644 /etc/systemd/journald.conf.d/60-cerberix-retention.conf \
+    /mnt/etc/systemd/journald.conf.d/60-cerberix-retention.conf
+
 msg "Generating fstab..."
 genfstab -U /mnt >> /mnt/etc/fstab
 

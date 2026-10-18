@@ -15,7 +15,7 @@ warns=$(grep -cE "^Warning:" /tmp/rkhunter-scan.$$ 2>/dev/null) || warns=0
 
 if [ "$warns" -eq 0 ] && [ "$rc" -eq 0 ]; then
     "$NOTIFY" "Rootkit scan clean" \
-        "rkhunter found no issues. Next scan: tomorrow 03:00." \
+        "rkhunter found no issues. Scheduled scans run daily, starting 30–35 minutes after boot." \
         info
 elif [ "$warns" -gt 0 ]; then
     summary=$(grep -E "^Warning:" /tmp/rkhunter-scan.$$ | head -3 | sed 's/^Warning: //')

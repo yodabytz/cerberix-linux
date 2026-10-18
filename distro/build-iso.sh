@@ -28,6 +28,8 @@ sed -i '/^broadcom-wl$/d' "${ARCHISO_PROFILE}/packages.x86_64"
 # Ship the package list on the live ISO so the installer reuses it verbatim
 install -Dm644 "${PROFILE_DIR}/packages.x86_64" "${ARCHISO_PROFILE}/airootfs/etc/cerberix/packages.x86_64"
 
+bash "${PROFILE_DIR}/check-image-state.sh" "${PROFILE_DIR}/rootfs"
+
 # Overlay our custom rootfs (cerberix scripts, /etc/skel, systemd units, icons)
 # build.sh stages this as /cerberix-profile/rootfs inside the container
 if [ -d "${PROFILE_DIR}/rootfs" ]; then
@@ -200,6 +202,10 @@ cp /usr/share/applications/cerberix-*.desktop /mnt/usr/share/applications/ 2>/de
 # Greeter background (only; /etc/lightdm/lightdm.conf is written later in the chroot block)
 mkdir -p /mnt/etc/lightdm
 [ -f /etc/lightdm/lightdm-gtk-greeter.conf ] && cp /etc/lightdm/lightdm-gtk-greeter.conf /mnt/etc/lightdm/
+
+# Carry bounded journal retention into the installed system.
+install -Dm644 /etc/systemd/journald.conf.d/60-cerberix-retention.conf \
+    /mnt/etc/systemd/journald.conf.d/60-cerberix-retention.conf
 
 msg "Generating fstab..."
 genfstab -U /mnt >> /mnt/etc/fstab

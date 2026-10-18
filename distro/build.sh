@@ -19,6 +19,8 @@ echo ""
 
 mkdir -p "${PROJECT_ROOT}/output"
 
+bash "${DISTRO_DIR}/check-image-state.sh" "${PROJECT_ROOT}/rootfs"
+
 echo "[0/3] Staging rootfs into build context..."
 rm -rf "${DISTRO_DIR}/rootfs"
 cp -a "${PROJECT_ROOT}/rootfs" "${DISTRO_DIR}/rootfs"
