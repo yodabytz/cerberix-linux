@@ -80,7 +80,19 @@
       Subscribe to the <a href="/feed.xml">RSS feed</a> for updates.
     </p>
 
-<article class="note">
+<article class="note" id="v0-1-3">
+      <h2>0.1.3 — Startup reliability</h2>
+      <div class="note-meta">October 18, 2026</div>
+      <ul>
+        <li>Bound persistent journals to 128 MiB and runtime journals to 64 MiB to limit log-reader startup work.</li>
+        <li>Start scheduled rootkit scans 30–35 minutes after boot, then daily while running, instead of immediately catching up during login.</li>
+        <li>Preserve these defaults through installation and reject inherited runtime logging state in ISO build overlays.</li>
+      </ul>
+      <p>Existing installations: run <code>sudo pacman -Syu cerberix-startup-defaults</code>, then reboot. This applies the new journal retention budget; retain separate archives first if you need older audit history.</p>
+      <p>The fixes reduced one VMware guest reboot from 3 minutes 32 seconds to 21 seconds. Timing depends on hardware and cache state. VPN configuration is unchanged.</p>
+    </article>
+
+    <article class="note">
       <h2>0.1.1 &mdash; Styx</h2>
       <div class="note-meta">
         <span>Released 2026-04-23</span>

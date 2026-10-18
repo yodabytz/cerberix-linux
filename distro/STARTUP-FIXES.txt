@@ -26,5 +26,6 @@ Investigate existing log-reader startup delays before archiving old journals;
 preserve archives outside the active journal tree, readable by root only.
 No VPN configuration, keys or networking policy is changed by these defaults.
 
-Release status: source changes only. Build and boot-test a new ISO before
-signing/publishing it. Existing published ISO files are unchanged.
+Release: 0.1.3. The cerberix-startup-defaults package carries vendor drop-ins
+without overwriting local timer units. cerberix-branding depends on it for
+normal upgrades. See release verification records for publication status.

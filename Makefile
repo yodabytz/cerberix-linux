@@ -104,7 +104,7 @@ ca-info:
 
 # ── ISO Build ───────────────────────────────────────────────
 iso:
-	bash installer/build-iso.sh
+	bash distro/build.sh
 
 vbox:
 	bash installer/build-vbox.sh
@@ -127,7 +127,7 @@ publish: site
 
 # ── Mirror: SourceForge (run with: make mirror-sourceforge SF_USER=yourname) ─
 SF_USER ?= yourname
-SF_VERSION ?= 0.1.2
+SF_VERSION ?= 0.1.3
 mirror-sourceforge:
 	@test "$(SF_USER)" != "yourname" || (echo "set SF_USER=yourname"; exit 1)
 	@echo "Uploading to sourceforge.net/projects/cerberix-linux/files/$(SF_VERSION)/"

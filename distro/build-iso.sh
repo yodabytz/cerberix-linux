@@ -75,7 +75,7 @@ sed -i '/^)$/i\
 cat > "${ARCHISO_PROFILE}/airootfs/etc/motd" << 'MOTDEOF'
 
   ============================================
-   Cerberix Linux 0.1.2 (Styx) — Live
+   Cerberix Linux 0.1.3 (Styx) — Live
   ============================================
 
    To install:  sudo cerberix-install
@@ -89,9 +89,9 @@ cat > "${ARCHISO_PROFILE}/airootfs/etc/os-release" << 'OSEOF'
 NAME="Cerberix Linux"
 ID=cerberix
 ID_LIKE=arch
-VERSION="0.1.2 (Styx)"
-VERSION_ID=0.1.2
-PRETTY_NAME="Cerberix Linux 0.1.2 (Styx)"
+VERSION="0.1.3 (Styx)"
+VERSION_ID=0.1.3
+PRETTY_NAME="Cerberix Linux 0.1.3 (Styx)"
 HOME_URL="https://cerberix.org"
 OSEOF
 
@@ -173,8 +173,8 @@ if ! grep -q '^\[chaotic-aur\]' /etc/pacman.conf; then
     pacman-key --recv-key 3056513887B78AEB --keyserver keyserver.ubuntu.com 2>/dev/null
     pacman-key --lsign-key 3056513887B78AEB 2>/dev/null
     pacman -U --noconfirm \
-        'https://cdn-mirror.chaotic.cx/chaotic-aur/chaotic-keyring.pkg.tar.zst' \
-        'https://cdn-mirror.chaotic.cx/chaotic-aur/chaotic-mirrorlist.pkg.tar.zst' 2>/dev/null
+        'https://geo-mirror.chaotic.cx/chaotic-aur/chaotic-keyring.pkg.tar.zst' \
+        'https://geo-mirror.chaotic.cx/chaotic-aur/chaotic-mirrorlist.pkg.tar.zst' 2>/dev/null
     cat >> /etc/pacman.conf <<PMEOF
 
 [chaotic-aur]
@@ -221,7 +221,7 @@ echo "cerberix" > /etc/hostname
 cat > /etc/hosts <<HOSTSEOF
 127.0.0.1   localhost
 ::1         localhost
-127.0.1.2   cerberix.localdomain cerberix
+127.0.1.3   cerberix.localdomain cerberix
 HOSTSEOF
 CHROOT
 
@@ -316,9 +316,9 @@ cat > /etc/os-release <<OSEOF2
 NAME="Cerberix Linux"
 ID=cerberix
 ID_LIKE=arch
-VERSION="0.1.2 (Styx)"
-VERSION_ID=0.1.2
-PRETTY_NAME="Cerberix Linux 0.1.2 (Styx)"
+VERSION="0.1.3 (Styx)"
+VERSION_ID=0.1.3
+PRETTY_NAME="Cerberix Linux 0.1.3 (Styx)"
 HOME_URL="https://cerberix.org"
 OSEOF2
 rm -f /etc/arch-release
@@ -396,8 +396,8 @@ pacman-key --init 2>/dev/null || true
 pacman-key --recv-key 3056513887B78AEB --keyserver keyserver.ubuntu.com
 pacman-key --lsign-key 3056513887B78AEB
 pacman -U --noconfirm \
-    'https://cdn-mirror.chaotic.cx/chaotic-aur/chaotic-keyring.pkg.tar.zst' \
-    'https://cdn-mirror.chaotic.cx/chaotic-aur/chaotic-mirrorlist.pkg.tar.zst'
+    'https://geo-mirror.chaotic.cx/chaotic-aur/chaotic-keyring.pkg.tar.zst' \
+    'https://geo-mirror.chaotic.cx/chaotic-aur/chaotic-mirrorlist.pkg.tar.zst'
 
 if ! grep -q '^\[chaotic-aur\]' "${ARCHISO_PROFILE}/pacman.conf"; then
     cat >> "${ARCHISO_PROFILE}/pacman.conf" <<'CHAOTICEOF'
@@ -414,8 +414,8 @@ mkarchiso -v -w "${WORK_DIR}" -o "${OUT_DIR}" "${ARCHISO_PROFILE}"
 echo ""
 cd "${OUT_DIR}"
 latest_iso="$(ls -t cerberix-linux-*.iso | head -n 1)"
-if [ -n "${latest_iso}" ] && [ "${latest_iso}" != "cerberix-linux-0.1.2-x86_64.iso" ]; then
-    mv -f "${latest_iso}" "cerberix-linux-0.1.2-x86_64.iso"
+if [ -n "${latest_iso}" ] && [ "${latest_iso}" != "cerberix-linux-0.1.3-x86_64.iso" ]; then
+    mv -f "${latest_iso}" "cerberix-linux-0.1.3-x86_64.iso"
 fi
 
 echo "============================================"

@@ -1,0 +1,13 @@
+post_install() {
+    if [ -d /run/systemd/system ]; then
+        systemctl daemon-reload
+        # Apply timer changes only if the user already enabled the scan timer.
+        systemctl try-restart cerberix-rkhunter.timer
+    fi
+    echo "Cerberix startup defaults installed. Reboot to apply journal retention."
+    echo "Existing archived logs are subject to the 128 MiB journal retention budget."
+}
+post_upgrade() { post_install; }
+post_remove() {
+    if [ -d /run/systemd/system ]; then systemctl daemon-reload; fi
+}

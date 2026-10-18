@@ -1,12 +1,12 @@
 # Maintainer: yodabytz <hello@cerberix.org>
 pkgname=cerberix-branding
-pkgver=0.1.2
+pkgver=0.1.3
 pkgrel=1
 pkgdesc="Cerberix Linux OS branding: os-release, survives filesystem upgrades via pacman hook"
 arch=('any')
 url="https://cerberix.org"
 license=('MIT')
-depends=()
+depends=('cerberix-startup-defaults')
 install=cerberix-branding.install
 source=("cerberix-os-release"
         "99-cerberix-branding.hook")

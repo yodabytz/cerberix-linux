@@ -1,0 +1,15 @@
+pkgname=cerberix-startup-defaults
+pkgver=0.1.3
+pkgrel=1
+pkgdesc="Bounded journal retention and deferred startup security scans"
+arch=('any')
+url="https://cerberix.org"
+license=('MIT')
+depends=('systemd')
+install=cerberix-startup-defaults.install
+source=('60-cerberix-retention.conf' '60-startup-delay.conf')
+sha256sums=('SKIP' 'SKIP')
+package() {
+  install -Dm644 "$srcdir/60-cerberix-retention.conf" "$pkgdir/usr/lib/systemd/journald.conf.d/60-cerberix-retention.conf"
+  install -Dm644 "$srcdir/60-startup-delay.conf" "$pkgdir/usr/lib/systemd/system/cerberix-rkhunter.timer.d/60-startup-delay.conf"
+}
