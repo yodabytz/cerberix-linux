@@ -2,7 +2,7 @@
 pkgbase=krellix
 pkgname=('krellix' 'krellix-server')
 pkgver=0.1.2
-pkgrel=22
+pkgrel=23
 arch=('x86_64' 'aarch64')
 url='https://github.com/yodabytz/krellix'
 license=('GPL-3.0-or-later')
@@ -13,13 +13,15 @@ source=("$pkgbase-$pkgver.tar.gz"
         "add-macos-config-theme-paths.patch"
         "add-remote-top-processes.patch"
         "fix-instance-settings-and-macos-monitors.patch"
+        "fix-theme-fit-on-panel-changes.patch"
         "krellix.png"
         "org.cerberix.krellix.desktop")
 sha256sums=("1aef51100d57481ccf4b1ff5ee610c8c84439ef8c5632d90a02fc9d950af020c"
             "a014ba418d55dd1d900e1fa86419cea83d8f8f01e8d6d4995326cc0d3fcb2e0f"
             "6b41c0d3b342841e4aca88b417235382db85178aec1c8ead384b12e43290a8ea"
             "4e90f63c47d8d042cd8241ea873361f148d464e066fe1118beeecfe6f8801817"
-            "bdb322ea9a1c076fd34abd6b64ad8b37ae7323b917010ae9c8b21be6d595fded"
+            "eae7afdb8c3e772992128be2711f87c7ed14c1f48edb024a57b474aef9217227"
+            "745fa4459adb56c75d70c3c2d9ece075c13f60ae1a6bde3524c09935607ea822"
             "a3b72db41322c141127e1cd8ff63d7cbee5f385a4ade9399c7066cd850c02a87"
             "c1f32284129e30258edb5c7cc99f1576177887fe8498d400422b955ed8848ef7")
 
@@ -48,7 +50,8 @@ prepare() {
         "$srcdir/add-macos-config-plugin-paths.patch" \
         "$srcdir/add-macos-config-theme-paths.patch" \
         "$srcdir/add-remote-top-processes.patch" \
-        "$srcdir/fix-instance-settings-and-macos-monitors.patch"; do
+        "$srcdir/fix-instance-settings-and-macos-monitors.patch" \
+        "$srcdir/fix-theme-fit-on-panel-changes.patch"; do
         apply_patch_if_needed "$patch"
     done
 }
