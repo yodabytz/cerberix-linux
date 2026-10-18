@@ -1,0 +1,45 @@
+Cerberix Linux 0.1.3 release verification, 2026-10-18
+
+Source commits: 82e7f79 startup defaults; 6d23842 release packaging.
+ISO: cerberix-linux-0.1.3-x86_64.iso
+Bytes: 3638935552
+SHA256: 6483dc02dbba2f6fbb36f2681925d00d477941a40e0318a8231a23c7dc4b3955
+Signing key: 49840314FFF3DFE2D6E75439577040DEDD8E521E
+Detached GPG signature verified successfully.
+
+Validation performed:
+- Six offline startup regression tests passed; shell syntax and git diff checks passed.
+- Both packages installed in an isolated Arch container; pacman -Qkk reported zero altered files.
+- Signed installation validated after importing the Cerberix public key.
+- Packaged timer passed systemd-analyze verify; journald settings resolved correctly.
+- Compared repository metadata: all unrelated public package records preserved.
+- Public R2 database and startup package bytes match release artifacts; SourceForge package database matched too.
+- Booted ISO filesystem in QEMU/KVM with its own kernel/initramfs, serial console and NAT networking.
+- Live system identified as 0.1.3; bounded retention and delayed scan timer present.
+- Installer bash syntax passed inside live system; no failed system units; HTTPS returned 200.
+- Live startup: kernel 4.332s + userspace 54.643s = 58.976s.
+- Test VM powered off afterward.
+
+Limits:
+QEMU smoke test used direct kernel boot (not a separate UEFI/BIOS menu test),
+and did not perform a destructive full disk installation. The 21-second reboot
+result in release notes is the repaired installed VMware guest, not live ISO boot.
+The earlier generic serial login banner still uses old Firewall branding; the
+live welcome, os-release and installer identify 0.1.3 correctly.
+
+Publication:
+Signed packages and database uploaded to R2, origin compatibility mirror and
+SourceForge. ISO and signature/checksum published to origin; SourceForge ISO
+upload completed; public checksum matches and ISO returns 200 with correct length.
+Homepage and release notes published after backing up the previous pages.
+Previous ISO versions retained. Rollback repository metadata is saved under
+/home/yodabytz/cerberus/output/releases/0.1.3/rollback on the release host.
+Previous website pages are in the adjacent site-backup directory.
+Rollback: restore saved signed metadata to all three mirrors and saved website
+pages to the origin. Older ISO files remain available; installed packages require
+an explicit pacman downgrade if rolling back their defaults.
+
+Existing users: sudo pacman -Syu cerberix-startup-defaults
+Then reboot. Existing cerberix-branding users receive the defaults as a dependency.
+Journal retention can remove older active archives; preserve separate audit
+archives first if required. No VPN keys or connection profiles are modified.
