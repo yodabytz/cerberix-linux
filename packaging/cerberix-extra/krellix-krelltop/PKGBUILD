@@ -1,20 +1,22 @@
 # Maintainer: yodabytz <hello@cerberix.org>
 pkgname=krellix-krelltop
 pkgver=0.1.2
-pkgrel=2
+pkgrel=3
 arch=('x86_64' 'aarch64')
 url='https://github.com/yodabytz/krellix'
 license=('GPL-3.0-or-later')
 pkgdesc='KrellTop top CPU and memory process monitor plugin for Krellix'
-depends=('krellix>=0.1.2' 'qt6-base' 'procps-ng')
+depends=('krellix>=0.1.2-25' 'qt6-base' 'procps-ng')
 makedepends=('cmake' 'ninja' 'qt6-tools' 'qt6-base')
 options=('!debug')
 source=("krellix-$pkgver.tar.gz"
         "add-krelltop-plugin.patch"
-        "add-remote-top-processes.patch")
-sha256sums=('1aef51100d57481ccf4b1ff5ee610c8c84439ef8c5632d90a02fc9d950af020c'
+        "KrelltopPlugin.cpp"
+        "KrelltopPlugin.h")
+sha256sums=('8d6027d8d6e71ac6c92efd353627879fc2a7aa273e3b07d0ba299b6d41eebe3b'
             '7c3eb2fa41694b0d0403b65c176cd6e6c1084b91c43d21913a0e98874c727239'
-            '4e90f63c47d8d042cd8241ea873361f148d464e066fe1118beeecfe6f8801817')
+            '92f3630d077b0be09040a6f99a805cfdcdc578667abd9aa586ce018372a403ae'
+            '89bb0c12dc85fd49af52c1e0068ab277a8327c71e94d89e5098de89d9b1d0700')
 
 prepare() {
     cd "krellix-$pkgver"
@@ -37,7 +39,9 @@ prepare() {
     }
 
     apply_patch_if_needed "$srcdir/add-krelltop-plugin.patch"
-    apply_patch_if_needed "$srcdir/add-remote-top-processes.patch"
+    # Compile against the shipped host headers; never invent host object fields.
+    cp "$srcdir/KrelltopPlugin.cpp" plugins/krelltop/
+    cp "$srcdir/KrelltopPlugin.h" plugins/krelltop/
 }
 
 build() {
