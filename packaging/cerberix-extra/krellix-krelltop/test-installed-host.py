@@ -17,7 +17,9 @@ stop = threading.Event()
 def serve(client, index):
     try:
         client.sendall(b'{"type":"hello","hostname":"krelltop-test"}\n')
-        for tick in range(25):
+        # Stay connected beyond the plugin's five-second polling interval.
+        # A five-second fixture can disconnect at every poll and never test it.
+        for tick in range(40):
             sample = {"type": "sample", "uptime": tick, "cpu": [], "mem": {},
                       "net": [], "disk": [], "proc": {}}
             if index % 3 != 0:
@@ -65,15 +67,16 @@ with tempfile.TemporaryDirectory(prefix="krelltop-test-") as directory:
             "--host", f"127.0.0.1:{listener.getsockname()[1]}", "--monitors", "krelltop"],
             env=env, stdout=log, stderr=log)
         try:
-            for _ in range(25):
+            for _ in range(40):
                 time.sleep(1)
                 if process.poll() is not None:
                     log.seek(0)
                     raise RuntimeError(f"Krellix exited {process.returncode}: {log.read()}")
             maps = Path(f"/proc/{process.pid}/maps").read_text()
             assert str(candidate) in maps, "candidate was not loaded"
-            assert len(connections) >= 6, "remote polling/reconnects did not occur"
-            print(f"PASS: candidate loaded; {len(connections)} connections; 25 seconds without crash")
+            log.seek(0)
+            assert len(connections) >= 6, f"remote polling/reconnects did not occur ({len(connections)} connections): {log.read()}"
+            print(f"PASS: candidate loaded; {len(connections)} connections; 40 seconds without crash")
         finally:
             process.terminate()
             process.wait(timeout=10)
