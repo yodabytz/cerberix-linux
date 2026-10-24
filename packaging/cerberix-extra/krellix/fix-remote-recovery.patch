@@ -1,0 +1,420 @@
+diff -ruN -x '*.orig' /tmp/krellix-linux-original/krellix-0.1.2/CMakeLists.txt /tmp/krellix-linux-netports/krellix-0.1.2/CMakeLists.txt
+--- /tmp/krellix-linux-original/krellix-0.1.2/CMakeLists.txt	2026-10-19 17:55:06.000000000 -0400
++++ /tmp/krellix-linux-netports/krellix-0.1.2/CMakeLists.txt	2026-10-23 04:53:50.852514400 -0400
+@@ -42,6 +42,11 @@
+ 
+ qt_standard_project_setup()
+ 
++include(CTest)
++if(BUILD_TESTING)
++    add_subdirectory(tests/netports)
++endif()
++
+ set(KRELLIX_SOURCES
+     src/krellix/main.cpp
+     src/krellix/KrellmailOAuthBroker.cpp
+diff -ruN -x '*.orig' /tmp/krellix-linux-original/krellix-0.1.2/src/krellix/MainWindow.cpp /tmp/krellix-linux-netports/krellix-0.1.2/src/krellix/MainWindow.cpp
+--- /tmp/krellix-linux-original/krellix-0.1.2/src/krellix/MainWindow.cpp	2026-10-18 00:28:58.000000000 -0400
++++ /tmp/krellix-linux-netports/krellix-0.1.2/src/krellix/MainWindow.cpp	2026-10-24 08:35:52.976252031 -0400
+@@ -236,7 +236,7 @@
+     if (!m_alertDebounce) {
+         m_alertDebounce = new QTimer(this);
+         m_alertDebounce->setSingleShot(true);
+-        m_alertDebounce->setInterval(5000);     // 5s grace before alarming
++        m_alertDebounce->setInterval(0); // Show disconnected status on the next event-loop turn.
+         connect(m_alertDebounce, &QTimer::timeout, this, [this]() {
+             if (m_remote && !m_remote->isConnected() && m_alertBanner) {
+                 m_alertBanner->showAlert(
+@@ -253,11 +253,15 @@
+                     m_alertDebounce->stop();
+                     m_alertBanner->hideAlert();
+                 } else {
+-                    // Debounce: a quick reconnect (< 5s) won't show the
+-                    // banner. Only sustained loss does.
+                     m_alertDebounce->start();
+                 }
+             });
++    connect(m_remote, &RemoteSource::retriesExhausted, this, [this]() {
++        m_alertDebounce->stop();
++        m_alertBanner->showAlert(QStringLiteral("Disconnected: %1 - retries stopped")
++                                    .arg(m_remote->remoteAddress()));
++    });
++    if (!m_remote->isConnected()) m_alertDebounce->start();
+ }
+ 
+ void MainWindow::addMonitor(MonitorBase *m)
+diff -ruN -x '*.orig' /tmp/krellix-linux-original/krellix-0.1.2/src/monitors/NetPortMonitor.cpp /tmp/krellix-linux-netports/krellix-0.1.2/src/monitors/NetPortMonitor.cpp
+--- /tmp/krellix-linux-original/krellix-0.1.2/src/monitors/NetPortMonitor.cpp	2026-10-18 00:24:26.000000000 -0400
++++ /tmp/krellix-linux-netports/krellix-0.1.2/src/monitors/NetPortMonitor.cpp	2026-10-23 04:53:50.918514439 -0400
+@@ -138,11 +138,12 @@
+         p.setFont(m_theme->font(QStringLiteral("label")));
+ 
+         const QFontMetrics fm(p.font());
+-        const int countW = fm.horizontalAdvance(QStringLiteral("99"));
++        const QString countText = QString::number(m_count);
++        const int countW = qMax(fm.horizontalAdvance(QStringLiteral("99")),
++                               fm.horizontalAdvance(countText));
+         const int gapW = qMax(3, fm.horizontalAdvance(QStringLiteral(" ")));
+         const QRect countRect(0, 0, countW, height());
+         const QRect labelRect(countW + gapW, 0, qMax(0, width() - countW - gapW), height());
+-        const QString countText = QString::number(m_count).rightJustified(2, QLatin1Char(' '), true);
+ 
+         drawStyledText(p,
+                        m_theme->textStyle(QStringLiteral("text_secondary")),
+@@ -279,19 +280,20 @@
+         if (!portInRanges(sample.localPort, ranges))
+             continue;
+         if (sample.protocol == QLatin1String("tcp")
+-            && sample.state != QLatin1String("01"))
++            && sample.state != QLatin1String("01")
++            && sample.state != QLatin1String("ESTABLISHED"))
+             continue;
++        if (sample.protocol == QLatin1String("udp")
++            && (sample.remoteAddress.isEmpty() || sample.remotePort == 0)) {
++            out.append(QStringLiteral("UDP :%1 (bound socket; peer not reported)").arg(sample.localPort));
++            continue;
++        }
+         if (sample.remoteAddress.isEmpty() || sample.remotePort == 0)
+             continue;
+ 
+         out.append(QStringLiteral("%1:%2").arg(sample.remoteAddress).arg(sample.remotePort));
+     }
+     out.sort(Qt::CaseInsensitive);
+-    if (out.size() > 12) {
+-        const int extra = out.size() - 12;
+-        out = out.mid(0, 12);
+-        out.append(QStringLiteral("... %1 more").arg(extra));
+-    }
+     return out;
+ }
+ 
+@@ -312,6 +314,9 @@
+         if (!m_rows.at(i)) continue;
+         const Watch &watch = m_watches.at(i);
+         const QStringList connections = connectionEntriesForWatch(watch, samples);
+-        m_rows.at(i)->setRow(watch.label, connections.size(), connections);
++        QStringList tooltip = connections.mid(0, 12);
++        if (connections.size() > 12)
++            tooltip.append(QStringLiteral("... %1 more").arg(connections.size() - 12));
++        m_rows.at(i)->setRow(watch.label, connections.size(), tooltip);
+     }
+ }
+diff -ruN -x '*.orig' /tmp/krellix-linux-original/krellix-0.1.2/src/remote/RemoteSource.cpp /tmp/krellix-linux-netports/krellix-0.1.2/src/remote/RemoteSource.cpp
+--- /tmp/krellix-linux-original/krellix-0.1.2/src/remote/RemoteSource.cpp	2026-10-18 00:24:26.000000000 -0400
++++ /tmp/krellix-linux-netports/krellix-0.1.2/src/remote/RemoteSource.cpp	2026-10-24 08:35:52.977252032 -0400
+@@ -7,6 +7,8 @@
+ #include <QLoggingCategory>
+ #include <QTcpSocket>
+ #include <QTimer>
++#include <QSignalBlocker>
++#include <array>
+ 
+ Q_LOGGING_CATEGORY(lcRemote, "krellix.remote")
+ 
+@@ -15,8 +17,7 @@
+ constexpr qint64 kMaxLineBytes        = 1024 * 1024;
+ constexpr qint64 kMaxBufferBytes      = 2 * 1024 * 1024;   // hard cap before drop
+ constexpr int    kMaxParseErrorsBeforeReset = 5;
+-constexpr int    kBaseReconnectMs     = 1000;
+-constexpr int    kMaxReconnectMs      = 30 * 1000;
++constexpr std::array<int, 6> kReconnectDelaysMs{5000, 10000, 20000, 60000, 300000, 1200000};
+ 
+ RemoteSource *g_instance = nullptr;
+ 
+@@ -42,6 +43,25 @@
+             this, &RemoteSource::onSocketError);
+ 
+     m_reconnectTimer->setSingleShot(true);
++    m_reconnectTimer->setObjectName(QStringLiteral("remoteReconnectTimer"));
++    // Bound DNS/TCP attempts as well as the delay between failed attempts.
++    auto *attemptTimer = new QTimer(this);
++    attemptTimer->setObjectName(QStringLiteral("remoteConnectTimeout"));
++    attemptTimer->setSingleShot(true);
++    attemptTimer->setInterval(15000);
++    connect(m_socket, &QTcpSocket::stateChanged, attemptTimer,
++            [attemptTimer](QAbstractSocket::SocketState state) {
++        if (state == QAbstractSocket::HostLookupState || state == QAbstractSocket::ConnectingState) {
++            if (!attemptTimer->isActive()) attemptTimer->start();
++        } else {
++            attemptTimer->stop();
++        }
++    });
++    connect(attemptTimer, &QTimer::timeout, this, [this]() {
++        m_socket->abort();
++        emit connectionStateChanged(false);
++        scheduleReconnect();
++    });
+     connect(m_reconnectTimer, &QTimer::timeout, this, [this]() {
+         if (m_socket->state() == QAbstractSocket::UnconnectedState
+             && !m_host.isEmpty()) {
+@@ -58,9 +78,19 @@
+ 
+ void RemoteSource::connectToHost(const QString &host, quint16 port)
+ {
++    m_reconnectTimer->stop();
++    findChild<QTimer *>(QStringLiteral("remoteConnectTimeout"))->stop();
++    {
++        const QSignalBlocker blocker(m_socket);
++        m_socket->abort();
++    }
++    resetCachedState();
++    m_buffer.clear();
+     m_host = host;
+     m_port = port ? port : 19150;
+-    m_reconnectDelayMs = kBaseReconnectMs;
++    m_reconnectAttempt = 0;
++    emit connectionStateChanged(false);
++    if (m_host.isEmpty()) return;
+     qCInfo(lcRemote) << "connecting to" << m_host << m_port;
+     m_socket->connectToHost(m_host, m_port);
+ }
+@@ -80,7 +110,8 @@
+     qCInfo(lcRemote) << "connected to" << remoteAddress();
+     m_buffer.clear();
+     m_consecutiveParseErrors = 0;
+-    m_reconnectDelayMs = kBaseReconnectMs;
++    m_reconnectTimer->stop();
++    m_reconnectAttempt = 0;
+     emit connectionStateChanged(true);
+ }
+ 
+@@ -108,15 +139,22 @@
+     // we don't get wedged after a one-time outage at startup.
+     if (m_socket
+         && m_socket->state() == QAbstractSocket::UnconnectedState) {
++        emit connectionStateChanged(false);
+         scheduleReconnect();
+     }
+ }
+ 
+ void RemoteSource::scheduleReconnect()
+ {
+-    if (m_host.isEmpty()) return;
+-    m_reconnectTimer->start(m_reconnectDelayMs);
+-    m_reconnectDelayMs = qMin(m_reconnectDelayMs * 2, kMaxReconnectMs);
++    // errorOccurred and disconnected can describe the same failure.
++    if (m_host.isEmpty() || m_reconnectTimer->isActive() || isConnected()) return;
++    if (m_reconnectAttempt >= int(kReconnectDelaysMs.size())) {
++        emit retriesExhausted();
++        return;
++    }
++    const int delay = kReconnectDelaysMs.at(m_reconnectAttempt++);
++    qCInfo(lcRemote) << "retry" << m_reconnectAttempt << "in" << delay << "ms";
++    m_reconnectTimer->start(delay);
+ }
+ 
+ void RemoteSource::onReadyRead()
+diff -ruN -x '*.orig' /tmp/krellix-linux-original/krellix-0.1.2/src/remote/RemoteSource.h /tmp/krellix-linux-netports/krellix-0.1.2/src/remote/RemoteSource.h
+--- /tmp/krellix-linux-original/krellix-0.1.2/src/remote/RemoteSource.h	2026-10-18 00:24:26.000000000 -0400
++++ /tmp/krellix-linux-netports/krellix-0.1.2/src/remote/RemoteSource.h	2026-10-24 08:35:52.977252032 -0400
+@@ -53,6 +53,7 @@
+ signals:
+     void connectionStateChanged(bool connected);
+     void sampleReceived();
++    void retriesExhausted();
+ 
+ private slots:
+     void onSocketConnected();
+@@ -85,7 +86,7 @@
+     ProcInfo          m_proc;
+ 
+     int               m_consecutiveParseErrors = 0;
+-    int               m_reconnectDelayMs       = 1000;
++    int               m_reconnectAttempt       = 0;
+ 
+     Q_DISABLE_COPY_MOVE(RemoteSource)
+ };
+diff -ruN -x '*.orig' /tmp/krellix-linux-original/krellix-0.1.2/tests/netport-count.cpp /tmp/krellix-linux-netports/krellix-0.1.2/tests/netport-count.cpp
+--- /tmp/krellix-linux-original/krellix-0.1.2/tests/netport-count.cpp	1969-12-31 19:00:00.000000000 -0500
++++ /tmp/krellix-linux-netports/krellix-0.1.2/tests/netport-count.cpp	2026-10-23 04:53:51.003514490 -0400
+@@ -0,0 +1,91 @@
++#include "monitors/NetPortMonitor.h"
++#include "sysdep/NetPortStat.h"
++#include "theme/Theme.h"
++#include <QApplication>
++#include <QSettings>
++#include <QTemporaryDir>
++#include <QWidget>
++#include <QDebug>
++#include <QEvent>
++
++static QList<NetPortSample> samples;
++static QList<NetPortSample> readSamples() { return samples; }
++
++int main(int argc, char **argv)
++{
++    QApplication app(argc, argv);
++    QTemporaryDir dir;
++    QCoreApplication::setOrganizationName(QStringLiteral("netport-test"));
++    QCoreApplication::setApplicationName(QStringLiteral("netport-test"));
++    QSettings::setDefaultFormat(QSettings::IniFormat);
++    QSettings::setPath(QSettings::IniFormat, QSettings::UserScope, dir.path());
++    QSettings settings;
++    settings.setValue(QStringLiteral("monitors/netports/watch1/enabled"), true);
++    settings.setValue(QStringLiteral("monitors/netports/watch1/label"), QStringLiteral("WWW"));
++    settings.setValue(QStringLiteral("monitors/netports/watch1/ports"), QStringLiteral("80, 443"));
++    settings.sync();
++    NetPortStat::setReadOverride(readSamples);
++    Theme theme;
++    NetPortMonitor monitor(&theme);
++    QWidget *panel = monitor.createWidget(nullptr);
++    for (const QString &protocol : {QStringLiteral("tcp"), QStringLiteral("udp"), QStringLiteral("all")}) {
++      for (int primary : {80, 65000}) {
++        const int secondary = primary == 80 ? 443 : 65001;
++        settings.setValue(QStringLiteral("monitors/netports/watch1/protocol"), protocol);
++        settings.setValue(QStringLiteral("monitors/netports/watch1/ports"),
++            primary == 80 ? QStringLiteral("80, 443") : QStringLiteral("65000-65001"));
++        settings.sync();
++        for (int count : {0, 1, 12, 13, 57, 99, 100, 137, 4}) {
++        samples.clear();
++        for (int i = 0; i < count; ++i)
++            samples.append({protocol == QStringLiteral("all")
++                    ? (i % 2 ? QStringLiteral("tcp") : QStringLiteral("udp")) : protocol,
++                quint16(i % 2 ? primary : secondary),
++                quint16(10000 + i), QStringLiteral("192.0.2.1"), QStringLiteral("01")});
++        // None of these are established connections to the watched local ports.
++        samples.append({QStringLiteral("tcp"), 443, 0, {}, QStringLiteral("0A")});
++        samples.append({QStringLiteral("tcp"), 443, 1234, QStringLiteral("192.0.2.2"), QStringLiteral("03")});
++        samples.append({QStringLiteral("tcp"), 443, 1234, QStringLiteral("192.0.2.2"), QStringLiteral("06")});
++        samples.append({QStringLiteral("tcp"), 5555, 443, QStringLiteral("192.0.2.2"), QStringLiteral("01")});
++        monitor.tick();
++        QCoreApplication::sendPostedEvents(nullptr, QEvent::DeferredDelete);
++        bool found = false;
++        for (QWidget *widget : panel->findChildren<QWidget *>()) {
++            if (!widget->toolTip().startsWith(QStringLiteral("WWW:"))) continue;
++            found = true;
++            if (!widget->toolTip().startsWith(QStringLiteral("WWW: %1 connection").arg(count)))
++                qFatal("Wrong count: %s", qPrintable(widget->toolTip()));
++            if (count > 12 && !widget->toolTip().contains(QStringLiteral("... %1 more").arg(count - 12)))
++                qFatal("Wrong tooltip overflow");
++        }
++        if (!found) qFatal("Watch row missing");
++        }
++      }
++    }
++    settings.setValue(QStringLiteral("monitors/netports/watch1/ports"), QStringLiteral("22,60000-61000"));
++    settings.setValue(QStringLiteral("monitors/netports/watch1/protocol"), QStringLiteral("all"));
++    settings.sync();
++    samples = {
++        {QStringLiteral("tcp"), 22, 1234, QStringLiteral("192.0.2.1"), QStringLiteral("01")},
++        {QStringLiteral("tcp"), 22, 1235, QStringLiteral("192.0.2.2"), QStringLiteral("ESTABLISHED")},
++        {QStringLiteral("tcp"), 22, 0, {}, QStringLiteral("LISTEN")},
++        {QStringLiteral("udp"), 60000, 0, {}, {}},
++        {QStringLiteral("udp"), 61000, 0, {}, {}},
++        {QStringLiteral("udp"), 60001, 50000, QStringLiteral("192.0.2.3"), {}},
++        {QStringLiteral("udp"), 61001, 0, {}, {}},
++        {QStringLiteral("udp"), 59999, 0, {}, {}}
++    };
++    monitor.tick();
++    QCoreApplication::sendPostedEvents(nullptr, QEvent::DeferredDelete);
++    bool moshFound = false;
++    for (QWidget *widget : panel->findChildren<QWidget *>()) {
++        if (!widget->toolTip().startsWith(QStringLiteral("WWW:"))) continue;
++        moshFound = widget->toolTip().startsWith(QStringLiteral("WWW: 5 connections"))
++            && widget->toolTip().contains(QStringLiteral("UDP :60000"))
++            && widget->toolTip().contains(QStringLiteral("UDP :61000"));
++    }
++    if (!moshFound) qFatal("SSH/Mosh watch count incorrect");
++    delete panel;
++    NetPortStat::setReadOverride(nullptr);
++    qInfo("PASS: full counts, tooltip limits, TCP states, ports, and live decreases");
++}
+diff -ruN -x '*.orig' /tmp/krellix-linux-original/krellix-0.1.2/tests/netports/CMakeLists.txt /tmp/krellix-linux-netports/krellix-0.1.2/tests/netports/CMakeLists.txt
+--- /tmp/krellix-linux-original/krellix-0.1.2/tests/netports/CMakeLists.txt	1969-12-31 19:00:00.000000000 -0500
++++ /tmp/krellix-linux-netports/krellix-0.1.2/tests/netports/CMakeLists.txt	2026-10-24 08:36:24.415269828 -0400
+@@ -0,0 +1,13 @@
++qt_add_executable(netport-count ../netport-count.cpp
++    ../../src/monitors/NetPortMonitor.cpp ../../src/monitors/NetPortMonitor.h ../../src/sysdep/NetPortStat.cpp
++    ../../src/monitors/MonitorBase.cpp ../../src/theme/Theme.cpp ../../src/widgets/Panel.cpp
++    ../../src/widgets/Decal.cpp ../../src/widgets/Krell.cpp ../../src/widgets/Chart.cpp ../../src/widgets/Meter.cpp)
++target_include_directories(netport-count PRIVATE ../../src)
++target_link_libraries(netport-count PRIVATE Qt6::Widgets Qt6::Network)
++add_test(NAME netport-count COMMAND netport-count)
++set_tests_properties(netport-count PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 20)
++qt_add_executable(remote-reconnect ../remote-reconnect.cpp ../../src/remote/RemoteSource.cpp ../../src/remote/RemoteSource.h ../../src/widgets/AlertBanner.cpp ../../src/widgets/AlertBanner.h)
++target_include_directories(remote-reconnect PRIVATE ../../src)
++target_link_libraries(remote-reconnect PRIVATE Qt6::Widgets Qt6::Network)
++add_test(NAME remote-reconnect COMMAND remote-reconnect)
++set_tests_properties(remote-reconnect PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 30)
+diff -ruN -x '*.orig' /tmp/krellix-linux-original/krellix-0.1.2/tests/remote-reconnect.cpp /tmp/krellix-linux-netports/krellix-0.1.2/tests/remote-reconnect.cpp
+--- /tmp/krellix-linux-original/krellix-0.1.2/tests/remote-reconnect.cpp	1969-12-31 19:00:00.000000000 -0500
++++ /tmp/krellix-linux-netports/krellix-0.1.2/tests/remote-reconnect.cpp	2026-10-24 08:35:53.066252082 -0400
+@@ -0,0 +1,78 @@
++#include "remote/RemoteSource.h"
++#include "widgets/AlertBanner.h"
++#include <QApplication>
++#include <QElapsedTimer>
++#include <QThread>
++#include <QTcpServer>
++#include <QTcpSocket>
++#include <QTimer>
++#include <functional>
++
++static void require(bool ok, const char *message) { if (!ok) qFatal("%s", message); }
++static void waitFor(const std::function<bool()> &done) {
++    QElapsedTimer elapsed;
++    elapsed.start();
++    while (!done() && elapsed.elapsed() < 3000) {
++        QCoreApplication::processEvents();
++        QThread::msleep(1);
++    }
++    require(done(), "Timed out waiting for socket state");
++}
++
++int main(int argc, char **argv) {
++    QApplication app(argc, argv);
++    QTcpServer server;
++    require(server.listen(QHostAddress::LocalHost), "Cannot reserve test port");
++    const auto port = server.serverPort();
++    server.close();
++    RemoteSource remote;
++    AlertBanner banner;
++    int exhausted = 0;
++    QObject::connect(&remote, &RemoteSource::connectionStateChanged, &banner, [&](bool connected) {
++        if (connected) banner.hideAlert(); else banner.showAlert(QStringLiteral("Disconnected"));
++    });
++    QObject::connect(&remote, &RemoteSource::retriesExhausted, &app, [&]() { ++exhausted; });
++    auto *retry = remote.findChild<QTimer *>(QStringLiteral("remoteReconnectTimer"));
++    auto *timeout = remote.findChild<QTimer *>(QStringLiteral("remoteConnectTimeout"));
++    require(retry && timeout, "Missing connection timers");
++    remote.connectToHost(QStringLiteral("127.0.0.1"), port);
++    require(!banner.isHidden(), "Initial failure must show the banner");
++    for (int delay : {5000, 10000, 20000, 60000, 300000, 1200000}) {
++        waitFor([&]() { return retry->isActive(); });
++        require(retry->interval() == delay, "Incorrect retry interval");
++        QMetaObject::invokeMethod(&remote, "scheduleReconnect", Qt::DirectConnection);
++        require(retry->interval() == delay, "Duplicate failure advanced retry sequence");
++        // Exercise real retry/socket callbacks without waiting 26 minutes.
++        retry->start(0);
++        waitFor([&]() { return retry->interval() != 0 || exhausted; });
++    }
++    require(exhausted > 0 && !retry->isActive(), "Retries did not stop");
++    require(!banner.isHidden(), "Exhaustion hid disconnected warning");
++    const auto beforeBlink = banner.styleSheet();
++    QMetaObject::invokeMethod(&banner, "onBlinkTick", Qt::DirectConnection);
++    require(banner.styleSheet() != beforeBlink, "Red warning does not flash");
++
++    require(server.listen(QHostAddress::LocalHost, port), "Cannot start recovered server");
++    remote.connectToHost(QStringLiteral("127.0.0.1"), port);
++    waitFor([&]() { return remote.isConnected() && server.hasPendingConnections(); });
++    require(banner.isHidden() && !retry->isActive() && !timeout->isActive(), "Recovery did not clear warning/timers");
++    auto *peer = server.nextPendingConnection();
++    server.close();
++    peer->abort();
++    waitFor([&]() { return retry->isActive(); });
++    require(retry->interval() == 5000, "Recovery did not reset retry sequence");
++    require(!banner.isHidden(), "Lost established connection did not show warning");
++    require(server.listen(QHostAddress::LocalHost, port), "Cannot reopen server for automatic recovery");
++    retry->start(0);
++    waitFor([&]() { return remote.isConnected() && server.hasPendingConnections(); });
++    require(banner.isHidden(), "Automatic reconnect did not clear warning");
++    server.nextPendingConnection()->deleteLater();
++    server.close();
++    remote.connectToHost(QStringLiteral("127.0.0.1"), port);
++    timeout->stop();
++    QMetaObject::invokeMethod(timeout, "timeout", Qt::DirectConnection);
++    require(retry->isActive() && retry->interval() == 5000, "Timed-out attempt did not schedule retry");
++    remote.connectToHost(QString(), 0);
++    require(!retry->isActive(), "Explicit reset left an old retry pending");
++    qInfo("PASS: retry intervals, exhaustion, duplicates, recovery, timeout, and flashing warning");
++}

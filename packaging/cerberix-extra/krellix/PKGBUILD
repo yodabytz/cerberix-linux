@@ -2,7 +2,7 @@
 pkgbase=krellix
 pkgname=('krellix' 'krellix-server' 'krellix-krellbluetooth')
 pkgver=0.1.2
-pkgrel=25
+pkgrel=27
 arch=('x86_64' 'aarch64')
 url='https://github.com/yodabytz/krellix'
 license=('GPL-3.0-or-later')
@@ -11,12 +11,21 @@ options=('!debug')
 source=("krellix-0.1.2.tar.gz" "krellix.png" "org.cerberix.krellix.desktop")
 sha256sums=('8d6027d8d6e71ac6c92efd353627879fc2a7aa273e3b07d0ba299b6d41eebe3b' 'a3b72db41322c141127e1cd8ff63d7cbee5f385a4ade9399c7066cd850c02a87' 'c1f32284129e30258edb5c7cc99f1576177887fe8498d400422b955ed8848ef7')
 
+source+=("fix-remote-recovery.patch")
+sha256sums+=('f75453e0d9eb0915451f4f7424fa22ca54c3c59314b51d88bc277cc92bed21fd')
+
+prepare() {
+    cd "$pkgbase-$pkgver"
+    patch -p4 < "$srcdir/fix-remote-recovery.patch"
+}
+
 build() {
     cd "$pkgbase-$pkgver"
     cmake -GNinja -B build -S . \
         -DCMAKE_BUILD_TYPE=Release \
         -DCMAKE_INSTALL_PREFIX=/usr
     cmake --build build -j4
+    QT_QPA_PLATFORM=offscreen ctest --test-dir build --output-on-failure
 }
 
 package_krellix() {
