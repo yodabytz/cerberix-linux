@@ -2,7 +2,7 @@
 pkgbase=krellix
 pkgname=('krellix' 'krellix-server' 'krellix-krellbluetooth')
 pkgver=0.1.2
-pkgrel=27
+pkgrel=28
 arch=('x86_64' 'aarch64')
 url='https://github.com/yodabytz/krellix'
 license=('GPL-3.0-or-later')
@@ -14,9 +14,13 @@ sha256sums=('8d6027d8d6e71ac6c92efd353627879fc2a7aa273e3b07d0ba299b6d41eebe3b' '
 source+=("fix-remote-recovery.patch")
 sha256sums+=('f75453e0d9eb0915451f4f7424fa22ca54c3c59314b51d88bc277cc92bed21fd')
 
+source+=("fix-netports-layout.patch")
+sha256sums+=('4693dad9075d1804492a84604ddeceb952e3038b021a8180a4d06beab923c13e')
+
 prepare() {
     cd "$pkgbase-$pkgver"
     patch -p4 < "$srcdir/fix-remote-recovery.patch"
+    patch -p1 < "$srcdir/fix-netports-layout.patch"
 }
 
 build() {

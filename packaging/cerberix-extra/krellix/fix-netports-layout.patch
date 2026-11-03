@@ -1,0 +1,229 @@
+--- a/src/monitors/NetPortMonitor.cpp
++++ b/src/monitors/NetPortMonitor.cpp
+@@ -17,6 +17,31 @@
+ 
+ constexpr int kMaxWatches = 8;
+ 
++QFont rowFont(const Theme *theme)
++{
++    QFont font = theme->font(QStringLiteral("label"));
++#ifdef Q_OS_LINUX
++    // Keep this dense list closer to the Mac's 72-DPI label sizing, without
++    // changing other monitors or disabling Qt's high-DPI/font scaling.
++    if (font.pointSizeF() > 0)
++        font.setPointSizeF(qMax(4.0, font.pointSizeF() * 0.75));
++    else if (font.pixelSize() > 0)
++        font.setPixelSize(qMax(5, qRound(font.pixelSize() * 0.75)));
++    return theme->font(QStringLiteral("netports"), font);
++#else
++    return font;
++#endif
++}
++
++int rowSpacing(const Theme *theme)
++{
++#ifdef Q_OS_LINUX
++    return qMax(0, theme->metric(QStringLiteral("netports_row_spacing"), 0));
++#else
++    return theme->metric(QStringLiteral("panel_spacing"), 2);
++#endif
++}
++
+ QList<QPair<int, int>> parsePorts(QString spec)
+ {
+     QList<QPair<int, int>> out;
+@@ -83,9 +108,11 @@
+         , m_theme(theme)
+     {
+         Q_ASSERT(m_theme);
++        setFont(rowFont(m_theme));
+         setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+         setAttribute(Qt::WA_OpaquePaintEvent, false);
+         connect(m_theme, &Theme::themeChanged, this, [this] {
++            setFont(rowFont(m_theme));
+             updateGeometry();
+             update();
+         });
+@@ -117,14 +144,14 @@
+ 
+     QSize sizeHint() const override
+     {
+-        const QFontMetrics fm(m_theme->font(QStringLiteral("label")));
++        const QFontMetrics fm(font());
+         return QSize(fm.horizontalAdvance(QStringLiteral("99  WWWWW")) + 4,
+                      fm.height() + 2);
+     }
+ 
+     QSize minimumSizeHint() const override
+     {
+-        const QFontMetrics fm(m_theme->font(QStringLiteral("label")));
++        const QFontMetrics fm(font());
+         return QSize(0, fm.height() + 2);
+     }
+ 
+@@ -135,7 +162,7 @@
+ 
+         QPainter p(this);
+         p.setRenderHint(QPainter::TextAntialiasing, true);
+-        p.setFont(m_theme->font(QStringLiteral("label")));
++        p.setFont(font());
+ 
+         const QFontMetrics fm(p.font());
+         const QString countText = QString::number(m_count);
+@@ -194,7 +221,13 @@
+     m_rowsWidget = new QWidget(panel);
+     m_rowsLayout = new QVBoxLayout(m_rowsWidget);
+     m_rowsLayout->setContentsMargins(0, 0, 0, 0);
+-    m_rowsLayout->setSpacing(theme()->metric(QStringLiteral("panel_spacing"), 2));
++    m_rowsLayout->setSpacing(rowSpacing(theme()));
++#ifdef Q_OS_LINUX
++    connect(theme(), &Theme::themeChanged, m_rowsWidget, [this] {
++        m_rowsLayout->setSpacing(rowSpacing(theme()));
++        m_rowsWidget->updateGeometry();
++    });
++#endif
+     panel->addWidget(m_rowsWidget);
+     m_panel = panel;
+ 
+--- a/tests/netport-layout.cpp
++++ b/tests/netport-layout.cpp
+@@ -0,0 +1,120 @@
++#include "monitors/NetPortMonitor.h"
++#include "sysdep/NetPortStat.h"
++#include "theme/Theme.h"
++
++#include <QApplication>
++#include <QDebug>
++#include <QDir>
++#include <QFile>
++#include <QFontMetrics>
++#include <QJsonDocument>
++#include <QJsonObject>
++#include <QLayout>
++#include <QSettings>
++#include <QTemporaryDir>
++#include <QWidget>
++#include <memory>
++
++static QList<NetPortSample> samples()
++{
++    QList<NetPortSample> out;
++    for (int i = 0; i < 137; ++i)
++        out.append({QStringLiteral("tcp"), 443, quint16(10000 + i),
++                    QStringLiteral("192.0.2.1"), QStringLiteral("01")});
++    return out;
++}
++
++static QList<QWidget *> rows(QWidget *panel)
++{
++    QList<QWidget *> out;
++    for (QWidget *widget : panel->findChildren<QWidget *>())
++        if (widget->toolTip().startsWith(QStringLiteral("Watch"))) out.append(widget);
++    return out;
++}
++
++int main(int argc, char **argv)
++{
++    QTemporaryDir config;
++    if (!config.isValid()) qFatal("Temporary config unavailable");
++    qputenv("XDG_CONFIG_HOME", config.path().toUtf8());
++    QApplication app(argc, argv);
++    QCoreApplication::setOrganizationName(QStringLiteral("netport-layout-test"));
++    QCoreApplication::setApplicationName(QStringLiteral("netport-layout-test"));
++    QSettings::setDefaultFormat(QSettings::IniFormat);
++    QSettings::setPath(QSettings::IniFormat, QSettings::UserScope, config.path());
++    QSettings settings;
++    for (int i = 1; i <= 8; ++i) {
++        const QString key = QStringLiteral("monitors/netports/watch%1/").arg(i);
++        settings.setValue(key + QStringLiteral("enabled"), true);
++        settings.setValue(key + QStringLiteral("label"), QStringLiteral("Watch%1").arg(i));
++        settings.setValue(key + QStringLiteral("ports"), QStringLiteral("443"));
++    }
++    settings.sync();
++    NetPortStat::setReadOverride(samples);
++    Theme theme;
++    NetPortMonitor monitor(&theme);
++    std::unique_ptr<QWidget> panel(monitor.createWidget(nullptr));
++    panel->resize(180, panel->sizeHint().height());
++    panel->show();
++    app.processEvents();
++    const auto watchRows = rows(panel.get());
++    if (watchRows.size() != 8) qFatal("Expected eight watch rows");
++    const QFont label = theme.font(QStringLiteral("label"));
++    for (QWidget *row : watchRows) {
++#ifdef Q_OS_LINUX
++        if (!qFuzzyCompare(row->font().pointSizeF(), qMax(4.0, label.pointSizeF() * 0.75)))
++            qFatal("Linux watch font is not compact");
++        if (row->parentWidget()->layout()->spacing() != 0) qFatal("Unexpected row gap");
++#else
++        if (row->font() != label) qFatal("Non-Linux font changed");
++#endif
++        if (row->sizeHint().height() != QFontMetrics(row->font()).height() + 2)
++            qFatal("Row height differs from painted font metrics");
++        if (row->height() != row->sizeHint().height()) qFatal("Row stretched vertically");
++        if (!row->toolTip().contains(QStringLiteral("137 connections"))) qFatal("Count truncated");
++    }
++    // A theme's broad panel spacing must not add gaps between Linux watch rows.
++    theme.setMetric(QStringLiteral("panel_spacing"), 12);
++    app.processEvents();
++#ifdef Q_OS_LINUX
++    if (watchRows.first()->parentWidget()->layout()->spacing() != 0)
++        qFatal("Panel spacing leaked into watch rows");
++    theme.setMetric(QStringLiteral("netports_row_spacing"), 3);
++    app.processEvents();
++    if (watchRows.first()->parentWidget()->layout()->spacing() != 3)
++        qFatal("Dedicated row spacing did not update live");
++#endif
++    const QString themeDir = config.path() + QStringLiteral("/krellix/themes/layout-test");
++    QDir().mkpath(themeDir);
++    QFile json(themeDir + QStringLiteral("/theme.json"));
++    if (!json.open(QIODevice::WriteOnly)) qFatal("Cannot create theme fixture");
++    json.write(QJsonDocument(QJsonObject{
++        {QStringLiteral("fonts"), QJsonObject{
++            {QStringLiteral("label"), QJsonObject{{QStringLiteral("size"), 16}, {QStringLiteral("bold"), true}}},
++            {QStringLiteral("netports"), QJsonObject{{QStringLiteral("family"), QStringLiteral("Monospace")},
++                {QStringLiteral("size"), 11}, {QStringLiteral("italic"), true}}}}},
++        {QStringLiteral("metrics"), QJsonObject{{QStringLiteral("netports_row_spacing"), 1}}}
++    }).toJson());
++    json.close();
++    if (!theme.load(QStringLiteral("layout-test"))) qFatal("Theme fixture did not load");
++    panel->resize(180, panel->sizeHint().height());
++    app.processEvents();
++    const auto changedRows = rows(panel.get());
++    if (changedRows != watchRows) qFatal("Theme change rebuilt configured watches");
++    for (QWidget *row : changedRows) {
++#ifdef Q_OS_LINUX
++        if (row->font().pointSize() != 11 || !row->font().italic())
++            qFatal("Explicit Net Ports theme font was not honored live");
++        if (row->parentWidget()->layout()->spacing() != 1) qFatal("Theme spacing stale");
++#else
++        if (row->font().pointSize() != 16 || !row->font().bold()) qFatal("Non-Linux label font changed");
++#endif
++        if (row->sizeHint().height() != QFontMetrics(row->font()).height() + 2)
++            qFatal("Live theme size hint stale");
++    }
++    if (qEnvironmentVariableIsSet("KRELLIX_LAYOUT_SCREENSHOT"))
++        panel->grab().save(qEnvironmentVariable("KRELLIX_LAYOUT_SCREENSHOT"));
++    panel.reset();
++    NetPortStat::setReadOverride(nullptr);
++    qInfo("PASS: compact font/row geometry, eight watches, 137-count tooltip, live theme overrides");
++}
+--- a/tests/netports/CMakeLists.txt
++++ b/tests/netports/CMakeLists.txt
+@@ -6,6 +6,16 @@
+ target_link_libraries(netport-count PRIVATE Qt6::Widgets Qt6::Network)
+ add_test(NAME netport-count COMMAND netport-count)
+ set_tests_properties(netport-count PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 20)
++qt_add_executable(netport-layout ../netport-layout.cpp
++    ../../src/monitors/NetPortMonitor.cpp ../../src/monitors/NetPortMonitor.h ../../src/sysdep/NetPortStat.cpp
++    ../../src/monitors/MonitorBase.cpp ../../src/theme/Theme.cpp ../../src/widgets/Panel.cpp
++    ../../src/widgets/Decal.cpp ../../src/widgets/Krell.cpp ../../src/widgets/Chart.cpp ../../src/widgets/Meter.cpp)
++target_include_directories(netport-layout PRIVATE ../../src)
++target_link_libraries(netport-layout PRIVATE Qt6::Widgets Qt6::Network)
++foreach(scale IN ITEMS 1 1.5 2)
++    add_test(NAME netport-layout-${scale} COMMAND netport-layout)
++    set_tests_properties(netport-layout-${scale} PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen;QT_SCALE_FACTOR=${scale}" TIMEOUT 20)
++endforeach()
+ qt_add_executable(remote-reconnect ../remote-reconnect.cpp ../../src/remote/RemoteSource.cpp ../../src/remote/RemoteSource.h ../../src/widgets/AlertBanner.cpp ../../src/widgets/AlertBanner.h)
+ target_include_directories(remote-reconnect PRIVATE ../../src)
+ target_link_libraries(remote-reconnect PRIVATE Qt6::Widgets Qt6::Network)
