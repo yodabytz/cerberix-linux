@@ -2,11 +2,11 @@
 pkgbase=krellix
 pkgname=('krellix' 'krellix-server' 'krellix-krellbluetooth')
 pkgver=0.1.2
-pkgrel=28
+pkgrel=29
 arch=('x86_64' 'aarch64')
 url='https://github.com/yodabytz/krellix'
 license=('GPL-3.0-or-later')
-makedepends=('cmake' 'ninja' 'qt6-tools' 'qt6-base')
+makedepends=('cmake' 'ninja' 'qt6-tools' 'qt6-base' 'python')
 options=('!debug')
 source=("krellix-0.1.2.tar.gz" "krellix.png" "org.cerberix.krellix.desktop")
 sha256sums=('8d6027d8d6e71ac6c92efd353627879fc2a7aa273e3b07d0ba299b6d41eebe3b' 'a3b72db41322c141127e1cd8ff63d7cbee5f385a4ade9399c7066cd850c02a87' 'c1f32284129e30258edb5c7cc99f1576177887fe8498d400422b955ed8848ef7')
@@ -16,11 +16,14 @@ sha256sums+=('f75453e0d9eb0915451f4f7424fa22ca54c3c59314b51d88bc277cc92bed21fd')
 
 source+=("fix-netports-layout.patch")
 sha256sums+=('4693dad9075d1804492a84604ddeceb952e3038b021a8180a4d06beab923c13e')
+source+=("fix-daemon-security.patch")
+sha256sums+=('8bc8c885667abc9fb2865d9d4902ff4477ed79169f70605fae8e1b8b987187da')
 
 prepare() {
     cd "$pkgbase-$pkgver"
     patch -p4 < "$srcdir/fix-remote-recovery.patch"
     patch -p1 < "$srcdir/fix-netports-layout.patch"
+    patch -p1 < "$srcdir/fix-daemon-security.patch"
 }
 
 build() {
@@ -62,6 +65,10 @@ package_krellix() {
     DESTDIR="$pkgdir" cmake --install build
     rm -f "$pkgdir/usr/bin/krellixd"
     rm -f "$pkgdir/usr/lib/systemd/system/krellixd.service"
+    rm -rf "$pkgdir/usr/lib/systemd/system/krellixd.service.d"
+    rm -f "$pkgdir/usr/lib/systemd/system/krellixd-docker-snapshot.service" \
+          "$pkgdir/usr/lib/systemd/system/krellixd-docker-snapshot.timer" \
+          "$pkgdir/usr/lib/krellix/docker-snapshot.py"
     rm -rf "$pkgdir/usr/lib/krellix/plugins"
     rm -rf "$pkgdir/usr/share/krellix/plugins"
 
@@ -75,13 +82,19 @@ package_krellix() {
 
 package_krellix-server() {
     pkgdesc='krellixd — remote monitoring daemon for krellix'
-    depends=('qt6-base')
+    depends=('qt6-base' 'python')
     optdepends=('docker: friendly Docker bridge name resolution')
     backup=('etc/krellixd/krellixd.conf')
 
     cd "$pkgbase-$pkgver"
 
     install -Dm755 build/bin/krellixd "$pkgdir/usr/bin/krellixd"
+    install -Dm755 packaging/docker-snapshot.py "$pkgdir/usr/lib/krellix/docker-snapshot.py"
+    for unit in krellixd-docker-snapshot.service krellixd-docker-snapshot.timer; do
+        install -Dm644 "packaging/systemd/$unit" "$pkgdir/usr/lib/systemd/system/$unit"
+    done
+    install -Dm644 packaging/systemd/krellixd.service.d/zz-security.conf \
+        "$pkgdir/usr/lib/systemd/system/krellixd.service.d/zz-security.conf"
 
     # Bundled systemd unit. Deliberately NO mount-namespace Protect*
     # options — those break /proc visibility on many container hosts

@@ -1,0 +1,1392 @@
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -192,6 +192,7 @@
+     target_link_libraries(krellixd PRIVATE ${IOKIT_FRAMEWORK})
+ endif()
+ target_compile_definitions(krellixd PRIVATE
++    KRELLIX_DAEMON
+     QT_NO_CAST_FROM_ASCII
+     QT_NO_CAST_TO_ASCII
+     QT_NO_NARROWING_CONVERSIONS_IN_CONNECT
+@@ -208,6 +209,7 @@
+ # krellix` aborted with "/usr/sbin exists in filesystem". Living in
+ # /usr/bin avoids the conflict and is consistent with current FHS.
+ install(TARGETS krellixd RUNTIME DESTINATION bin)
++include(packaging/daemon-security.cmake)
+ 
+ # ---- Optional installable plugins ---------------------------------------
+ add_library(krellkam MODULE
+--- a/src/krellixd/ClientSession.cpp
++++ b/src/krellixd/ClientSession.cpp
+@@ -1,6 +1,10 @@
+ #include "ClientSession.h"
++#include "PackageProbe.h"
++#include "DockerSnapshot.h"
+ 
+ #include "sysdep/CpuStat.h"
++#include "sysdep/SensorStat.h"
++#include "sysdep/BatteryStat.h"
+ #include "sysdep/DiskStat.h"
+ #include "sysdep/MemStat.h"
+ #include "sysdep/NetStat.h"
+@@ -9,17 +13,23 @@
+ #include "sysdep/UptimeStat.h"
+ 
+ #include <QDateTime>
++#include <QFileInfo>
+ #include <QHostAddress>
+ #include <QHostInfo>
++#include <QHash>
+ #include <QJsonArray>
+ #include <QJsonDocument>
+ #include <QJsonObject>
++#include <QRegularExpression>
+ #include <QLoggingCategory>
++#include <QStorageInfo>
++#include <QProcess>
++#include <QStandardPaths>
+ #include <QSysInfo>
+ #include <QTcpSocket>
+ #include <QTimer>
+ 
+-#include <netdb.h>
++#include <algorithm>
+ 
+ Q_LOGGING_CATEGORY(lcSession, "krellixd.session")
+ 
+@@ -27,7 +37,331 @@
+ 
+ // Even malicious clients can send us at most this much before we drop
+ // them. We never need to read more than a hello byte.
+-constexpr qint64 kMaxClientSendBytes = 4 * 1024;
++constexpr qint64 kMaxSampleBytes = 1024 * 1024;
++constexpr qint64 kStackProbeIntervalMs = 30 * 1000;
++constexpr qint64 kHealthProbeIntervalMs = 60 * 1000;
++
++struct StackProbe {
++    int containers = 0;
++    int running = 0;
++    int images = 0;
++    int compose = 0;
++    int unhealthy = 0;
++    bool dockerReadable = false;
++};
++
++struct HealthFinding {
++    QString severity;
++    QString title;
++    QString detail;
++};
++
++struct TopProcess {
++    int pid = 0;
++    double cpu = 0.0;
++    double mem = 0.0;
++    qint64 rssKiB = 0;
++    QString name;
++    QString command;
++};
++
++QString runProgram(const QString &program, const QStringList &args, int timeoutMs = 1500,
++                   bool *success = nullptr)
++{
++    if (success) *success = false;
++    if (QStandardPaths::findExecutable(program).isEmpty())
++        return {};
++    QProcess proc;
++    proc.setProgram(program);
++    proc.setArguments(args);
++    proc.setProcessChannelMode(QProcess::MergedChannels);
++    QByteArray output;
++    bool overflow = false;
++    auto drain = [&] {
++        const QByteArray chunk = proc.read(1024 * 1024 - output.size() + 1);
++        if (chunk.size() + output.size() > 1024 * 1024) {
++            overflow = true;
++            proc.kill();
++        } else {
++            output.append(chunk);
++        }
++    };
++    QObject::connect(&proc, &QProcess::readyRead, &proc, drain);
++    proc.start();
++    if (!proc.waitForFinished(timeoutMs)) {
++        proc.kill();
++        proc.waitForFinished(200);
++        return {};
++    }
++    drain();
++    if (overflow || proc.exitStatus() != QProcess::NormalExit || proc.exitCode() != 0)
++        return {};
++    if (success) *success = true;
++    return QString::fromLocal8Bit(output).trimmed();
++}
++
++QStringList nonEmptyLineList(const QString &text)
++{
++    QStringList out;
++    for (const QString &line : text.split(QLatin1Char('\n'))) {
++        const QString trimmed = line.trimmed();
++        if (!trimmed.isEmpty())
++            out << trimmed;
++    }
++    return out;
++}
++
++void addFinding(QList<HealthFinding> &findings,
++                const QString &severity,
++                const QString &title,
++                const QString &detail = {})
++{
++    findings << HealthFinding{severity, title, detail};
++}
++
++QJsonObject healthObject()
++{
++    static QJsonObject cachedHealth;
++    static qint64 nextProbeMs = 0;
++
++    const qint64 nowMs = QDateTime::currentMSecsSinceEpoch();
++    if (nowMs < nextProbeMs)
++        return cachedHealth;
++    nextProbeMs = nowMs + kHealthProbeIntervalMs;
++
++    QList<HealthFinding> findings;
++
++    for (const QStorageInfo &storage : QStorageInfo::mountedVolumes()) {
++        if (!storage.isValid() || !storage.isReady() || storage.isReadOnly())
++            continue;
++        const QString mount = storage.rootPath();
++        if (mount.startsWith(QStringLiteral("/run")) || mount.startsWith(QStringLiteral("/proc"))
++            || mount.startsWith(QStringLiteral("/sys")) || mount.startsWith(QStringLiteral("/dev")))
++            continue;
++        const qint64 total = storage.bytesTotal();
++        if (total <= 0)
++            continue;
++        const double usedPct = 100.0 * double(total - storage.bytesAvailable()) / double(total);
++        if (usedPct >= 95.0) {
++            addFinding(findings, QStringLiteral("critical"), QStringLiteral("Filesystem critical"),
++                       QStringLiteral("%1 is %2% full").arg(mount).arg(usedPct, 0, 'f', 0));
++        } else if (usedPct >= 85.0) {
++            addFinding(findings, QStringLiteral("warning"), QStringLiteral("Filesystem high"),
++                       QStringLiteral("%1 is %2% full").arg(mount).arg(usedPct, 0, 'f', 0));
++        }
++    }
++
++    const QString failedUnits = runProgram(QStringLiteral("systemctl"),
++        {QStringLiteral("--failed"), QStringLiteral("--no-legend"), QStringLiteral("--plain")}, 2000);
++    if (!failedUnits.isEmpty()) {
++        addFinding(findings, QStringLiteral("critical"), QStringLiteral("Failed systemd units"),
++                   nonEmptyLineList(failedUnits).mid(0, 3).join(QStringLiteral("; ")));
++    }
++
++    const QString mdstat = runProgram(QStringLiteral("sh"),
++        {QStringLiteral("-c"), QStringLiteral("cat /proc/mdstat 2>/dev/null")}, 1000);
++    if (mdstat.contains(QStringLiteral("[_")) || mdstat.contains(QStringLiteral("recovery"))
++        || mdstat.contains(QStringLiteral("resync"))) {
++        addFinding(findings, QStringLiteral("warning"), QStringLiteral("RAID attention"),
++                   nonEmptyLineList(mdstat).join(QStringLiteral(" ")).left(180));
++    }
++
++    const QString zfs = runProgram(QStringLiteral("zpool"),
++        {QStringLiteral("status"), QStringLiteral("-x")}, 2500);
++    if (!zfs.isEmpty() && !zfs.contains(QStringLiteral("all pools are healthy"), Qt::CaseInsensitive)) {
++        addFinding(findings, QStringLiteral("critical"), QStringLiteral("ZFS pool issue"),
++                   nonEmptyLineList(zfs).join(QStringLiteral("; ")).left(180));
++    }
++
++    const QString btrfs = runProgram(QStringLiteral("btrfs"),
++        {QStringLiteral("device"), QStringLiteral("stats"), QStringLiteral("/")}, 2500);
++    if (QRegularExpression(QStringLiteral(":\\s*[1-9][0-9]*")).match(btrfs).hasMatch()) {
++        addFinding(findings, QStringLiteral("warning"), QStringLiteral("Btrfs device errors"),
++                   nonEmptyLineList(btrfs).join(QStringLiteral("; ")).left(180));
++    }
++
++    if (QFileInfo::exists(QStringLiteral("/var/run/reboot-required"))
++        || QFileInfo::exists(QStringLiteral("/run/reboot-required"))) {
++        addFinding(findings, QStringLiteral("warning"), QStringLiteral("Reboot required"));
++    }
++
++    const QString journal = runProgram(QStringLiteral("journalctl"),
++        {QStringLiteral("-p"), QStringLiteral("err"), QStringLiteral("-b"),
++         QStringLiteral("--no-pager"), QStringLiteral("-n"), QStringLiteral("10")}, 2500);
++    if (!journal.isEmpty()) {
++        addFinding(findings, QStringLiteral("warning"), QStringLiteral("Journal errors"),
++                   nonEmptyLineList(journal).mid(0, 3).join(QStringLiteral("; ")).left(180));
++    }
++
++    const QString timeSync = runProgram(QStringLiteral("timedatectl"),
++        {QStringLiteral("show"), QStringLiteral("-p"), QStringLiteral("NTPSynchronized"),
++         QStringLiteral("-p"), QStringLiteral("SystemClockSynchronized"), QStringLiteral("--value")}, 1500);
++    if (timeSync.contains(QStringLiteral("no"), Qt::CaseInsensitive)
++        || timeSync.contains(QStringLiteral("false"), Qt::CaseInsensitive)) {
++        addFinding(findings, QStringLiteral("warning"), QStringLiteral("Time sync off"));
++    }
++
++    if (!QStandardPaths::findExecutable(QStringLiteral("dpkg")).isEmpty()) {
++        bool finished = false;
++        const QString result = runProgram(QStringLiteral("dpkg"),
++            {QStringLiteral("--audit")}, 5000, &finished);
++        if (!finished)
++            addFinding(findings, QStringLiteral("warning"), QStringLiteral("Package check unavailable"),
++                       QStringLiteral("dpkg --audit could not complete"));
++        else if (!result.isEmpty())
++            addFinding(findings, QStringLiteral("warning"), QStringLiteral("Package configuration incomplete"),
++                       nonEmptyLineList(result).mid(0, 3).join(QStringLiteral("; ")).left(180));
++    } else {
++        const QString pkgErrors = runProgram(QStringLiteral("sh"),
++            {QStringLiteral("-c"), QStringLiteral("(grep -Ei 'error|failed|conflict' /var/log/pacman.log 2>/dev/null; grep -Ei 'error|failed|conflict' /var/log/dnf.log 2>/dev/null) | tail -n 5")}, 2500);
++        if (!pkgErrors.isEmpty())
++            addFinding(findings, QStringLiteral("warning"), QStringLiteral("Package log warnings"),
++                       QStringLiteral("Historical log entries: ") + nonEmptyLineList(pkgErrors).mid(0, 3).join(QStringLiteral("; ")).left(180));
++    }
++
++    QJsonObject out;
++    QJsonArray arr;
++    int critical = 0;
++    int warnings = 0;
++    for (const HealthFinding &finding : findings) {
++        if (finding.severity == QLatin1String("critical"))
++            ++critical;
++        else if (finding.severity == QLatin1String("warning"))
++            ++warnings;
++        QJsonObject f;
++        f.insert(QStringLiteral("severity"), finding.severity);
++        f.insert(QStringLiteral("title"), finding.title);
++        if (!finding.detail.isEmpty())
++            f.insert(QStringLiteral("detail"), finding.detail);
++        arr.append(f);
++    }
++    out.insert(QStringLiteral("critical"), critical);
++    out.insert(QStringLiteral("warnings"), warnings);
++    out.insert(QStringLiteral("findings"), arr);
++    cachedHealth = out;
++    return out;
++}
++
++StackProbe readStackProbe()
++{
++    const QJsonObject snapshot = dockerSnapshot();
++    StackProbe probe;
++    probe.images = snapshot.value(QStringLiteral("images")).toInt();
++    probe.compose = snapshot.value(QStringLiteral("compose")).toInt();
++    probe.containers = snapshot.value(QStringLiteral("containers")).toInt();
++    probe.running = snapshot.value(QStringLiteral("running")).toInt();
++    probe.unhealthy = snapshot.value(QStringLiteral("unhealthy")).toInt();
++    probe.dockerReadable = !snapshot.isEmpty();
++    return probe;
++}
++
++QJsonObject stackObject(const QList<NetSample> &netSamples)
++{
++    int dockerNetworks = 0;
++    for (const NetSample &sample : netSamples) {
++        if (sample.name == QLatin1String("docker0")
++            || sample.name.startsWith(QStringLiteral("br-"))
++            || sample.name.startsWith(QStringLiteral("veth"))
++            || sample.alias.contains(QStringLiteral("Docker"), Qt::CaseInsensitive)
++            || sample.alias.contains(QStringLiteral("_default"), Qt::CaseInsensitive))
++            ++dockerNetworks;
++    }
++
++    static StackProbe cachedProbe;
++    static qint64 nextProbeMs = 0;
++
++    const qint64 nowMs = QDateTime::currentMSecsSinceEpoch();
++    if (nowMs >= nextProbeMs) {
++        cachedProbe = readStackProbe();
++        nextProbeMs = nowMs + kStackProbeIntervalMs;
++    }
++
++    QJsonObject o;
++    o.insert(QStringLiteral("source"), QStringLiteral("krellixd"));
++    o.insert(QStringLiteral("containers"), cachedProbe.containers);
++    o.insert(QStringLiteral("running"), cachedProbe.running);
++    o.insert(QStringLiteral("images"), cachedProbe.images);
++    o.insert(QStringLiteral("compose"), cachedProbe.compose);
++    o.insert(QStringLiteral("unhealthy"), cachedProbe.unhealthy);
++    o.insert(QStringLiteral("docker_networks"), dockerNetworks);
++    if (!cachedProbe.dockerReadable && dockerNetworks > 0)
++        o.insert(QStringLiteral("error"), QStringLiteral("Docker snapshot unavailable; enable krellixd-docker-snapshot.timer"));
++    return o;
++}
++
++QList<TopProcess> topN(QList<TopProcess> rows, bool byMemory, int limit)
++{
++    std::sort(rows.begin(), rows.end(), [byMemory](const TopProcess &a, const TopProcess &b) {
++        if (byMemory) {
++            if (a.rssKiB != b.rssKiB)
++                return a.rssKiB > b.rssKiB;
++            return a.mem > b.mem;
++        }
++        if (a.cpu != b.cpu)
++            return a.cpu > b.cpu;
++        return a.rssKiB > b.rssKiB;
++    });
++    return rows.mid(0, limit);
++}
++
++QJsonArray topProcessArray()
++{
++    static QJsonArray cachedTop;
++    static qint64 nextProbeMs = 0;
++
++    const qint64 nowMs = QDateTime::currentMSecsSinceEpoch();
++    if (nowMs < nextProbeMs)
++        return cachedTop;
++    nextProbeMs = nowMs + 5000;
++
++    const QString output = runProgram(
++        QStringLiteral("ps"),
++        {QStringLiteral("-eo"),
++         QStringLiteral("pid=,pcpu=,pmem=,rss=,comm=,args=")},
++        2500);
++    if (output.isEmpty()) {
++        cachedTop = QJsonArray{};
++        return cachedTop;
++    }
++
++    QList<TopProcess> rows;
++    const QRegularExpression rx(QStringLiteral("^\\s*(\\d+)\\s+([0-9.]+)\\s+([0-9.]+)\\s+(\\d+)\\s+(\\S+)\\s*(.*)$"));
++    for (const QString &line : output.split(QLatin1Char('\n'))) {
++        const QRegularExpressionMatch m = rx.match(line);
++        if (!m.hasMatch())
++            continue;
++        TopProcess row;
++        row.pid = m.captured(1).toInt();
++        row.cpu = m.captured(2).toDouble();
++        row.mem = m.captured(3).toDouble();
++        row.rssKiB = m.captured(4).toLongLong();
++        row.name = m.captured(5).trimmed();
++        row.command = m.captured(6).trimmed();
++        if (row.pid > 0 && !row.name.isEmpty())
++            rows.append(row);
++    }
++
++    QHash<int, TopProcess> selected;
++    for (const TopProcess &row : topN(rows, false, 12))
++        selected.insert(row.pid, row);
++    for (const TopProcess &row : topN(rows, true, 12))
++        selected.insert(row.pid, row);
++
++    QJsonArray arr;
++    for (const TopProcess &row : selected) {
++        QJsonObject p;
++        p.insert(QStringLiteral("pid"), row.pid);
++        p.insert(QStringLiteral("cpu"), row.cpu);
++        p.insert(QStringLiteral("mem"), row.mem);
++        p.insert(QStringLiteral("rss"), qint64(row.rssKiB));
++        p.insert(QStringLiteral("name"), row.name.left(64));
++        // Process arguments may contain passwords or tokens. Never export them.
++        p.insert(QStringLiteral("cmd"), row.name.left(64));
++        arr.append(p);
++    }
++    cachedTop = arr;
++    return cachedTop;
++}
+ 
+ bool usableDomainName(const QString &domain)
+ {
+@@ -40,21 +374,6 @@
+     return QHostAddress(domain).isNull();
+ }
+ 
+-QString resolveCanonicalHostname(const QString &host)
+-{
+-    struct addrinfo hints{};
+-    hints.ai_flags = AI_CANONNAME;
+-    hints.ai_family = AF_UNSPEC;
+-    struct addrinfo *result = nullptr;
+-    QString out;
+-    if (getaddrinfo(host.toUtf8().constData(), nullptr, &hints, &result) == 0
+-        && result && result->ai_canonname) {
+-        out = QString::fromUtf8(result->ai_canonname);
+-    }
+-    if (result) freeaddrinfo(result);
+-    return out;
+-}
+-
+ QString daemonHostname()
+ {
+     const QString host = QSysInfo::machineHostName();
+@@ -66,10 +385,6 @@
+         return host + QLatin1Char('.') + domain;
+     }
+ 
+-    const QString canonical = resolveCanonicalHostname(host);
+-    if (canonical.contains(QLatin1Char('.')))
+-        return canonical;
+-
+     return host;
+ }
+ 
+@@ -88,7 +403,10 @@
+         << QStringLiteral("proc")
+         << QStringLiteral("uptime") << QStringLiteral("net")
+         << QStringLiteral("net_ports")
+-        << QStringLiteral("disk");
++        << QStringLiteral("disk")
++        << QStringLiteral("top")
++        << QStringLiteral("health") << QStringLiteral("packages");
++    mon << QStringLiteral("sensors") << QStringLiteral("battery") << QStringLiteral("clock");
+     o.insert(QStringLiteral("monitors"), mon);
+     return o;
+ }
+@@ -97,6 +415,20 @@
+ {
+     QJsonObject o;
+     o.insert(QStringLiteral("type"), QStringLiteral("sample"));
++    o.insert(QStringLiteral("datetime"), QDateTime::currentDateTime().toString(Qt::ISODate));
++    QJsonArray sensors;
++    for (const auto &s : SensorStat::read()) {
++        sensors.append(QJsonObject{{QStringLiteral("chip"), s.chip},
++            {QStringLiteral("label"), s.label}, {QStringLiteral("value"), s.value},
++            {QStringLiteral("type"), int(s.type)}, {QStringLiteral("max"), s.maxC},
++            {QStringLiteral("crit"), s.critC}});
++    }
++    o.insert(QStringLiteral("sensors"), sensors);
++    const auto battery = BatteryStat::read();
++    o.insert(QStringLiteral("battery"), QJsonObject{
++        {QStringLiteral("present"), battery.present}, {QStringLiteral("percent"), battery.percent},
++        {QStringLiteral("status"), battery.status}, {QStringLiteral("ac_online"), battery.acOnline},
++        {QStringLiteral("remaining"), battery.timeRemainSec}, {QStringLiteral("name"), battery.batteryName}});
+     o.insert(QStringLiteral("ts"),
+              QDateTime::currentSecsSinceEpoch());
+     o.insert(QStringLiteral("hostname"), daemonHostname());
+@@ -142,8 +474,9 @@
+     mem.insert(QStringLiteral("swap_free"),  qint64(m.swapFreeKb));
+     o.insert(QStringLiteral("mem"), mem);
+ 
++    const QList<NetSample> netSamples = NetStat::read();
+     QJsonArray netArr;
+-    for (const NetSample &s : NetStat::read()) {
++    for (const NetSample &s : netSamples) {
+         QJsonObject n;
+         n.insert(QStringLiteral("name"), s.name);
+         if (!s.alias.isEmpty())
+@@ -155,19 +488,22 @@
+         netArr.append(n);
+     }
+     o.insert(QStringLiteral("net"), netArr);
++    o.insert(QStringLiteral("stack"), stackObject(netSamples));
+ 
+     QJsonArray netPortArr;
+     for (const NetPortSample &s : NetPortStat::read()) {
+-        if (s.remoteAddress.isEmpty() || s.remotePort == 0)
+-            continue;
+-        if (s.protocol == QLatin1String("tcp")
+-            && s.state != QLatin1String("01"))
+-            continue;
++        if (s.protocol == QLatin1String("tcp")) {
++            if (s.state != QLatin1String("01"))
++                continue;
++            if (s.remoteAddress.isEmpty() || s.remotePort == 0)
++                continue;
++        }
+ 
+         QJsonObject n;
+         n.insert(QStringLiteral("proto"), s.protocol);
+         n.insert(QStringLiteral("local"), int(s.localPort));
+-        n.insert(QStringLiteral("remote"), int(s.remotePort));
++        if (s.remotePort > 0)
++            n.insert(QStringLiteral("remote"), int(s.remotePort));
+         if (!s.remoteAddress.isEmpty())
+             n.insert(QStringLiteral("remote_addr"), s.remoteAddress);
+         if (!s.state.isEmpty())
+@@ -191,18 +527,13 @@
+     proc.insert(QStringLiteral("processes"), p.processes);
+     proc.insert(QStringLiteral("users"),     p.users);
+     o.insert(QStringLiteral("proc"), proc);
++    o.insert(QStringLiteral("packages"), packageUpdateObject());
++    o.insert(QStringLiteral("health"), healthObject());
++    o.insert(QStringLiteral("top"), topProcessArray());
+ 
+     return o;
+ }
+ 
+-void writeJsonLine(QTcpSocket *s, const QJsonObject &obj)
+-{
+-    if (!s) return;
+-    const QByteArray bytes =
+-        QJsonDocument(obj).toJson(QJsonDocument::Compact) + '\n';
+-    s->write(bytes);
+-}
+-
+ } // namespace
+ 
+ ClientSession::ClientSession(QTcpSocket *socket,
+@@ -218,6 +549,9 @@
+ {
+     Q_ASSERT(m_socket);
+     m_socket->setParent(this);
++    // This is an output-only protocol: one unexpected byte is enough to reject.
++    m_socket->setReadBufferSize(1);
++    m_socket->setSocketOption(QAbstractSocket::SendBufferSizeSocketOption, 64 * 1024);
+     m_socket->setSocketOption(QAbstractSocket::KeepAliveOption, 1);
+ 
+     connect(m_socket, &QTcpSocket::readyRead,
+@@ -233,7 +567,10 @@
+     // still be kicked: their kernel buffer fills, no bytesWritten fires,
+     // idle timer expires.
+     connect(m_socket, &QTcpSocket::bytesWritten, this, [this](qint64) {
+-        if (m_idleTimer) m_idleTimer->start();
++        if (m_socket->bytesToWrite() == 0) m_idleTimer->stop();
++    });
++    connect(m_socket, &QTcpSocket::errorOccurred, this, [this] {
++        closeWithError("socket error");
+     });
+ 
+     m_sendTimer->setTimerType(Qt::CoarseTimer);
+@@ -244,12 +581,18 @@
+     m_idleTimer->setInterval(m_idleTimeoutMs);
+     connect(m_idleTimer, &QTimer::timeout,
+             this, &ClientSession::onIdleTimeout);
+-    m_idleTimer->start();
++}
+ 
++void ClientSession::start()
++{
++    if (m_closed) return;
++    if (m_socket->bytesAvailable() != 0) {
++        closeWithError("unexpected client input");
++        return;
++    }
+     qCInfo(lcSession) << "client connected from" << peerAddressString();
+     sendHello();
+-    sendSample();      // immediate first sample so client doesn't wait a tick
+-    m_sendTimer->start();
++    if (!m_closed) m_sendTimer->start();
+ }
+ 
+ ClientSession::~ClientSession() = default;
+@@ -264,27 +607,23 @@
+ 
+ void ClientSession::onTick()
+ {
+-    if (!m_socket || m_socket->state() != QAbstractSocket::ConnectedState) return;
++    if (m_closed || !m_socket || m_socket->state() != QAbstractSocket::ConnectedState) return;
++    // Never generate/queue another sample behind a slow reader.
++    if (m_socket->bytesToWrite() != 0) return;
+     sendSample();
+ }
+ 
+ void ClientSession::onReadyRead()
+ {
+-    if (!m_socket) return;
+-    // We don't expect the client to send anything substantive; silently
+-    // discard but enforce a hard cap so a malicious peer can't pile bytes
+-    // into our buffers.
+-    if (m_socket->bytesAvailable() > kMaxClientSendBytes) {
+-        closeWithError("client exceeded receive cap");
+-        return;
+-    }
+-    (void) m_socket->readAll();
+-    m_idleTimer->start();   // any I/O resets the idle clock
++    closeWithError("unexpected client input");
+ }
+ 
+ void ClientSession::onDisconnected()
+ {
+     qCInfo(lcSession) << "client disconnected" << peerAddressString();
++    m_closed = true;
++    m_sendTimer->stop();
++    m_idleTimer->stop();
+     deleteLater();
+ }
+ 
+@@ -295,18 +634,37 @@
+ 
+ void ClientSession::sendHello()
+ {
+-    writeJsonLine(m_socket, helloObject(m_intervalMs));
++    sendObject(helloObject(m_intervalMs));
+ }
+ 
+ void ClientSession::sendSample()
+ {
+-    writeJsonLine(m_socket, sampleObject());
++    sendObject(sampleObject());
+ }
+ 
+-void ClientSession::closeWithError(const char *reason)
++void ClientSession::sendObject(const QJsonObject &object)
+ {
+-    qCWarning(lcSession) << "closing" << peerAddressString() << ":" << reason;
+-    if (m_socket) {
+-        m_socket->disconnectFromHost();
++    if (m_closed) return;
++    const QByteArray bytes = QJsonDocument(object).toJson(QJsonDocument::Compact) + '\n';
++    if (bytes.size() > kMaxSampleBytes || m_socket->bytesToWrite() != 0) {
++        closeWithError("output limit exceeded");
++        return;
++    }
++    if (m_socket->write(bytes) != bytes.size()) {
++        closeWithError("write failed");
++        return;
+     }
++    // Absolute deadline for this queued sample; partial reads cannot extend it.
++    if (m_socket->bytesToWrite() > 0) m_idleTimer->start();
++}
++
++void ClientSession::closeWithError(const char *reason)
++{
++    if (m_closed) return;
++    m_closed = true;
++    m_sendTimer->stop();
++    m_idleTimer->stop();
++    qCDebug(lcSession) << "closing" << peerAddressString() << ":" << reason;
++    if (m_socket) m_socket->abort();
++    deleteLater();
+ }
+--- a/src/krellixd/ClientSession.h
++++ b/src/krellixd/ClientSession.h
+@@ -5,11 +5,12 @@
+ 
+ class QTcpSocket;
+ class QTimer;
++class QJsonObject;
+ 
+ // One per accepted client connection. Sends a one-time hello, then a
+ // JSON-lines "sample" message every intervalMs. Disconnects on idle/IO
+-// timeout, error, or read of more than kMaxClientSendBytes from the
+-// client (clients shouldn't be sending us anything substantive).
++// timeout, error, or any unexpected client input. One bounded output
++// frame may be queued; its deadline cannot be extended by partial I/O.
+ class ClientSession : public QObject
+ {
+     Q_OBJECT
+@@ -24,6 +25,7 @@
+     ~ClientSession() override;
+ 
+     QString peerAddressString() const;
++    void start();
+ 
+ private slots:
+     void onTick();
+@@ -35,12 +37,14 @@
+     void sendHello();
+     void sendSample();
+     void closeWithError(const char *reason);
++    void sendObject(const QJsonObject &object);
+ 
+     QTcpSocket *m_socket;
+     QTimer     *m_sendTimer;
+     QTimer     *m_idleTimer;
+     int         m_intervalMs;
+     int         m_idleTimeoutMs;
++    bool        m_closed = false;
+ 
+     Q_DISABLE_COPY_MOVE(ClientSession)
+ };
+--- a/src/krellixd/KrellixdServer.cpp
++++ b/src/krellixd/KrellixdServer.cpp
+@@ -4,6 +4,9 @@
+ 
+ #include <QLoggingCategory>
+ #include <QTcpSocket>
++#include <QTimer>
++#include <sys/socket.h>
++#include <netinet/in.h>
+ 
+ #include <unistd.h>
+ 
+@@ -17,26 +20,55 @@
+     : QTcpServer(parent)
+     , m_intervalMs(intervalMs)
+     , m_idleTimeoutMs(idleTimeoutMs)
+-    , m_maxClients(qMax(1, maxClients))
++    , m_maxClients(qBound(1, maxClients, 16))
+     , m_allowed(allowed)
+ {
++    m_clock.start();
++    setMaxPendingConnections(16);
+ }
+ 
+ KrellixdServer::~KrellixdServer() = default;
+ 
+ void KrellixdServer::incomingConnection(qintptr socketDescriptor)
+ {
+-    // Build the real socket up front and inspect the peer on it. If the
+-    // peer isn't allowed (or we're over cap) we abort and delete it; the
+-    // descriptor is closed cleanly via the QTcpSocket destructor.
++    // Inspect the kernel peer before allocating Qt buffers or a session.
++    sockaddr_storage peerStorage{};
++    socklen_t peerLength = sizeof(peerStorage);
++    QHostAddress peer;
++    if (::getpeername(static_cast<int>(socketDescriptor),
++                      reinterpret_cast<sockaddr *>(&peerStorage), &peerLength) == 0) {
++        if (peerStorage.ss_family == AF_INET) {
++            const auto *p = reinterpret_cast<const sockaddr_in *>(&peerStorage);
++            peer = QHostAddress(ntohl(p->sin_addr.s_addr));
++        } else if (peerStorage.ss_family == AF_INET6) {
++            const auto *p = reinterpret_cast<const sockaddr_in6 *>(&peerStorage);
++            peer = QHostAddress(p->sin6_addr.s6_addr);
++            if (p->sin6_scope_id) peer.setScopeId(QString::number(p->sin6_scope_id));
++        }
++    }
++    bool v4 = false;
++    const quint32 ipv4 = peer.toIPv4Address(&v4);
++    if (v4) peer = QHostAddress(ipv4);
++    const qint64 now = m_clock.elapsed();
++    if (peer.isNull() || !isAllowed(peer) || m_sessions.size() >= m_maxClients
++        || now + 3000 < m_nextAdmission.value(peer, 0)) {
++        // Reset immediately. Do not log every rejected connection (log-flood DoS).
++        const linger reset{1, 0};
++        ::setsockopt(static_cast<int>(socketDescriptor), SOL_SOCKET, SO_LINGER,
++                     &reset, sizeof(reset));
++        ::close(static_cast<int>(socketDescriptor));
++        return;
++    }
++    // Burst of four clients, then one admission/sec per source. No untrusted map keys.
++    m_nextAdmission.insert(peer, qMax(now, m_nextAdmission.value(peer, 0)) + 1000);
+     auto *socket = new QTcpSocket(this);
++    socket->setReadBufferSize(1);
+     if (!socket->setSocketDescriptor(socketDescriptor)) {
+         qCWarning(lcServer) << "setSocketDescriptor failed:" << socket->errorString();
+         delete socket;
+         ::close(static_cast<int>(socketDescriptor));
+         return;
+     }
+-    const QHostAddress peer = socket->peerAddress();
+     const QString peerStr   = peer.toString();
+ 
+     if (!isAllowed(peer)) {
+@@ -59,6 +91,8 @@
+     connect(session, &QObject::destroyed,
+             this, &KrellixdServer::onSessionDestroyed);
+     m_sessions.insert(session);
++    // Connect lifetime accounting before any I/O can synchronously fail.
++    QTimer::singleShot(0, session, &ClientSession::start);
+ 
+     qCInfo(lcServer) << "accepted" << peerStr
+                      << "(now" << m_sessions.size() << "/" << m_maxClients
+@@ -67,7 +101,8 @@
+ 
+ void KrellixdServer::onSessionDestroyed(QObject *obj)
+ {
+-    m_sessions.remove(static_cast<ClientSession *>(obj));
++    // destroyed() runs after the derived session's lifetime has ended.
++    m_sessions.remove(obj);
+ }
+ 
+ bool KrellixdServer::isAllowed(const QHostAddress &addr) const
+--- a/src/krellixd/KrellixdServer.h
++++ b/src/krellixd/KrellixdServer.h
+@@ -3,6 +3,8 @@
+ #include <QHostAddress>
+ #include <QSet>
+ #include <QTcpServer>
++#include <QElapsedTimer>
++#include <QHash>
+ 
+ class ClientSession;
+ 
+@@ -35,5 +37,7 @@
+     int                  m_idleTimeoutMs;
+     int                  m_maxClients;
+     QSet<QHostAddress>   m_allowed;
+-    QSet<ClientSession *> m_sessions;
++    QSet<QObject *>       m_sessions;
++    QHash<QHostAddress, qint64> m_nextAdmission;
++    QElapsedTimer m_clock;
+ };
+--- a/src/krellixd/main.cpp
++++ b/src/krellixd/main.cpp
+@@ -30,6 +30,7 @@
+ #include <QStringList>
+ 
+ #include <unistd.h>
++#include <cmath>
+ 
+ #ifndef KRELLIX_VERSION
+ #  define KRELLIX_VERSION "0.0.0"
+@@ -73,15 +74,19 @@
+ 
+ QSet<QHostAddress> parseAllowList(const QStringList &raw)
+ {
++    if (raw.size() > 128) qFatal("krellixd: allow-list exceeds 128 entries");
+     QSet<QHostAddress> out;
+     for (const QString &s : raw) {
+         const QString trimmed = s.trimmed();
+         if (trimmed.isEmpty() || trimmed.startsWith(QLatin1Char('#'))) continue;
+         QHostAddress h(trimmed);
+-        if (h.isNull()) {
+-            qCWarning(lcMain) << "ignoring invalid allow entry:" << trimmed;
+-            continue;
+-        }
++        if (h.isNull() || h.isMulticast() || h == QHostAddress(QHostAddress::AnyIPv4)
++            || h == QHostAddress(QHostAddress::AnyIPv6)
++            || h == QHostAddress(QHostAddress::Broadcast))
++            qFatal("krellixd: invalid allow-list address");
++        bool v4 = false;
++        const quint32 ipv4 = h.toIPv4Address(&v4);
++        if (v4) h = QHostAddress(ipv4);
+         out.insert(h);
+     }
+     return out;
+@@ -167,7 +172,7 @@
+     // drop perfectly-healthy long-lived clients on every interval. TCP
+     // KeepAlive (set on the socket) detects dead connections within a
+     // minute or two anyway.
+-    int idleTimeoutMs = 300 * 1000;
++    qint64 idleTimeoutSeconds = 300;
+     double updateHz  = 1.0;
+ 
+     const QString cfgPath = parser.value(configOpt);
+@@ -183,7 +188,7 @@
+         if (cfg.contains(QStringLiteral("update_hz")))
+             updateHz = cfg.value(QStringLiteral("update_hz")).toDouble();
+         if (cfg.contains(QStringLiteral("io_timeout")))
+-            idleTimeoutMs = cfg.value(QStringLiteral("io_timeout")).toInt() * 1000;
++            idleTimeoutSeconds = cfg.value(QStringLiteral("io_timeout")).toLongLong();
+         cfg.endGroup();
+ 
+         cfg.beginGroup(QStringLiteral("security"));
+@@ -201,7 +206,7 @@
+     if (parser.isSet(portOpt))      port = parser.value(portOpt).toUShort();
+     if (parser.isSet(maxClientsOpt))maxClients = parser.value(maxClientsOpt).toInt();
+     if (parser.isSet(updateHzOpt))  updateHz = parser.value(updateHzOpt).toDouble();
+-    if (parser.isSet(ioTimeoutOpt)) idleTimeoutMs = parser.value(ioTimeoutOpt).toInt() * 1000;
++    if (parser.isSet(ioTimeoutOpt)) idleTimeoutSeconds = parser.value(ioTimeoutOpt).toLongLong();
+     for (const QString &s : parser.values(allowOpt)) allowEntries.append(s);
+ 
+     QHostAddress addr;
+@@ -211,10 +216,14 @@
+     }
+     if (!parser.isSet(portOpt) && parsedPort != kDefaultPort) port = parsedPort;
+ 
++    if (maxClients < 1 || maxClients > 16 || !std::isfinite(updateHz)
++        || updateHz < 0.1 || updateHz > 10.0
++        || idleTimeoutSeconds < 5 || idleTimeoutSeconds > 300 || port == 0)
++        qFatal("krellixd: invalid limits: clients 1..16, Hz 0.1..10, timeout 5..300, port 1..65535");
+     const int intervalMs = qBound(100,
+                                   static_cast<int>(1000.0 / qMax(0.1, updateHz)),
+                                   10000);
+-    idleTimeoutMs = qMax(5 * 1000, idleTimeoutMs);
++    const int idleTimeoutMs = static_cast<int>(idleTimeoutSeconds * 1000);
+ 
+     const QSet<QHostAddress> allowed = parseAllowList(allowEntries);
+     if (allowed.isEmpty()) {
+--- a/src/krellixd/PackageProbe.h
++++ b/src/krellixd/PackageProbe.h
+@@ -0,0 +1,110 @@
++#pragma once
++#include <QCoreApplication>
++#include <QDateTime>
++#include <QDir>
++#include <QJsonArray>
++#include <QJsonObject>
++#include <QProcess>
++#include <QProcessEnvironment>
++#include <QRegularExpression>
++#include <QStandardPaths>
++#include <QTimer>
++
++// Read-only checks run asynchronously, once per daemon, not once per client.
++class PackageProbe : public QObject {
++public:
++    explicit PackageProbe(QObject *parent) : QObject(parent) {
++        connect(&m_process, &QProcess::readyReadStandardOutput, this, [this] { drain(false); });
++        connect(&m_process, &QProcess::readyReadStandardError, this, [this] { drain(true); });
++        m_timeout.setSingleShot(true);
++        connect(&m_timeout, &QTimer::timeout, this, [this] { m_timedOut = true; m_process.kill(); });
++        connect(&m_process, &QProcess::finished, this, [this](int code, QProcess::ExitStatus status) {
++            finish(code == 0 && status == QProcess::NormalExit && !m_timedOut);
++        });
++        connect(&m_process, &QProcess::errorOccurred, this, [this](QProcess::ProcessError error) {
++            if (error == QProcess::FailedToStart) finish(false);
++        });
++    }
++    QJsonObject snapshot() {
++        if (!m_running && QDateTime::currentMSecsSinceEpoch() >= m_nextCheck) {
++            const QString apt = QStandardPaths::findExecutable(QStringLiteral("apt"));
++            if (apt.isEmpty()) {
++                m_result = {{QStringLiteral("status"), QStringLiteral("unsupported")}};
++                m_nextCheck = QDateTime::currentMSecsSinceEpoch() + 300000;
++            } else {
++                m_running = true;
++                m_timedOut = false;
++                m_output.clear();
++                m_outputBytes = 0;
++                if (m_result.value(QStringLiteral("status")) != QStringLiteral("ok"))
++                    m_result = {{QStringLiteral("status"), QStringLiteral("checking")}, {QStringLiteral("system"), QStringLiteral("apt")}};
++                auto env = QProcessEnvironment::systemEnvironment();
++                env.insert(QStringLiteral("LC_ALL"), QStringLiteral("C"));
++                m_process.setProcessEnvironment(env);
++                m_process.setProcessChannelMode(QProcess::SeparateChannels);
++                m_process.start(apt, {QStringLiteral("list"), QStringLiteral("--upgradable")});
++                m_timeout.start(30000);
++            }
++        }
++        return m_result;
++    }
++private:
++    void drain(bool error) {
++        m_process.setReadChannel(error ? QProcess::StandardError : QProcess::StandardOutput);
++        const QByteArray bytes = m_process.read(qMax<qint64>(1, 1024 * 1024 - m_outputBytes + 1));
++        m_outputBytes += bytes.size();
++        if (m_outputBytes > 1024 * 1024) {
++            m_timedOut = true;
++            m_process.kill();
++        } else if (!error) {
++            m_output.append(bytes);
++        }
++    }
++    void finish(bool success) {
++        if (!m_running) return;
++        drain(false);
++        drain(true);
++        success = success && !m_timedOut;
++        m_running = false;
++        m_timeout.stop();
++        m_nextCheck = QDateTime::currentMSecsSinceEpoch() + 300000;
++        const QString output = QString::fromUtf8(m_output);
++        m_output.clear();
++        m_result = {{QStringLiteral("system"), QStringLiteral("apt")},
++                    {QStringLiteral("checked_at"), QDateTime::currentDateTimeUtc().toString(Qt::ISODate)},
++                    {QStringLiteral("status"), success ? QStringLiteral("ok") : QStringLiteral("error")}};
++        if (!success) return;
++        QJsonArray names;
++        int count = 0;
++        const QRegularExpression row(QStringLiteral("^([^/\\s]+)/\\S+\\s+\\S+\\s+\\S+\\s+\\[upgradable from:"));
++        for (const QString &line : output.split(QLatin1Char('\n'))) {
++            if (line.trimmed().isEmpty() || line.startsWith(QStringLiteral("Listing"))) continue;
++            const auto match = row.match(line);
++            if (!match.hasMatch()) {
++                m_result.insert(QStringLiteral("status"), QStringLiteral("error"));
++                return; // Unknown output must not be reported as zero updates.
++            }
++            ++count;
++            if (names.size() < 100) names.append(match.captured(1));
++        }
++        QDateTime newest;
++        for (const QFileInfo &file : QDir(QStringLiteral("/var/lib/apt/lists")).entryInfoList(QDir::Files))
++            if (file.fileName() != QStringLiteral("lock") && file.lastModified() > newest) newest = file.lastModified();
++        m_result.insert(QStringLiteral("count"), count);
++        m_result.insert(QStringLiteral("packages"), names);
++        m_result.insert(QStringLiteral("index_updated_at"), newest.toUTC().toString(Qt::ISODate));
++        m_result.insert(QStringLiteral("cached_metadata"), true);
++    }
++    QProcess m_process;
++    QTimer m_timeout;
++    QJsonObject m_result;
++    qint64 m_nextCheck = 0;
++    bool m_running = false;
++    bool m_timedOut = false;
++    QByteArray m_output;
++    qint64 m_outputBytes = 0;
++};
++inline QJsonObject packageUpdateObject() {
++    static PackageProbe *probe = new PackageProbe(QCoreApplication::instance());
++    return probe->snapshot();
++}
+--- a/src/krellixd/DockerSnapshot.h
++++ b/src/krellixd/DockerSnapshot.h
+@@ -0,0 +1,25 @@
++#pragma once
++
++#include <QDateTime>
++#include <QFile>
++#include <QFileInfo>
++#include <QJsonDocument>
++#include <QJsonObject>
++
++inline QJsonObject dockerSnapshot()
++{
++    const QString path = QStringLiteral("/run/krellixd-docker/snapshot.json");
++    const QFileInfo info(path);
++    if (!info.isFile() || info.isSymLink() || info.ownerId() != 0
++        || (info.permissions() & (QFileDevice::WriteGroup | QFileDevice::WriteOther)))
++        return {};
++    QFile file(path);
++    if (!file.open(QIODevice::ReadOnly)) return {};
++    const QByteArray bytes = file.read(1024 * 1024 + 1);
++    if (bytes.size() > 1024 * 1024) return {};
++    const QJsonDocument doc = QJsonDocument::fromJson(bytes);
++    const QJsonObject object = doc.object();
++    const qint64 age = QDateTime::currentSecsSinceEpoch()
++        - static_cast<qint64>(object.value(QStringLiteral("collected_at")).toDouble());
++    return age >= 0 && age <= 120 ? object : QJsonObject{};
++}
+--- a/src/sysdep/DockerNet.cpp
++++ b/src/sysdep/DockerNet.cpp
+@@ -1,4 +1,7 @@
+ #include "DockerNet.h"
++#ifdef KRELLIX_DAEMON
++#include "krellixd/DockerSnapshot.h"
++#endif
+ 
+ #include <QByteArray>
+ #include <QDateTime>
+@@ -34,6 +37,9 @@
+ {
+     QHash<QString, QString> map;
+ 
++#ifdef KRELLIX_DAEMON
++    const QJsonDocument doc(dockerSnapshot().value(QStringLiteral("networks")).toArray());
++#else
+     QLocalSocket sock;
+     sock.connectToServer(QString::fromLatin1(kSocketPath));
+     if (!sock.waitForConnected(kConnectTimeoutMs)) {
+@@ -70,6 +76,7 @@
+         qCWarning(lcDockerNet) << "JSON parse error:" << err.errorString();
+         return map;
+     }
++#endif
+ 
+     for (const QJsonValue &v : doc.array()) {
+         const QJsonObject net = v.toObject();
+--- a/tests/daemon-security.py
++++ b/tests/daemon-security.py
+@@ -0,0 +1,121 @@
++#!/usr/bin/env python3
++"""Bounded localhost-only daemon security and compatibility regression tests."""
++import contextlib
++import json
++import os
++import socket
++import subprocess
++import sys
++import tempfile
++import time
++
++BINARY = sys.argv[1]
++
++@contextlib.contextmanager
++def daemon(allow='127.0.0.1', host='127.0.0.1', cap=4):
++    family = socket.AF_INET6 if ':' in host else socket.AF_INET
++    with socket.socket(family) as reservation:
++        reservation.bind((host, 0))
++        port = reservation.getsockname()[1]
++    with tempfile.TemporaryFile() as log:
++        process = subprocess.Popen([BINARY, '--config', '/dev/null', '--listen', host,
++            '--port', str(port), '--allow', allow, '--max-clients', str(cap),
++            '--update-hz', '10', '--io-timeout', '5'], stdout=log, stderr=log)
++        try:
++            time.sleep(0.5)
++            assert process.poll() is None, 'startup failed'
++            yield process, port
++            assert process.poll() is None, 'daemon crashed'
++        finally:
++            process.terminate()
++            try:
++                process.wait(timeout=10)
++            except subprocess.TimeoutExpired:
++                process.kill()
++                process.wait()
++            log.seek(0)
++            output = log.read().decode(errors='replace')
++            assert 'AddressSanitizer' not in output and 'runtime error:' not in output, output
++
++def connect(port, source='127.0.0.1', host='127.0.0.1', small=False):
++    s = socket.socket(socket.AF_INET6 if ':' in host else socket.AF_INET)
++    s.settimeout(20)
++    if small:
++        s.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, 1024)
++    s.bind((source, 0))
++    s.connect((host, port))
++    return s
++
++def closed(s):
++    try:
++        while s.recv(65536):
++            pass
++        return True
++    except ConnectionResetError:
++        return True
++
++def sample(s):
++    data = b''
++    until = time.monotonic() + 20
++    while time.monotonic() < until:
++        block = s.recv(65536)
++        assert block, 'closed while streaming'
++        data += block
++        while b'\n' in data:
++            line, data = data.split(b'\n', 1)
++            obj = json.loads(line)
++            if obj.get('type') == 'sample':
++                for row in obj.get('top', []):
++                    assert row.get('cmd') == row.get('name'), 'arguments leaked'
++                return obj
++    raise AssertionError('no sample')
++
++with daemon() as (_, port):
++    with connect(port, '127.0.0.2') as s:
++        assert closed(s)
++    clients = [connect(port) for _ in range(4)]
++    try:
++        for s in clients:
++            assert sample(s)
++        with connect(port) as excess:
++            assert closed(excess)
++    finally:
++        for s in clients:
++            s.close()
++    time.sleep(1.1)
++    with connect(port) as s:
++        assert sample(s)
++print('PASS: denied IP, four clients, cap, reconnect', flush=True)
++
++for payload in (b'\0', b'{"type":"sample"}\n', os.urandom(65536)):
++    with daemon() as (_, port):
++        with connect(port) as s:
++            s.sendall(payload)
++            assert closed(s)
++        time.sleep(1.1)
++        with connect(port) as s:
++            assert sample(s)
++print('PASS: single byte, fake JSON, random burst rejected; daemon usable', flush=True)
++
++with daemon(allow='::ffff:127.0.0.1') as (_, port):
++    with connect(port) as s:
++        assert sample(s)
++with daemon(allow='::1', host='::1') as (_, port):
++    with connect(port, source='::1', host='::1') as s:
++        assert sample(s)
++print('PASS: mapped IPv4 and native IPv6', flush=True)
++
++with daemon(cap=1) as (_, port):
++    with connect(port, small=True) as slow:
++        time.sleep(20)
++        with connect(port) as fresh:
++            assert sample(fresh)
++print('PASS: non-reader evicted and slot reusable', flush=True)
++
++for options in (['--allow', 'not-an-IP'], ['--allow', '0.0.0.0'],
++                ['--max-clients', '100000000'], ['--io-timeout', '2147483647'],
++                ['--update-hz', 'nan']):
++    result = subprocess.run([BINARY, '--config', '/dev/null', '--allow', '127.0.0.1'] + options,
++                            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=5)
++    assert result.returncode != 0
++print('PASS: invalid security limits fail closed', flush=True)
+--- a/packaging/daemon-security.cmake
++++ b/packaging/daemon-security.cmake
+@@ -0,0 +1,15 @@
++target_compile_definitions(krellixd PRIVATE KRELLIX_DAEMON)
++if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
++    target_compile_options(krellixd PRIVATE -fstack-protector-strong)
++    target_link_options(krellixd PRIVATE -Wl,-z,relro,-z,now,-z,noexecstack)
++    install(PROGRAMS packaging/docker-snapshot.py DESTINATION lib/krellix)
++    install(FILES packaging/systemd/krellixd-docker-snapshot.service
++                  packaging/systemd/krellixd-docker-snapshot.timer
++            DESTINATION lib/systemd/system)
++    install(FILES packaging/systemd/krellixd.service.d/zz-security.conf
++            DESTINATION lib/systemd/system/krellixd.service.d)
++    find_package(Python3 COMPONENTS Interpreter REQUIRED)
++    add_test(NAME daemon-security COMMAND ${Python3_EXECUTABLE}
++        ${CMAKE_CURRENT_SOURCE_DIR}/tests/daemon-security.py $<TARGET_FILE:krellixd>)
++    set_tests_properties(daemon-security PROPERTIES TIMEOUT 180 RUN_SERIAL TRUE)
++endif()
+--- a/packaging/docker-snapshot.py
++++ b/packaging/docker-snapshot.py
+@@ -0,0 +1,79 @@
++#!/usr/bin/python3
++"""Root-only fixed-purpose Docker collector. No network listener or caller input."""
++import http.client
++import json
++import os
++import socket
++import tempfile
++import time
++
++MAX_BYTES = 1024 * 1024
++
++
++class DockerConnection(http.client.HTTPConnection):
++    def connect(self):
++        self.sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
++        self.sock.settimeout(3)
++        self.sock.connect('/run/docker.sock')
++
++
++def fetch(path):
++    connection = DockerConnection('localhost', timeout=3)
++    try:
++        connection.request('GET', path)
++        response = connection.getresponse()
++        data = response.read(MAX_BYTES + 1)
++        if response.status != 200 or len(data) > MAX_BYTES:
++            raise ValueError('Docker response failed or exceeded limit')
++        result = json.loads(data)
++        if not isinstance(result, list):
++            raise ValueError('Invalid Docker response')
++        return result
++    finally:
++        connection.close()
++
++
++def snapshot(networks, containers, images):
++    safe_networks = []
++    for network in networks:
++        if network.get('Driver') != 'bridge':
++            continue
++        options = network.get('Options') or {}
++        safe_networks.append({
++            'Driver': 'bridge', 'Name': str(network.get('Name', ''))[:128],
++            'Id': str(network.get('Id', ''))[:64],
++            'Options': {'com.docker.network.bridge.name':
++                str(options.get('com.docker.network.bridge.name', ''))[:64]},
++        })
++    projects = {str((c.get('Labels') or {}).get('com.docker.compose.project'))
++                for c in containers if (c.get('Labels') or {}).get('com.docker.compose.project')}
++    return {'collected_at': int(time.time()), 'networks': safe_networks,
++            'containers': len(containers), 'images': len(images), 'compose': len(projects),
++            'running': sum(c.get('State') == 'running' for c in containers),
++            'unhealthy': sum(c.get('State') in ('restarting', 'exited', 'dead')
++                             or 'unhealthy' in str(c.get('Status', '')).lower() for c in containers)}
++
++
++def main():
++    if os.geteuid() != 0:
++        raise SystemExit('Collector must run as root')
++    result = snapshot(fetch('/networks'), fetch('/containers/json?all=1'), fetch('/images/json'))
++    data = json.dumps(result, separators=(',', ':')).encode()
++    if len(data) > MAX_BYTES:
++        raise SystemExit('Snapshot exceeded limit')
++    directory = '/run/krellixd-docker'
++    os.makedirs(directory, mode=0o755, exist_ok=True)
++    fd, temporary = tempfile.mkstemp(prefix='.snapshot-', dir=directory)
++    try:
++        with os.fdopen(fd, 'wb') as output:
++            output.write(data)
++            output.flush()
++            os.fchmod(output.fileno(), 0o644)
++        os.replace(temporary, directory + '/snapshot.json')
++    finally:
++        if os.path.exists(temporary):
++            os.unlink(temporary)
++
++
++if __name__ == '__main__':
++    main()
+--- a/packaging/systemd/krellixd-docker-snapshot.service
++++ b/packaging/systemd/krellixd-docker-snapshot.service
+@@ -0,0 +1,23 @@
++[Unit]
++Description=Collect bounded read-only Docker metadata for Krellix
++After=docker.service
++ConditionPathIsSocket=/run/docker.sock
++
++[Service]
++Type=oneshot
++ExecStart=/usr/bin/python3 /usr/lib/krellix/docker-snapshot.py
++User=root
++RuntimeDirectory=krellixd-docker
++RuntimeDirectoryMode=0755
++RuntimeDirectoryPreserve=yes
++TimeoutStartSec=15
++UMask=0077
++NoNewPrivileges=yes
++ProtectSystem=strict
++ProtectHome=yes
++PrivateTmp=yes
++PrivateDevices=yes
++RestrictAddressFamilies=AF_UNIX
++CapabilityBoundingSet=
++MemoryMax=64M
++TasksMax=4
+--- a/packaging/systemd/krellixd-docker-snapshot.timer
++++ b/packaging/systemd/krellixd-docker-snapshot.timer
+@@ -0,0 +1,10 @@
++[Unit]
++Description=Refresh Krellix Docker metadata without granting the daemon Docker access
++
++[Timer]
++OnBootSec=15s
++OnUnitActiveSec=30s
++AccuracySec=1s
++
++[Install]
++WantedBy=timers.target
+--- a/packaging/systemd/krellixd.service.d/zz-security.conf
++++ b/packaging/systemd/krellixd.service.d/zz-security.conf
+@@ -0,0 +1,7 @@
++# Clear legacy Docker group grants. The network service must never control Docker.
++# Docker metadata comes from the separate fixed-purpose snapshot collector.
++[Unit]
++Wants=krellixd-docker-snapshot.timer
++
++[Service]
++SupplementaryGroups=
+--- a/packaging/systemd/krellixd.service.d/docker-aliases.conf
++++ b/packaging/systemd/krellixd.service.d/docker-aliases.conf
+@@ -1,15 +1,4 @@
+-# Drop-in: grant the daemon read access to /var/run/docker.sock so it
+-# can resolve br-<hash> bridge interfaces to their friendly Docker
+-# network names ("internal", "matrix_internal", etc.). Only needed on
+-# hosts that actually run Docker — installing this on a host without a
+-# `docker` group will hard-fail the service start.
+-#
+-# Install:
+-#   sudo install -D -m 644 \
+-#     packaging/systemd/krellixd.service.d/docker-aliases.conf \
+-#     /etc/systemd/system/krellixd.service.d/docker-aliases.conf
+-#   sudo systemctl daemon-reload
+-#   sudo systemctl restart krellixd
+-
++# Compatibility replacement for the old unsafe Docker-group drop-in.
++# Enable krellixd-docker-snapshot.timer to retain Docker metadata safely.
+ [Service]
+-SupplementaryGroups=docker
++SupplementaryGroups=
+--- a/docs/security.md
++++ b/docs/security.md
+@@ -0,0 +1,57 @@
++# krellixd security (Linux release 0.1.2-29)
++
++The daemon checks the actual kernel peer address before creating a Qt socket or
++session. Non-allowlisted peers are reset without application data. This works
++without a firewall, but application code cannot prevent the kernel TCP handshake,
++SYN floods, or upstream bandwidth exhaustion. Keep a firewall as defense in depth.
++
++Only literal IPs are accepted; invalid entries fail startup. IPv4-mapped IPv6 is
++normalized. An empty allowlist refuses startup. Limits: 128 allowlist entries,
++1..16 simultaneous clients, four admissions in a burst per source followed by
++one per second, sampling 0.1..10 Hz, and output deadline 5..300 seconds.
++The monitoring protocol is output-only. Any incoming application byte aborts
++the session. Clients do not send requests or keepalive messages.
++
++Only one output frame (at most 1 MiB) is queued. Slow readers cannot accumulate
++samples or extend the frame deadline with incoming data or partial reads.
++Connections are aborted, not gracefully drained, after errors or deadlines.
++Reject logging is not emitted per connection. Process command-line arguments
++are not exported; only process names remain. Helper command output is bounded.
++
++Direct TCP remains supported and is NOT encrypted or cryptographically
++authenticated. All machines sharing an allowed NAT IP are within that trust
++boundary. SSH/VPN is optional; no launcher or protocol migration is required.
++
++## Docker metadata migration
++
++The daemon must not belong to the docker group or access Docker's control socket.
++The installed zz-security.conf clears legacy SupplementaryGroups=docker grants.
++Remove any administrator override that adds them back. Verify the effective
++service groups and /proc/PID/status after restarting the service.
++
++Enable the separate collector if Docker labels/counts are wanted:
++
++    sudo systemctl daemon-reload
++    sudo systemctl enable --now krellixd-docker-snapshot.timer
++    sudo systemctl start krellixd-docker-snapshot.service
++    sudo systemctl restart krellixd
++
++The collector has no listening socket or client-controlled arguments. It performs
++three fixed Docker GET operations and atomically publishes only selected labels
++and aggregate counts in /run/krellixd-docker/snapshot.json. No container commands,
++environment, mount paths or Docker credentials are published. The daemon reads
++only root-owned, non-group/other-writable snapshots no older than 120 seconds.
++Collector failure produces unavailable Docker metadata, never privilege fallback.
++
++The collector requires Python 3. Its systemd unit limits runtime and resources.
++Existing krellixd configurations, allowlists and client settings are preserved.
++The GUI's local Docker behavior is unchanged; the network daemon has a separate
++compile-time path that never opens docker.sock.
++
++## Verification scope
++
++tests/daemon-security.py exercises isolated loopback listeners: disallowed IPv4,
++four clients, connection cap, reconnect, unexpected binary/JSON input, mapped IPv4,
++native IPv6, non-reading clients, argument redaction, and invalid configuration.
++Run this against packaged binaries as well as sanitizer builds. Testing does not
++prove absence of every vulnerability; Qt/kernel dependencies must remain updated.
