@@ -5,7 +5,7 @@ copy of the earlier conversation's list.
 
 1. KrellTop - CPU/memory process monitoring. COMPLETE: 0.1.4-windows.2.
 2. KrellHealth - overall system health. COMPLETE: 0.1.1-windows.2.
-3. KrellWiFi - wireless monitoring and analysis.
+3. KrellWiFi - wireless monitoring and analysis. RELEASED: 0.1.3-windows.1 (physical-radio validation pending).
 4. KrellBT / KrellBluetooth - Bluetooth devices and batteries.
 5. KrellPkg - available package updates.
 6. KrellStack - container monitoring.
@@ -67,5 +67,27 @@ copy of the earlier conversation's list.
 - Original Linux/macOS plugin source files remain byte-for-byte unchanged.
 - Healthy heart was visually verified in the Vibrixmedia Windows instance.
 
-Next plugin in the agreed order: KrellWiFi. Do not skip or reorder without
+## Released KrellWiFi Windows Preview
+
+- Plugin: 0.1.3-windows.1; source commit
+  32d2a6b185e1c25851c3059f98a03c5d8122f9dc.
+- Installed and visibly enabled in the local Windows VM instance. Existing
+  host, KrellTop and KrellHealth hashes are unchanged. All three instances
+  restarted gracefully and are responsive. Remote configurations are identical;
+  the only local configuration change enables KrellWiFi.
+- Eleven Windows tests pass, including native buffer validation, AP fixtures,
+  escaped SSIDs, missing hardware, permissions/service/radio errors, malformed
+  and oversized output, timeout, shutdown and remote-instance isolation.
+- Native WLAN helper runs every 60 seconds, off the UI thread. It changes no
+  connections, services or privacy permissions and reads no saved passwords.
+- This VM exposes virtual Ethernet, not a Wi-Fi radio: the panel correctly
+  shows "No Wi-Fi adapter". Live RF scanning remains unverified until a Wi-Fi
+  adapter is exposed to Windows. Synthetic scans are not a substitute for that.
+- Local-only: daemon Wi-Fi telemetry is not supported; remote windows do not
+  show Windows or Mac wireless data.
+- GitHub source/tag, signed local repository and Cloudflare artifacts published.
+  Public downloads return HTTP 200; SHA-256 and GPG verification pass. Existing
+  versioned artifacts are preserved. Linux/macOS sources and packages unchanged.
+
+Next plugin in the agreed order: KrellBT / KrellBluetooth. Do not skip or reorder without
 the user's direction.
