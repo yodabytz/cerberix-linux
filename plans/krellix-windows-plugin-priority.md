@@ -4,7 +4,7 @@ Agreed order: 2026-11-14. This is the newly agreed ranking, not a recovered
 copy of the earlier conversation's list.
 
 1. KrellTop - CPU/memory process monitoring. COMPLETE: 0.1.4-windows.2.
-2. KrellHealth - overall system health. IN PROGRESS.
+2. KrellHealth - overall system health. COMPLETE: 0.1.1-windows.2.
 3. KrellWiFi - wireless monitoring and analysis.
 4. KrellBT / KrellBluetooth - Bluetooth devices and batteries.
 5. KrellPkg - available package updates.
@@ -26,6 +26,8 @@ copy of the earlier conversation's list.
 - Remote instances use only the selected server's data. Missing data or a
   disconnected server must never fall back to local Windows information.
 - Preserve independent per-instance settings, themes, and window positions.
+- KrellHealth must retain its heart icon when checks are clear. Unknown or
+  missing data must not show the healthy heart.
 - Test the actual packaged host/plugin combination on the Windows VM.
 - Never install or update the Cerberix Linux VM without explicit permission.
 - Complete releases through GitHub, signed local repository artifacts, and
@@ -46,9 +48,24 @@ copy of the earlier conversation's list.
   SHA-256 checksums and GPG signatures.
 - Linux/macOS sources and packages were not changed.
 
-## KrellHealth Starting Point
+## Completed KrellHealth Release
 
-The existing plugin uses Unix local probes and the remote daemon's health
-findings. Windows needs native read-only health probes and explicit unknown
-states for checks that cannot be performed. Do not report healthy merely
-because remote health data is missing or the connection is down.
+- Plugin: 0.1.1-windows.2, source commit
+  cc7951df400a2b68d0b67b313f91ac6f015c95ba.
+- Published to GitHub, the local Windows repository and Cloudflare, with
+  verified public downloads, SHA-256 checksums and GPG signatures.
+- Installed and verified in all three Windows instances. Existing host and
+  KrellTop binaries are unchanged; per-instance settings are preserved.
+- Nine Windows tests pass, including healthy-heart rendering, unknown data,
+  malformed/oversized remote messages, timeout clearing, reconnects, and shutdown.
+- Local read-only helper checks fixed-drive space, memory pressure, Windows
+  Update reboot requirements, and automatic services stopped with an error.
+- SMART, backup age, certificates and event-log history are not covered by
+  this Windows probe. Unavailable checks are reported, not treated as healthy.
+- Remote instances consume only the selected daemon's health. Missing data or
+  disconnection never shows a healthy heart or falls back to Windows checks.
+- Original Linux/macOS plugin source files remain byte-for-byte unchanged.
+- Healthy heart was visually verified in the Vibrixmedia Windows instance.
+
+Next plugin in the agreed order: KrellWiFi. Do not skip or reorder without
+the user's direction.
