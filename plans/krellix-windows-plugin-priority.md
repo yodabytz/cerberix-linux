@@ -6,7 +6,7 @@ copy of the earlier conversation's list.
 1. KrellTop - CPU/memory process monitoring. COMPLETE: 0.1.4-windows.2.
 2. KrellHealth - overall system health. COMPLETE: 0.1.1-windows.2.
 3. KrellWiFi - wireless monitoring and analysis. RELEASED: 0.1.3-windows.1 (physical-radio validation pending).
-4. KrellBT / KrellBluetooth - Bluetooth devices and batteries.
+4. KrellBT / KrellBluetooth - Bluetooth devices and batteries. RELEASED: 0.1.2-windows.1 (live device/battery validation pending).
 5. KrellPkg - available package updates.
 6. KrellStack - container monitoring.
 7. KrellMail - POP3/IMAP mail counts.
@@ -89,5 +89,32 @@ copy of the earlier conversation's list.
   Public downloads return HTTP 200; SHA-256 and GPG verification pass. Existing
   versioned artifacts are preserved. Linux/macOS sources and packages unchanged.
 
-Next plugin in the agreed order: KrellBT / KrellBluetooth. Do not skip or reorder without
+## Released KrellBluetooth Windows Preview
+
+- Plugin: 0.1.2-windows.1; source commit
+  84012314abb9709524ac31f730a4536e99d6327f.
+- Installed and visibly enabled in the local Windows instance. Three instances
+  restarted gracefully and remained responsive. Existing host/Top/Health/WiFi
+  hashes are unchanged. Settings values are preserved except enabling local
+  Bluetooth; QSettings reserialized one remote INI without changing its values.
+- Fourteen Windows tests pass: native battery property conversion, zero/unknown/
+  full levels, invalid data, 120px layout, escaped names, cross-DLL theme changes,
+  failed-refresh stale-row clearing, timeout, shutdown and remote isolation.
+- Connected devices are enumerated through Windows WinRT. Uses the documented
+  System.Devices.BatteryLife property when available, with standard BLE Battery
+  Service fallback. Unknown batteries stay unknown; no invented averages.
+- Queries run every 15 seconds in a bounded .NET helper with a private STA
+  message loop. No pairing, radio/service changes, driver installation or
+  elevation. No local readings appear in remote windows.
+- The VM exposes a Bluetooth adapter but reports no connected devices. That
+  state and fixture data were verified; live connected-device battery accuracy
+  remains unverified until a compatible device is connected to Windows.
+- GitHub source/tag and signed local/Cloudflare artifacts published. Public ZIP,
+  source, metadata and index return HTTP 200; SHA-256 and GPG verification pass.
+- Linux/macOS Bluetooth sources and packages are untouched. No host code change,
+  Windows restart, or Cerberix Linux VM package update was performed.
+- VM hostname is now BlueScreen; deployment tasks use the current account SID
+  rather than the old desktop hostname.
+
+Next plugin in the agreed order: KrellPkg. Do not skip or reorder without
 the user's direction.
