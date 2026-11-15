@@ -7,7 +7,7 @@ copy of the earlier conversation's list.
 2. KrellHealth - overall system health. COMPLETE: 0.1.1-windows.2.
 3. KrellWiFi - wireless monitoring and analysis. RELEASED: 0.1.3-windows.1 (physical-radio validation pending).
 4. KrellBT / KrellBluetooth - Bluetooth devices and batteries. RELEASED: 0.1.2-windows.1 (live device/battery validation pending).
-5. KrellPkg - available package updates.
+5. KrellPkg - available package updates. RELEASED: 0.1.2-windows.1.
 6. KrellStack - container monitoring.
 7. KrellMail - POP3/IMAP mail counts.
 8. Krelldacious - Audacious playback and volume controls.
@@ -116,5 +116,31 @@ copy of the earlier conversation's list.
 - VM hostname is now BlueScreen; deployment tasks use the current account SID
   rather than the old desktop hostname.
 
-Next plugin in the agreed order: KrellPkg. Do not skip or reorder without
+## Released KrellPkg Windows Preview
+
+- Plugin: 0.1.2-windows.1; source commit
+  1567430bdf53f0653581216831fdfb6c1f013fb4.
+- Installed from the release ZIP and enabled in all three Windows instances.
+  Visually verified local WinGet 3, Quantumbytz apt 55, and Vibrixmedia apt 46.
+  These are observed counts, not fixed expected values for future checks.
+- Sixteen Windows tests pass, including actual DLL loading, live filters,
+  schema bounds, deduplication, escaped tooltips, empty/error/malformed/oversized
+  replies, timeout, shutdown, remote-only data and disconnect clearing.
+- Local checks use the structured WinGet COM API in a bounded separate helper,
+  every five minutes with a 60-second deadline. No localized table parsing,
+  package installation/upgrades, source resets, automatic agreement acceptance,
+  elevation or development-runtime PATH dependencies.
+- Existing include/exclude patterns match package IDs or names immediately.
+  Windows automatically uses WinGet; Unix backend selectors do not apply.
+  Covers the community source, not Windows Update or Microsoft Store. Requires
+  Microsoft App Installer registered for the logged-in desktop user. Tested
+  with WinGet 1.29.380; other WinGet versions have not been exercised here.
+- Remote instances reuse core daemon telemetry and do not run WinGet or add
+  connections. Cached server metadata freshness and supported backends apply.
+- Host and previous plugin hashes unchanged. Settings values unchanged except
+  enabling KrellPkg. No Linux/macOS source or package changes; no Linux VM update.
+- GitHub source/tag, signed local repository and Cloudflare artifacts published.
+  Public ZIP/source/metadata/index return HTTP 200; SHA-256 and GPG checks pass.
+
+Next plugin in the agreed order: KrellStack. Do not skip or reorder without
 the user's direction.
