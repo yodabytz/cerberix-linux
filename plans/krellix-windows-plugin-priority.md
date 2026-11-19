@@ -8,8 +8,8 @@ copy of the earlier conversation's list.
 3. KrellWiFi - wireless monitoring and analysis. RELEASED: 0.1.3-windows.1 (physical-radio validation pending).
 4. KrellBT / KrellBluetooth - Bluetooth devices and batteries. RELEASED: 0.1.2-windows.1 (live device/battery validation pending).
 5. KrellPkg - available package updates. RELEASED: 0.1.2-windows.1.
-6. KrellStack - container monitoring. RELEASED: 0.1.1-windows.3; vibrixmedia instance stability investigation remains open.
-7. KrellMail - POP3/IMAP mail counts.
+6. KrellStack - container monitoring. RELEASED: 0.1.1-windows.3.
+7. KrellMail - POP3/IMAP mail counts. RELEASED: 0.1.0-windows.1 (real account authentication not tested).
 8. Krelldacious - Audacious playback and volume controls.
 9. KrellStock - stock and cryptocurrency quotes.
 10. KrellWeather - weather conditions.
@@ -34,7 +34,32 @@ copy of the earlier conversation's list.
   signed Cloudflare artifacts. Publish packages before repository metadata.
 - Never downgrade or overwrite an already published versioned artifact.
 
-## Completed Windows Release
+## Windows Crash Mitigation and KrellMail Release - 2026-11-19
+
+- Host 0.1.2-windows-preview.3, source `7d43f86`, and KrellMail
+  0.1.0-windows.1, source `21bfe56`. GitHub tags, signed local artifact
+  copies and Cloudflare publication verified. All 13 public release files
+  returned HTTP 200; bytes, SHA-256 and signatures matched.
+- The vibrixmedia crash backtrace pointed to Qt settings construction in
+  `Decal::onScrollTick()`. Preview.3 removes that access from the Windows
+  animation timer and preserves profile/live scroll settings. The underlying
+  Qt failure was not independently reproduced or proven fixed.
+- All 20 Windows tests passed. The real vibrixmedia Windows window retained
+  its original settings, connected and remained responsive for over an hour.
+  The unchanged daemon has a four-client cap; a second copy of this remote
+  window cannot fit while the existing one holds three sessions.
+- The two extracted release ZIPs displayed three unread loopback IMAP
+  messages on the Windows desktop. KrellMail is installed and enabled on
+  the local window, with no account added. The remote windows cannot use
+  the Windows mail plugin for local accounts. Linux/macOS and Cerberix VM
+  were not updated.
+- New Windows shortcut launches use preview.3. The already running
+  Quantumbytz window was not restarted. The old optional-plugin standalone
+  installers still target preview.2; retain installed DLLs and helpers when
+  updating the host.
+- Next: Krelldacious.
+
+## Completed Windows Release - Preview.2
 
 - Host: 0.1.2-windows-preview.2.
 - KrellTop: 0.1.4-windows.2.
