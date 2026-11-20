@@ -34,6 +34,23 @@ copy of the earlier conversation's list.
   signed Cloudflare artifacts. Publish packages before repository metadata.
 - Never downgrade or overwrite an already published versioned artifact.
 
+## Hostname-Only Window Drag - 2026-11-20
+
+- Only a press inside the visible hostname panel starts a main-window drag.
+  The cross-platform regression verifies that other panels cannot start a
+  drag, crossing the hostname does not start one, and release stops it.
+- Windows preview.6 uses source `b78a2a6` and keeps preview.5's runtime.
+  The packaged preview loaded KrellStock 0.1.2-windows.2, received live quotes,
+  kept remote stock panels disabled, and exited cleanly. Host not installed
+  on the Windows VM. The stock installer can still use the verified preview.5
+  bundle without launching or replacing the host.
+- macOS Intel 20261120.1 keeps the previous runtime and plugin binaries.
+  The signed package was installed on the Mac and all three instances
+  resumed, with both remote TCP connections established.
+- Linux GUI 0.1.2-30 passed the distro build suites and existing-plugin
+  package checks. Only the GUI package was published; daemon and optional
+  plugin packages and the running Linux VM were not changed.
+
 ## KrellStock Windows Release - 2026-11-20
 
 - Plugin 0.1.2-windows.2, source `39071d7`, tag `krellstock-v0.1.2-windows.2`.
