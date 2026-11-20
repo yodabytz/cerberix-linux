@@ -11,7 +11,7 @@ copy of the earlier conversation's list.
 6. KrellStack - container monitoring. RELEASED: 0.1.1-windows.3.
 7. KrellMail - POP3/IMAP mail counts. RELEASED: 0.1.0-windows.1 (real account authentication not tested).
 8. Krelldacious - Audacious playback and volume controls. RELEASED: 0.1.0-windows.1.
-9. KrellStock - stock and cryptocurrency quotes. RELEASED: 0.1.2-windows.2.
+9. KrellStock - stock and cryptocurrency quotes. RELEASED: 0.1.2-windows.3.
 10. KrellWeather - weather conditions.
 11. KrellWire - RSS headlines.
 12. KrellSpectrum - audio spectrum visualization.
@@ -42,8 +42,7 @@ copy of the earlier conversation's list.
 - Windows preview.6 uses source `b78a2a6` and keeps preview.5's runtime.
   The packaged preview loaded KrellStock 0.1.2-windows.2, received live quotes,
   kept remote stock panels disabled, and exited cleanly. Host not installed
-  on the Windows VM. The stock installer can still use the verified preview.5
-  bundle without launching or replacing the host.
+  on the Windows VM.
 - macOS Intel 20261120.1 keeps the previous runtime and plugin binaries.
   The signed package was installed on the Mac and all three instances
   resumed, with both remote TCP connections established.
@@ -52,6 +51,13 @@ copy of the earlier conversation's list.
   plugin packages and the running Linux VM were not changed.
 
 ## KrellStock Windows Release - 2026-11-20
+
+- Plugin 0.1.2-windows.3, source `ba8b07e`, tag `krellstock-v0.1.2-windows.3`.
+  Removes the Stocks panel button. Watchlist and display options are in
+  Settings > Plugins > KrellStock. The installer verifies preview.6.
+- Verified the normal Settings page and live quote updates on the Windows
+  VM, then installed only the tested DLL. Remote instances and the installed
+  host executable were unchanged.
 
 - Plugin 0.1.2-windows.2, source `39071d7`, tag `krellstock-v0.1.2-windows.2`.
   The Windows plugin fetches Yahoo Finance quotes without an API key.
