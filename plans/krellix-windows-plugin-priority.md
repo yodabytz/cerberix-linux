@@ -11,7 +11,7 @@ copy of the earlier conversation's list.
 6. KrellStack - container monitoring. RELEASED: 0.1.1-windows.3.
 7. KrellMail - POP3/IMAP mail counts. RELEASED: 0.1.0-windows.1 (real account authentication not tested).
 8. Krelldacious - Audacious playback and volume controls. RELEASED: 0.1.0-windows.1.
-9. KrellStock - stock and cryptocurrency quotes.
+9. KrellStock - stock and cryptocurrency quotes. RELEASED: 0.1.2-windows.2.
 10. KrellWeather - weather conditions.
 11. KrellWire - RSS headlines.
 12. KrellSpectrum - audio spectrum visualization.
@@ -33,6 +33,17 @@ copy of the earlier conversation's list.
 - Complete releases through GitHub, signed local repository artifacts, and
   signed Cloudflare artifacts. Publish packages before repository metadata.
 - Never downgrade or overwrite an already published versioned artifact.
+
+## KrellStock Windows Release - 2026-11-20
+
+- Plugin 0.1.2-windows.2, source `39071d7`, tag `krellstock-v0.1.2-windows.2`.
+  The Windows plugin fetches Yahoo Finance quotes without an API key.
+  Existing Linux and macOS plugin packages were not changed.
+- Packaged Windows preview.5 and the existing VM host both received live
+  equity and crypto quotes. Verified symbol saving, ticker display, remote
+  isolation, and install of the exact tested DLL without replacing the host.
+- Signed ZIP, source, and repository metadata verified on the local and
+  Cloudflare Windows repositories. Next: KrellWeather.
 
 ## Windows Font Rendering Mitigation - 2026-11-20
 
