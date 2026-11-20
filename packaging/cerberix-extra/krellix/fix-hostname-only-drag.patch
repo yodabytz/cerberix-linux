@@ -1,0 +1,146 @@
+diff --git a/src/krellix/MainWindow.cpp b/src/krellix/MainWindow.cpp
+index 37568ac..7d19ec1 100644
+--- a/src/krellix/MainWindow.cpp
++++ b/src/krellix/MainWindow.cpp
+@@ -829,6 +829,8 @@ void MainWindow::closeEvent(QCloseEvent *event)
+ 
+ bool MainWindow::event(QEvent *e)
+ {
++    if (e->type() == QEvent::UngrabMouse)
++        m_dragging = false;
+     const bool handled = QWidget::event(e);
+     // A LayoutRequest lands whenever any child's size hint changes —
+     // panels growing or shrinking on their own (player controls swapping
+@@ -892,6 +894,15 @@ void MainWindow::paintEvent(QPaintEvent *)
+ void MainWindow::mousePressEvent(QMouseEvent *event)
+ {
+     if (event->button() == Qt::LeftButton) {
++        m_dragging = false;
++        const auto *host = findLiveMonitor(QStringLiteral("host"));
++        const QPoint position = event->globalPosition().toPoint();
++        // Check the press, not the cursor's later location during the drag.
++        if (!host || !host->widget || !host->widget->isVisible()
++            || !host->widget->rect().contains(host->widget->mapFromGlobal(position))) {
++            QWidget::mousePressEvent(event);
++            return;
++        }
+         if (QWindow *wh = windowHandle()) {
+             if (wh->startSystemMove()) {
+                 event->accept();
+@@ -899,7 +910,7 @@ void MainWindow::mousePressEvent(QMouseEvent *event)
+             }
+         }
+         m_dragging = true;
+-        m_dragOffset = event->globalPosition().toPoint() - frameGeometry().topLeft();
++        m_dragOffset = position - frameGeometry().topLeft();
+         event->accept();
+         return;
+     }
+@@ -918,7 +929,7 @@ void MainWindow::mouseMoveEvent(QMouseEvent *event)
+ 
+ void MainWindow::mouseReleaseEvent(QMouseEvent *event)
+ {
+-    if (event->button() == Qt::LeftButton) {
++    if (event->button() == Qt::LeftButton && m_dragging) {
+         m_dragging = false;
+         event->accept();
+         return;
+diff --git a/src/krellix/MainWindow.h b/src/krellix/MainWindow.h
+index 23b13bc..327dfb4 100644
+--- a/src/krellix/MainWindow.h
++++ b/src/krellix/MainWindow.h
+@@ -24,7 +24,7 @@ class QTimer;
+ // vertically, and drives them with per-monitor QTimers.
+ //
+ // User interaction:
+-//   - left-button drag on background: move (compositor-driven via
++//   - left-button drag on hostname panel: move (compositor-driven via
+ //     QWindow::startSystemMove with a manual fallback)
+ //   - QSizeGrip in the bottom-right corner: resize
+ //   - right-click: context menu (always-on-top, About, Quit)
+diff --git a/src/monitors/HostMonitor.cpp b/src/monitors/HostMonitor.cpp
+index b9e2ac8..5686bca 100644
+--- a/src/monitors/HostMonitor.cpp
++++ b/src/monitors/HostMonitor.cpp
+@@ -93,6 +93,7 @@ HostMonitor::~HostMonitor() = default;
+ QWidget *HostMonitor::createWidget(QWidget *parent)
+ {
+     auto *p = new Panel(theme(), parent);
++    p->setObjectName(QStringLiteral("krellixHostnamePanel"));
+     p->setSurfaceKey(QStringLiteral("panel_bg_host"));
+     // Hostname uses the lighter "label" font (was overpowering as "value")
+     // and centers under the panel — matches the clock+date below it.
+diff --git a/src/widgets/Panel.cpp b/src/widgets/Panel.cpp
+index 3097817..446f46c 100644
+--- a/src/widgets/Panel.cpp
++++ b/src/widgets/Panel.cpp
+@@ -10,7 +10,6 @@
+ #include <QPaintEvent>
+ #include <QPainter>
+ #include <QVBoxLayout>
+-#include <QWindow>
+ 
+ namespace {
+ 
+@@ -173,49 +172,16 @@ void Panel::onThemeChanged()
+ 
+ void Panel::mousePressEvent(QMouseEvent *event)
+ {
+-    if (event->button() == Qt::LeftButton) {
+-        // Initiate window move from any panel surface — the hostname,
+-        // monitor titles, and inert decals all become drag handles. Charts
+-        // and krells inside the panel inherit QWidget's "ignore" default
+-        // for mouse events, so clicks on them propagate up to here.
+-        if (QWidget *top = window()) {
+-            if (QWindow *wh = top->windowHandle()) {
+-                if (wh->startSystemMove()) {
+-                    event->accept();
+-                    return;
+-                }
+-            }
+-            // Manual fallback when the compositor doesn't honor
+-            // startSystemMove (some X11 setups).
+-            m_dragging = true;
+-            m_dragOffset = event->globalPosition().toPoint()
+-                         - top->frameGeometry().topLeft();
+-        }
+-        event->accept();
+-        return;
+-    }
+     QWidget::mousePressEvent(event);
+ }
+ 
+ void Panel::mouseMoveEvent(QMouseEvent *event)
+ {
+-    if (m_dragging && (event->buttons() & Qt::LeftButton)) {
+-        if (QWidget *top = window()) {
+-            top->move(event->globalPosition().toPoint() - m_dragOffset);
+-        }
+-        event->accept();
+-        return;
+-    }
+     QWidget::mouseMoveEvent(event);
+ }
+ 
+ void Panel::mouseReleaseEvent(QMouseEvent *event)
+ {
+-    if (event->button() == Qt::LeftButton) {
+-        m_dragging = false;
+-        event->accept();
+-        return;
+-    }
+     QWidget::mouseReleaseEvent(event);
+ }
+ 
+diff --git a/src/widgets/Panel.h b/src/widgets/Panel.h
+index 2a7eac4..48fe270 100644
+--- a/src/widgets/Panel.h
++++ b/src/widgets/Panel.h
+@@ -53,6 +53,7 @@ private:
+     QVBoxLayout *m_layout       = nullptr;
+     Decal       *m_titleDecal   = nullptr;
+     QString      m_surfaceKey   = QStringLiteral("panel_bg");
++    // Keep these legacy fields and the mouse overrides for existing plugin ABI.
+     bool         m_dragging     = false;
+     QPoint       m_dragOffset;
+ 
