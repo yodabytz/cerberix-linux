@@ -34,6 +34,22 @@ copy of the earlier conversation's list.
   signed Cloudflare artifacts. Publish packages before repository metadata.
 - Never downgrade or overwrite an already published versioned artifact.
 
+## Windows Font Rendering Mitigation - 2026-11-20
+
+- Host 0.1.2-windows-preview.5, source `83f95fe`. The Quantumbytz
+  preview.3 minidump places the `RtlFreeHeap` access violation in
+  DirectWrite glyph measurement called from Qt text shaping.
+- Qt supports a FreeType Windows font backend. The preview defaults to it
+  for Krellix only, preserving saved theme settings, explicit Qt platform
+  arguments, and the parent environment for child processes. Qt and C++
+  runtime files are unchanged. The original heap corruption is unconfirmed.
+- Four targeted Windows tests passed. The extracted ZIP selected FreeType
+  in local and remote windows, loaded existing plugins, reconnected to the
+  loopback fixture, and received live Quantumbytz telemetry for 45 seconds.
+  All test windows shut down cleanly; no installed instances were updated.
+- GitHub tag and signed local and Cloudflare packages and metadata verified.
+  Preview.5 matching host symbols are retained privately for future dumps.
+
 ## Windows Reliability Preview - 2026-11-20
 
 - Host 0.1.2-windows-preview.4, source `33f06a0`, tagged on GitHub and
