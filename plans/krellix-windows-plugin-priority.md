@@ -14,7 +14,7 @@ copy of the earlier conversation's list.
 9. KrellStock - stock and cryptocurrency quotes. RELEASED: 0.1.2-windows.3.
 10. KrellWeather - weather conditions. RELEASED: 0.1.0-windows.1.
 11. KrellWire - RSS headlines. RELEASED: 0.1.0-windows.1.
-12. KrellSpectrum - audio spectrum visualization.
+12. KrellSpectrum - audio spectrum visualization. RELEASED: 0.1.0-windows.1.
 13. KrellKam - webcam/image display.
 14. KrellMoon - moon phase.
 
@@ -33,6 +33,20 @@ copy of the earlier conversation's list.
 - Complete releases through GitHub, signed local repository artifacts, and
   signed Cloudflare artifacts. Publish packages before repository metadata.
 - Never downgrade or overwrite an already published versioned artifact.
+
+## KrellSpectrum Windows Release - 2026-11-20
+
+- Plugin 0.1.0-windows.1, source `b4c00a4`, tag
+  `krellspectrum-v0.1.0-windows.1`. A Windows-only WASAPI helper reads
+  playback and passes the existing mono 48 kHz PCM format to the unchanged
+  analyzer and renderer. No microphone, recording, or remote capture.
+- Pixel comparison against the Linux package source matched all 80 renders:
+  eight modes, five color modes, and two themes at identical settings,
+  dimensions, and PCM input. Linux and macOS plugin builds passed.
+- Verified the exact packaged DLL and helper using real Windows playback,
+  the normal Waveform setting, saved configuration, remote isolation, and
+  helper cleanup. Enabled the plugin in the local Windows instance without
+  updating the host or the other installations.
 
 ## KrellWire Windows Release - 2026-11-20
 
