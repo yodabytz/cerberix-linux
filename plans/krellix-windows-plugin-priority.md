@@ -34,6 +34,23 @@ copy of the earlier conversation's list.
   signed Cloudflare artifacts. Publish packages before repository metadata.
 - Never downgrade or overwrite an already published versioned artifact.
 
+## Windows Reliability Preview - 2026-11-20
+
+- Host 0.1.2-windows-preview.4, source `33f06a0`, tagged on GitHub and
+  published with verified signatures and checksums to the local and Cloudflare
+  Windows repositories. No installed VM instances or profiles were changed.
+- Disabled monitors now stop work before being removed. Windows teardown
+  stops sensor-helper and socket callbacks before destroying their state.
+  These are verified lifecycle fixes, not a confirmed cause of the overnight
+  heap errors in the local and Quantumbytz instances.
+- Four targeted Windows tests and the extracted ZIP desktop test passed:
+  panel retirement, local plugin UI, loopback reconnect, and clean shutdown.
+  The ZIP retains the previous Qt and C++ runtime files.
+- The ZIP includes `crash-report.ps1`. It read the original error events
+  without including settings or command lines. The VM's existing local dump
+  override was left intact. Matching preview.4 host symbols are retained
+  under `~/.local/share/krellix/windows-symbols/0.1.2-windows-preview.4/`.
+
 ## Krelldacious Windows Release - 2026-11-19
 
 - Plugin 0.1.0-windows.1, GitHub tag `krelldacious-v0.1.0-windows.1`,
