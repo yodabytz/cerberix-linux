@@ -13,7 +13,7 @@ copy of the earlier conversation's list.
 8. Krelldacious - Audacious playback and volume controls. RELEASED: 0.1.0-windows.1.
 9. KrellStock - stock and cryptocurrency quotes. RELEASED: 0.1.2-windows.3.
 10. KrellWeather - weather conditions. RELEASED: 0.1.0-windows.1.
-11. KrellWire - RSS headlines.
+11. KrellWire - RSS headlines. RELEASED: 0.1.0-windows.1.
 12. KrellSpectrum - audio spectrum visualization.
 13. KrellKam - webcam/image display.
 14. KrellMoon - moon phase.
@@ -33,6 +33,20 @@ copy of the earlier conversation's list.
 - Complete releases through GitHub, signed local repository artifacts, and
   signed Cloudflare artifacts. Publish packages before repository metadata.
 - Never downgrade or overwrite an already published versioned artifact.
+
+## KrellWire Windows Release - 2026-11-20
+
+- Plugin 0.1.0-windows.1, source `bb21f29`, tag
+  `krellwire-v0.1.0-windows.1`. Local Windows ticker configured through
+  Settings > Plugins > Krellwire. Linux and macOS behavior was retained.
+- Windows integration tests verified RSS and Atom, relative and safe web
+  links, left-click activation, no right-click activation, live theme
+  refresh, and switching feeds without a restart.
+- Test windows using the published and installed hosts displayed live BBC
+  headlines. Verified saved feed settings, remote isolation, Windows-readable
+  headline text, and installed local ticker operation. The host and remote
+  instances were left unchanged. Linux and macOS builds passed.
+- Next: KrellSpectrum.
 
 ## KrellWeather Windows Release - 2026-11-20
 
