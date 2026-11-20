@@ -10,7 +10,7 @@ copy of the earlier conversation's list.
 5. KrellPkg - available package updates. RELEASED: 0.1.2-windows.1.
 6. KrellStack - container monitoring. RELEASED: 0.1.1-windows.3.
 7. KrellMail - POP3/IMAP mail counts. RELEASED: 0.1.0-windows.1 (real account authentication not tested).
-8. Krelldacious - Audacious playback and volume controls.
+8. Krelldacious - Audacious playback and volume controls. RELEASED: 0.1.0-windows.1.
 9. KrellStock - stock and cryptocurrency quotes.
 10. KrellWeather - weather conditions.
 11. KrellWire - RSS headlines.
@@ -33,6 +33,22 @@ copy of the earlier conversation's list.
 - Complete releases through GitHub, signed local repository artifacts, and
   signed Cloudflare artifacts. Publish packages before repository metadata.
 - Never downgrade or overwrite an already published versioned artifact.
+
+## Krelldacious Windows Release - 2026-11-19
+
+- Plugin 0.1.0-windows.1, GitHub tag `krelldacious-v0.1.0-windows.1`,
+  source `767a55f`. Requires Krellix Windows preview.3.
+- Tested the packaged DLL against Audacious 4.6.1 on the Windows desktop:
+  launch, play, pause, resume, previous/next, track title, volume and remote
+  isolation. Used a separate test playlist; the user's playlist was not changed.
+- Installed and enabled on the local Windows window. Verified it loaded the
+  released DLL and exposed its transport buttons. The two existing remote
+  windows, Krellix host binary and Linux/macOS backends were left unchanged.
+- Published signed ZIP, source and metadata to both local copies and Cloudflare.
+  Current public index and metadata match the local copies. The release links
+  include a query to bypass cached pre-upload errors; the published links passed
+  download, SHA-256 and GPG checks.
+- Next: KrellStock.
 
 ## Windows Crash Mitigation and KrellMail Release - 2026-11-19
 
