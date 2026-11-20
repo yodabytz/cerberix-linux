@@ -12,7 +12,7 @@ copy of the earlier conversation's list.
 7. KrellMail - POP3/IMAP mail counts. RELEASED: 0.1.0-windows.1 (real account authentication not tested).
 8. Krelldacious - Audacious playback and volume controls. RELEASED: 0.1.0-windows.1.
 9. KrellStock - stock and cryptocurrency quotes. RELEASED: 0.1.2-windows.3.
-10. KrellWeather - weather conditions.
+10. KrellWeather - weather conditions. RELEASED: 0.1.0-windows.1.
 11. KrellWire - RSS headlines.
 12. KrellSpectrum - audio spectrum visualization.
 13. KrellKam - webcam/image display.
@@ -33,6 +33,18 @@ copy of the earlier conversation's list.
 - Complete releases through GitHub, signed local repository artifacts, and
   signed Cloudflare artifacts. Publish packages before repository metadata.
 - Never downgrade or overwrite an already published versioned artifact.
+
+## KrellWeather Windows Release - 2026-11-20
+
+- Plugin 0.1.0-windows.1, source `ba02b0f`, tag
+  `krellweather-v0.1.0-windows.1`. Uses the existing Settings > Plugins >
+  Krellweather page and does not run in remote Windows instances.
+- Packaged preview.6 and the installed Windows host displayed live METARs.
+  Verified KMIA/KJFK station switching, Fahrenheit/Celsius, saved settings,
+  clean shutdown, and remote isolation. The installed local panel was enabled
+  without replacing the host or restarting the remote windows.
+- METAR fixtures passed on Windows. Linux and macOS plugin builds passed
+  with the original platform behavior. Next: KrellWire.
 
 ## Hostname-Only Window Drag - 2026-11-20
 
