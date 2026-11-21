@@ -1,0 +1,9 @@
+.mini-card .card-link {
+  display: inline-block;
+  margin-inline-end: 0.75rem;
+}
+
+.foot-links {
+  flex-wrap: wrap;
+  min-width: 0;
+}
