@@ -1,0 +1,136 @@
+--- a/snitch.py
++++ b/snitch.py
+@@ -66,7 +66,7 @@
+         log_action(f"Error fetching netblock owner email for {ip_address}: {e}")
+         return None
+ 
+-def send_email_with_attachment(subject, body, recipient_email, attachment_path):
++def send_email_with_attachment(subject, body, recipient_email, attachment_text):
+     try:
+         if not recipient_email:
+             log_action("Error: No recipient email provided, skipping email send.")
+@@ -81,19 +81,11 @@
+         # Add body text
+         msg.attach(MIMEText(body, 'plain'))
+ 
+-        # Attach the log file
+-        if os.path.exists(attachment_path):
+-            with open(attachment_path, 'rb') as attachment:
+-                part = MIMEBase('application', 'octet-stream')
+-                part.set_payload(attachment.read())
+-            encoders.encode_base64(part)
+-            part.add_header(
+-                'Content-Disposition',
+-                f'attachment; filename={os.path.basename(attachment_path)}',
+-            )
+-            msg.attach(part)
+-        else:
+-            log_action(f"Attachment file not found: {attachment_path}")
++        part = MIMEBase('application', 'octet-stream')
++        part.set_payload(attachment_text.encode('utf-8'))
++        encoders.encode_base64(part)
++        part.add_header('Content-Disposition', 'attachment', filename='snitch.log')
++        msg.attach(part)
+ 
+         # Set up the server
+         server = smtplib.SMTP(SMTP_SERVER, SMTP_PORT)
+@@ -104,7 +96,7 @@
+         server.send_message(msg)
+         server.quit()
+ 
+-        log_action(f"Email sent to {recipient_email} with subject: {subject} and attachment: {attachment_path}")
++        log_action(f"Email sent to {recipient_email} with subject: {subject} and log attachment")
+     except Exception as e:
+         log_action(f"Failed to send email to {recipient_email}: {e}")
+ 
+@@ -184,11 +176,6 @@
+                         log_action(f"No log entries found for IP: {ip_address} in jail: {jail_name}")
+                         continue
+ 
+-                    # Write log entries to a temporary file
+-                    temp_log_path = f"/tmp/snitch_{ip_address}_{jail_name}.log"
+-                    with open(temp_log_path, 'w') as temp_log_file:
+-                        temp_log_file.write(log_entries)
+-
+                     # Include netblock admin email in test mode
+                     body_extra = f"\nNetblock admin email: {netblock_email}" if TEST_EMAIL else ""
+ 
+@@ -204,10 +191,7 @@
+                         f"{body_extra}"
+                         f"\n\nRegards,\nSecurity Team"
+                     )
+-                    send_email_with_attachment(subject, body, recipient_email, temp_log_path)
+-
+-                    # Clean up temporary file
+-                    os.remove(temp_log_path)
++                    send_email_with_attachment(subject, body, recipient_email, log_entries)
+     except FileNotFoundError:
+         log_action(f"Fail2Ban log file not found: {FAIL2BAN_LOG}")
+     except Exception as e:
+@@ -275,7 +259,7 @@
+         log_action(f"Error fetching netblock owner email for {ip_address}: {e}")
+         return None
+ 
+-def send_email_with_attachment(subject, body, recipient_email, attachment_path):
++def send_email_with_attachment(subject, body, recipient_email, attachment_text):
+     try:
+         if not recipient_email:
+             log_action("Error: No recipient email provided, skipping email send.")
+@@ -290,19 +274,11 @@
+         # Add body text
+         msg.attach(MIMEText(body, 'plain'))
+ 
+-        # Attach the log file
+-        if os.path.exists(attachment_path):
+-            with open(attachment_path, 'rb') as attachment:
+-                part = MIMEBase('application', 'octet-stream')
+-                part.set_payload(attachment.read())
+-            encoders.encode_base64(part)
+-            part.add_header(
+-                'Content-Disposition',
+-                f'attachment; filename={os.path.basename(attachment_path)}',
+-            )
+-            msg.attach(part)
+-        else:
+-            log_action(f"Attachment file not found: {attachment_path}")
++        part = MIMEBase('application', 'octet-stream')
++        part.set_payload(attachment_text.encode('utf-8'))
++        encoders.encode_base64(part)
++        part.add_header('Content-Disposition', 'attachment', filename='snitch.log')
++        msg.attach(part)
+ 
+         # Set up the server
+         server = smtplib.SMTP(SMTP_SERVER, SMTP_PORT)
+@@ -313,7 +289,7 @@
+         server.send_message(msg)
+         server.quit()
+ 
+-        log_action(f"Email sent to {recipient_email} with subject: {subject} and attachment: {attachment_path}")
++        log_action(f"Email sent to {recipient_email} with subject: {subject} and log attachment")
+     except Exception as e:
+         log_action(f"Failed to send email to {recipient_email}: {e}")
+ 
+@@ -374,11 +350,6 @@
+                         log_action(f"No log entries found for IP: {ip_address} in jail: {jail_name}")
+                         continue
+ 
+-                    # Write log entries to a temporary file
+-                    temp_log_path = f"/tmp/snitch_{ip_address}_{jail_name}.log"
+-                    with open(temp_log_path, 'w') as temp_log_file:
+-                        temp_log_file.write(log_entries)
+-
+                     # Include netblock admin email in test mode
+                     body_extra = f"\nNetblock admin email: {netblock_email}" if TEST_EMAIL else ""
+ 
+@@ -394,10 +365,7 @@
+                         f"{body_extra}"
+                         f"\n\nRegards,\nSecurity Team"
+                     )
+-                    send_email_with_attachment(subject, body, recipient_email, temp_log_path)
+-
+-                    # Clean up temporary file
+-                    os.remove(temp_log_path)
++                    send_email_with_attachment(subject, body, recipient_email, log_entries)
+     except FileNotFoundError:
+         log_action(f"Fail2Ban log file not found: {FAIL2BAN_LOG}")
+     except Exception as e:

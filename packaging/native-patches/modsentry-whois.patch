@@ -1,0 +1,36 @@
+--- a/modsentry.py
++++ b/modsentry.py
+@@ -8,3 +8,3 @@
+ import sys
+-import whois
++import ipaddress
+ import json
+@@ -491,19 +491,13 @@
+ def get_whois_info(ip_address):
+     """Fetch Whois information for a given IP address and format it."""
+-    try:
+-        w = whois.whois(ip_address)
+-        whois_info = []
+-        for key, value in w.items():
+-            if isinstance(value, list):
+-                value = ", ".join(value)
+-            whois_info.append(f"{key}: {value}")
+-        return "\n".join(whois_info)
+-    except Exception as e:
+-        # Fallback to running the whois command directly if there's an issue
+-        try:
+-            result = subprocess.run(['whois', ip_address], capture_output=True, text=True, timeout=10)
+-            return result.stdout.strip()
+-        except Exception as fallback_e:
+-            return f"Whois lookup failed: {str(fallback_e)}"
++    try:
++        address = str(ipaddress.ip_address(ip_address))
++        result = subprocess.run(
++            ["/usr/bin/whois", address], capture_output=True, text=True,
++            timeout=10, check=True,
++        )
++        return result.stdout.strip()
++    except (ValueError, OSError, subprocess.SubprocessError) as error:
++        return f"Whois lookup failed: {error}"
+ 
+ def check_iptables_chain():

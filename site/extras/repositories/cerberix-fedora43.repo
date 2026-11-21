@@ -1,5 +1,5 @@
 [cerberix-extra]
-name=Cerberix Extras (Fedora 43 x86-64)
+name=Cerberix Extras (Fedora x86-64)
 baseurl=https://repo.cerberix.org/rpm/x86_64/
 enabled=1
 gpgcheck=1

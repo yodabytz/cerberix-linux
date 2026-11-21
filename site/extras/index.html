@@ -30,9 +30,8 @@
       <div class="eyebrow">cerberix-extra</div>
       <h1>Extra apps for Cerberix.</h1>
       <p>
-        Tools and desktop utilities that ship through the signed
-        <code>cerberix-extra</code> pacman repository. Krellix is also
-        available through APT on Ubuntu 24.04 and DNF on Fedora 43.
+        Get Krellix, its optional plugins, and the Cerberix command-line tools
+        through signed repositories for Cerberix/Arch, Ubuntu 24.04, and Fedora 43 and 44.
       </p>
       <div class="hero-cta">
         <a class="btn btn-ghost" href="#repo-setup">Arch / pacman</a>
@@ -79,7 +78,7 @@ sudo apt install krellix</code></pre>
       </div>
 
       <div class="repo-card" id="rpm-setup">
-        <h2>Fedora 43: DNF repository</h2>
+        <h2>Fedora 43 and 44: DNF repository</h2>
         <p>For x86-64. Download the repository file, then run these commands from the download folder. DNF checks both the repository metadata and the RPM packages.</p>
         <p><a href="/extras/repositories/cerberix-fedora43.repo" download>Download cerberix-fedora43.repo</a></p>
         <div class="repo-code">
@@ -89,7 +88,7 @@ sudo apt install krellix</code></pre>
         <div class="repo-note">When prompted, confirm that the key fingerprint is <code>4984 0314 FFF3 DFE2 D6E7 5439 5770 40DE DD8E 521E</code>.</div>
       </div>
 
-      <p>APT and DNF currently carry <code>krellix</code>, <code>krellix-server</code>, and <code>krellix-krellbluetooth</code>. See the <a href="/extras/krellix/">Krellix download page</a> for direct packages, or the <a href="/extras/krellix/plugins/">plugin catalog</a> for other formats.</p>
+      <p>Both APT and DNF carry Krellix, its server, all 14 optional plugins, and all five command-line tools below. If you already added the repo, refresh it and install by package name, for example <code>sudo apt install netscope</code> or <code>sudo dnf install netscope</code>. The DEBs are for Ubuntu 24.04, and the RPMs are tested on Fedora 43 and 44.</p>
     </section>
 
     <section class="features" style="padding-top: 0;">
@@ -100,6 +99,7 @@ sudo apt install krellix</code></pre>
           <p>A themeable Qt system monitor inspired by GKrellM, with remote host support, installable plugins, and downloadable themes.</p>
           <div class="card-actions">
             <a class="card-link" href="/extras/krellix/">Krellix page</a>
+            <a class="card-link" href="/extras/krellix/plugins/">Plugins</a>
             <a class="card-link" href="/extras/krellix/themes/">Themes</a>
           </div>
         </article>
@@ -108,35 +108,55 @@ sudo apt install krellix</code></pre>
           <div class="feature-icon icon-desktop">Network</div>
           <h3>Netscope</h3>
           <p>Network visibility tool for watching active connections and system network behavior from the terminal.</p>
-          <div class="card-actions"><span class="card-link">pacman -S netscope</span></div>
+          <div class="card-actions">
+            <span class="card-link">pacman -S netscope</span>
+            <a class="card-link" href="https://repo.cerberix.org/debian/pool/main/n/netscope/netscope_2.0.15-1_all.deb">Ubuntu DEB</a>
+            <a class="card-link" href="https://repo.cerberix.org/rpm/x86_64/netscope-2.0.15-1.fc43.noarch.rpm">Fedora RPM</a>
+          </div>
         </article>
 
         <article class="feature-card">
           <div class="feature-icon icon-tools">Memory</div>
           <h3>Swapwatch</h3>
           <p>Swap and memory pressure watcher for keeping an eye on systems before they get sluggish.</p>
-          <div class="card-actions"><span class="card-link">pacman -S swapwatch</span></div>
+          <div class="card-actions">
+            <span class="card-link">pacman -S swapwatch</span>
+            <a class="card-link" href="https://repo.cerberix.org/debian/pool/main/s/swapwatch/swapwatch_2.1.0-1_all.deb">Ubuntu DEB</a>
+            <a class="card-link" href="https://repo.cerberix.org/rpm/x86_64/swapwatch-2.1.0-1.fc43.noarch.rpm">Fedora RPM</a>
+          </div>
         </article>
 
         <article class="feature-card">
           <div class="feature-icon icon-guard">Logs</div>
           <h3>Modsentry</h3>
           <p>Monitors ModSecurity logs and displays them in a readable format.</p>
-          <div class="card-actions"><span class="card-link">pacman -S modsentry</span></div>
+          <div class="card-actions">
+            <span class="card-link">pacman -S modsentry</span>
+            <a class="card-link" href="https://repo.cerberix.org/debian/pool/main/m/modsentry/modsentry_1.5.1-2_all.deb">Ubuntu DEB</a>
+            <a class="card-link" href="https://repo.cerberix.org/rpm/x86_64/modsentry-1.5.1-2.fc43.noarch.rpm">Fedora RPM</a>
+          </div>
         </article>
 
         <article class="feature-card">
           <div class="feature-icon icon-desktop">Logs</div>
           <h3>Fuzzytail</h3>
           <p>Fast colorized log tailing with filtering and themes, packaged as <code>ft</code>.</p>
-          <div class="card-actions"><span class="card-link">pacman -S fuzzytail</span></div>
+          <div class="card-actions">
+            <span class="card-link">pacman -S fuzzytail</span>
+            <a class="card-link" href="https://repo.cerberix.org/debian/pool/main/f/fuzzytail/fuzzytail_0.2.3-1_amd64.deb">Ubuntu DEB</a>
+            <a class="card-link" href="https://repo.cerberix.org/rpm/x86_64/fuzzytail-0.2.3-1.fc43.x86_64.rpm">Fedora RPM</a>
+          </div>
         </article>
 
         <article class="feature-card">
           <div class="feature-icon icon-tools">Host</div>
           <h3>Snitch</h3>
           <p>Fail2ban helper for reporting abusive hosts and connection details from the command line.</p>
-          <div class="card-actions"><span class="card-link">pacman -S snitch</span></div>
+          <div class="card-actions">
+            <span class="card-link">pacman -S snitch</span>
+            <a class="card-link" href="https://repo.cerberix.org/debian/pool/main/s/snitch/snitch_0.1.0-2_all.deb">Ubuntu DEB</a>
+            <a class="card-link" href="https://repo.cerberix.org/rpm/x86_64/snitch-0.1.0-2.fc43.noarch.rpm">Fedora RPM</a>
+          </div>
         </article>
       </div>
     </section>

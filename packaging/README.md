@@ -1,4 +1,4 @@
-# Cerberix pacman repos
+# Cerberix package repositories
 
 Two repositories ship alongside the distro:
 
@@ -68,6 +68,40 @@ pull the same tools.
 ---
 
 ## For the maintainer — release flow
+
+### APT and DNF extras
+
+The [Extras setup page](https://cerberix.org/extras/#apt-setup) has the signed
+APT source for Ubuntu 24.04 amd64 and DNF repo for Fedora 43 and 44 x86-64. These
+repos carry the five standalone tools, Krellix and its server, and all 14
+Krellix plugins. Cerberix-specific OS packages remain in the pacman repos.
+
+Use `bash packaging/build-native-extras.sh deb OUT [PACKAGE...]` in an Ubuntu
+24.04 build environment or `bash packaging/build-native-extras.sh rpm OUT
+[PACKAGE...]` in Fedora 43. Install the target distro's C++/Qt 6, CMake, Ninja,
+Rust, and packaging tools on the builders. The script follows the source
+versions and checksums in the Arch recipes. Native-only patches use a higher
+package revision and are kept in `native-patches/`. The Krellix host, server,
+and Bluetooth packages have their own release flow.
+
+Collect only the new builds in separate `BUILD/deb` and `BUILD/rpm` directories.
+Use `bash packaging/publish-native-extras.sh stage STAGE BUILD` to sign the
+packages and prepare updated repository indexes. Use absolute paths for
+`STAGE` and `BUILD`. Run the smoke test in fresh containers, mounting the
+staging directory at `/repo:ro` and `packaging` at `/tests:ro`:
+
+```sh
+docker run --rm -v "$STAGE:/repo:ro" -v "$PWD/packaging:/tests:ro" ubuntu:24.04 bash /tests/test-native-extras.sh
+docker run --rm -v "$STAGE:/repo:ro" -v "$PWD/packaging:/tests:ro" fedora:43 bash /tests/test-native-extras.sh
+docker run --rm -v "$STAGE:/repo:ro" -v "$PWD/packaging:/tests:ro" fedora:44 bash /tests/test-native-extras.sh
+```
+
+After the smoke tests pass, create `STAGE/verified-install` and run
+`bash packaging/publish-native-extras.sh publish STAGE`. It publishes the
+packages before the metadata to the local repo, origin mirror, and Cloudflare
+R2, checking the public bytes. Repeat the container tests against
+`https://repo.cerberix.org` with the same trusted public key, then update the
+catalog links and push the scoped release changes.
 
 ### Full pipeline
 
