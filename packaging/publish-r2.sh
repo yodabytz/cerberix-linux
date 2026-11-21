@@ -26,10 +26,15 @@ put_object() {
     local file="$1"
     local key="$2"
     local attempt
+    local -a metadata=()
+
+    if [[ "$file" == *.html ]]; then
+        metadata+=(--content-type 'text/html; charset=utf-8')
+    fi
 
     for attempt in 1 2 3; do
         echo "==> R2 put $key (attempt $attempt)"
-        if npx wrangler r2 object put "$BUCKET/$key" --file "$file" --remote; then
+        if npx wrangler r2 object put "$BUCKET/$key" --file "$file" "${metadata[@]}" --remote; then
             return 0
         fi
         sleep "$attempt"
@@ -38,21 +43,19 @@ put_object() {
     return 1
 }
 
+put_pacman_index() {
+    local index="$REPO_ROOT/cerberix-extra/x86_64/index.html"
+
+    # A public R2 bucket resolves exact keys, not directory indexes.
+    put_object "$index" 'x86_64/index.html'
+    put_object "$index" 'x86_64/'
+}
+
 put_pacman_repo() {
     local arch_dir="$REPO_ROOT/cerberix-extra/x86_64"
     local db="$arch_dir/cerberix-extra.db.tar.zst"
     local meta
     local filename
-
-    for meta in \
-        cerberix-extra.db cerberix-extra.db.sig \
-        cerberix-extra.db.tar.zst cerberix-extra.db.tar.zst.sig \
-        cerberix-extra.files cerberix-extra.files.sig \
-        cerberix-extra.files.tar.zst cerberix-extra.files.tar.zst.sig \
-        index.html; do
-        [ -e "$arch_dir/$meta" ] || continue
-        put_object "$arch_dir/$meta" "x86_64/$meta"
-    done
 
     while IFS= read -r filename; do
         put_object "$arch_dir/$filename" "x86_64/$filename"
@@ -61,7 +64,23 @@ put_pacman_repo() {
         tar -xOf "$db" --wildcards '*/desc' |
             awk 'previous == "%FILENAME%" { print } { previous = $0 }'
     )
+
+    for meta in \
+        cerberix-extra.db cerberix-extra.db.sig \
+        cerberix-extra.db.tar.zst cerberix-extra.db.tar.zst.sig \
+        cerberix-extra.files cerberix-extra.files.sig \
+        cerberix-extra.files.tar.zst cerberix-extra.files.tar.zst.sig; do
+        [ -e "$arch_dir/$meta" ] || continue
+        put_object "$arch_dir/$meta" "x86_64/$meta"
+    done
+
+    put_pacman_index
 }
+
+if [[ "${1:-}" == --arch-index-only ]]; then
+    put_pacman_index
+    exit 0
+fi
 
 # Pacman clients fetch from the bucket root:
 #   https://repo.cerberix.org/x86_64/cerberix-extra.db
