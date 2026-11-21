@@ -15,8 +15,8 @@ copy of the earlier conversation's list.
 10. KrellWeather - weather conditions. RELEASED: 0.1.0-windows.1.
 11. KrellWire - RSS headlines. RELEASED: 0.1.0-windows.1.
 12. KrellSpectrum - audio spectrum visualization. RELEASED: 0.1.0-windows.1.
-13. KrellKam - webcam/image display.
-14. KrellMoon - moon phase.
+13. KrellKam - webcam/image display. RELEASED: 0.1.0-windows.1 (physical camera not tested).
+14. KrellMoon - moon phase. RELEASED: 0.1.0-windows.1.
 
 ## Requirements For Every Plugin
 
@@ -33,6 +33,21 @@ copy of the earlier conversation's list.
 - Complete releases through GitHub, signed local repository artifacts, and
   signed Cloudflare artifacts. Publish packages before repository metadata.
 - Never downgrade or overwrite an already published versioned artifact.
+
+## KrellKam and KrellMoon Windows Release - 2026-11-20
+
+- Both are 0.1.0-windows.1, with signed source tags and separate signed ZIPs.
+  KrellKam accepts Windows paths and direct, opt-in executable sources.
+  KrellMoon embeds the existing artwork and works offline on the local host.
+- The signed ZIP DLLs displayed a file-URL image and the current phase on
+  the published preview.6 and the installed desktop host. Their panels
+  stayed off in a remote test instance; all test instances closed cleanly.
+  No physical camera, live YouTube source, or third-party camera tool was tested.
+- Installed and enabled both in the existing local Windows instance without
+  replacing its host or changing remote profiles. Linux and macOS builds
+  passed; no non-Windows package or installation changed.
+- Public Cloudflare downloads, hashes, signatures, and index matched the
+  local repository copies. This completes the planned Windows plugin list.
 
 ## KrellSpectrum Windows Release - 2026-11-20
 
