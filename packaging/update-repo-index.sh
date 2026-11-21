@@ -3,7 +3,7 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-ARCH_DIR="$ROOT/packaging/repo/cerberix-extra/x86_64"
+ARCH_DIR="${1:-$ROOT/packaging/repo/cerberix-extra/x86_64}"
 DB="$ARCH_DIR/cerberix-extra.db.tar.zst"
 INDEX="$ARCH_DIR/index.html"
 TMP="$INDEX.tmp"

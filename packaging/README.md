@@ -6,7 +6,7 @@ Two repositories ship alongside the distro:
   empty; reserved for `cerberix-shield`, `cerberix-connect`,
   `cerberix-install`, etc. once they're turned into proper PKGBUILDs)
 - **`cerberix-extra`** — solo-maintained personal tooling
-  (`netscope`, `swapwatch`, `modsentry`, `fuzzytail`, `snitch`)
+  (`badgerclaw`, `netscope`, `swapwatch`, `modsentry`, `fuzzytail`, `snitch`)
 
 Both repos are signed with the same key that signs the ISO
 (`49840314FFF3DFE2D6E75439577040DEDD8E521E`, `hello@cerberix.org`).
@@ -73,13 +73,13 @@ pull the same tools.
 
 The [Extras setup page](https://cerberix.org/extras/#apt-setup) has the signed
 APT source for Ubuntu 24.04 amd64 and DNF repo for Fedora 43 and 44 x86-64. These
-repos carry the five standalone tools, Krellix and its server, and all 14
+repos carry the standalone tools, Krellix and its server, and all 14
 Krellix plugins. Cerberix-specific OS packages remain in the pacman repos.
 
 Use `bash packaging/build-native-extras.sh deb OUT [PACKAGE...]` in an Ubuntu
 24.04 build environment or `bash packaging/build-native-extras.sh rpm OUT
 [PACKAGE...]` in Fedora 43. Install the target distro's C++/Qt 6, CMake, Ninja,
-Rust, and packaging tools on the builders. The script follows the source
+Rust, Go 1.24 or newer, and packaging tools on the builders. The script follows the source
 versions and checksums in the Arch recipes. Native-only patches use a higher
 package revision and are kept in `native-patches/`. The Krellix host, server,
 and Bluetooth packages have their own release flow.

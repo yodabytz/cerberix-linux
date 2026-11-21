@@ -3,7 +3,7 @@
 set -euo pipefail
 base=${1:-file:/repo}
 key=${2:-/repo/public-key.asc}
-packages=(fuzzytail modsentry netscope snitch swapwatch krellix krellix-server)
+packages=(badgerclaw fuzzytail modsentry netscope snitch swapwatch krellix krellix-server)
 plugins=(krellbluetooth krelldacious krellhealth krellkam krellmail krellmoon
          krellpkg krellspectrum krellstack krellstock krelltop krellweather krellwifi krellwire)
 for plugin in "${plugins[@]}"; do packages+=("krellix-$plugin"); done
@@ -35,6 +35,8 @@ case "$ID:$VERSION_ID" in
 esac
 
 for bin in ft modsentry netscope swapwatch; do timeout 10s "$bin" -h >/dev/null; done
+badgerclaw --version
+badgerclaw --help >/dev/null
 python3 -m py_compile /usr/bin/snitch
 python3 /tests/test-snitch-attachment.py /usr/bin/snitch
 

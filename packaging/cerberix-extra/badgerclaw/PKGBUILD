@@ -1,0 +1,31 @@
+# Maintainer: yodabytz <hello@cerberix.org>
+pkgname=badgerclaw
+pkgver=0.1.0
+pkgrel=2
+pkgdesc="Terminal client for RootBadger discussion groups"
+arch=('x86_64')
+url="https://github.com/yodabytz/BadgerClaw"
+license=('MIT')
+depends=('ca-certificates')
+makedepends=('go')
+options=('!debug')
+source=("$pkgname-$pkgver.tar.gz::https://codeload.github.com/yodabytz/BadgerClaw/tar.gz/refs/tags/v$pkgver")
+sha256sums=('63187e658993a4742636c8324709508e245489148e371a812813215b932c5532')
+
+build() {
+    cd "$srcdir/BadgerClaw-$pkgver"
+    CGO_ENABLED=0 go build -mod=readonly -trimpath -buildvcs=false -ldflags='-s -w' -o badgerclaw .
+}
+
+check() {
+    cd "$srcdir/BadgerClaw-$pkgver"
+    CGO_ENABLED=0 go test -mod=readonly ./...
+    [[ "$(./badgerclaw --version)" == "RootBadger CLI $pkgver" ]]
+}
+
+package() {
+    cd "$srcdir/BadgerClaw-$pkgver"
+    install -Dm755 badgerclaw "$pkgdir/usr/bin/badgerclaw"
+    install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+    install -Dm644 README.md "$pkgdir/usr/share/doc/$pkgname/README.md"
+}

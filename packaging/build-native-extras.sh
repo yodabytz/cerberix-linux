@@ -13,7 +13,7 @@ export CMAKE_BUILD_PARALLEL_LEVEL=${CMAKE_BUILD_PARALLEL_LEVEL:-4}
 export RUSTUP_TOOLCHAIN=stable
 
 if (($# == 0)); then
-    set -- fuzzytail modsentry netscope snitch swapwatch
+    set -- badgerclaw fuzzytail modsentry netscope snitch swapwatch
     for dir in "$root"/cerberix-extra/krellix-*/; do
         set -- "$@" "$(basename "$dir")"
     done
@@ -22,7 +22,7 @@ fi
 build_one() (
     requested=$1
     case "$requested" in
-        fuzzytail|modsentry|netscope|snitch|swapwatch|krellix-krell*) ;;
+        badgerclaw|fuzzytail|modsentry|netscope|snitch|swapwatch|krellix-krell*) ;;
         *) printf 'Not a portable extra: %s\n' "$requested" >&2; exit 1 ;;
     esac
     recipe="$root/cerberix-extra/$requested"
@@ -76,7 +76,11 @@ build_one() (
     fi
     if declare -F prepare >/dev/null; then (cd "$srcdir"; prepare); fi
     if declare -F build >/dev/null; then (cd "$srcdir"; build); fi
-    if [[ "$pkgname" == fuzzytail ]]; then (cd "$srcdir/$pkgname-$pkgver"; cargo test --locked --release); fi
+    if [[ "$pkgname" == fuzzytail ]]; then
+        (cd "$srcdir/$pkgname-$pkgver"; cargo test --locked --release)
+    elif declare -F check >/dev/null; then
+        (cd "$srcdir"; check)
+    fi
     (cd "$srcdir"; package)
 
     local is_plugin=false depends='' optional='' conffile plugin_elf=''
@@ -97,6 +101,9 @@ build_one() (
         elif [[ "$pkgname" == fuzzytail ]]; then
             deb_arch=amd64
             elf="$pkgdir/usr/bin/ft"
+        elif [[ "$pkgname" == badgerclaw ]]; then
+            # The Go build is static and has no shared-library dependencies.
+            deb_arch=amd64
         fi
         if [[ -n "$elf" ]]; then
             strip --strip-debug "$elf"
@@ -108,6 +115,7 @@ build_one() (
             depends="${depends:+$depends, }$shlibs"
         fi
         case "$pkgname" in
+            badgerclaw) depends='ca-certificates' ;;
             modsentry) depends='python3, whois, iptables' ;;
             snitch) depends='python3, whois'; optional='fail2ban' ;;
             netscope|swapwatch) depends='python3, python3-psutil' ;;
@@ -136,6 +144,7 @@ build_one() (
         local top="$work/rpmbuild" rpm_arch=x86_64
         mkdir -p "$top"/{BUILD,BUILDROOT,RPMS,SOURCES,SPECS,SRPMS}
         case "$pkgname" in
+            badgerclaw) depends='ca-certificates' ;;
             modsentry) rpm_arch=noarch; depends='python3, whois, iptables' ;;
             snitch) rpm_arch=noarch; depends='python3, whois'; optional='fail2ban' ;;
             netscope|swapwatch) rpm_arch=noarch; depends='python3, python3-psutil' ;;

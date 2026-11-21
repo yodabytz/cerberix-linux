@@ -36,7 +36,7 @@ EOF
     pacman -Sl $REPO_NAME
     echo
     echo '== Installing repo packages =='
-    pacman -S --noconfirm netscope swapwatch modsentry fuzzytail snitch \
+    pacman -S --noconfirm badgerclaw netscope swapwatch modsentry fuzzytail snitch \
       krellix krellix-server \
       krellix-krellkam krellix-krelldacious krellix-krellweather \
       krellix-krellwire krellix-krellspectrum krellix-krellmail \
@@ -45,7 +45,7 @@ EOF
       krellix-krellstack
     echo
     echo '== Binary resolution =='
-    for b in netscope swapwatch modsentry ft snitch krellix krellixd; do
+    for b in badgerclaw netscope swapwatch modsentry ft snitch krellix krellixd; do
       printf '  %-10s -> %s\n' \"\$b\" \"\$(command -v \$b || echo MISSING)\"
     done
     echo
