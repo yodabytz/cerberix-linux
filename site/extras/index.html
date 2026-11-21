@@ -4,10 +4,11 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Extras — Cerberix Linux</title>
-  <meta name="description" content="Extra Cerberix apps and tools available from the cerberix-extra pacman repository." />
+  <meta name="description" content="Find Cerberix extra apps and set up the signed pacman, APT, and DNF repositories." />
   <meta name="theme-color" content="#222436" />
   <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
   <link rel="stylesheet" href="/style.css?v=20260506-badges" />
+  <link rel="stylesheet" href="/extras/repositories/setup.css" />
 </head>
 <body>
   <div class="bg-grid"></div>
@@ -30,14 +31,19 @@
       <h1>Extra apps for Cerberix.</h1>
       <p>
         Tools and desktop utilities that ship through the signed
-        <code>cerberix-extra</code> pacman repository. Krellix has its own page
-        because it has installable plugins and downloadable themes.
+        <code>cerberix-extra</code> pacman repository. Krellix is also
+        available through APT on Ubuntu 24.04 and DNF on Fedora 43.
       </p>
+      <div class="hero-cta">
+        <a class="btn btn-ghost" href="#repo-setup">Arch / pacman</a>
+        <a class="btn btn-ghost" href="#apt-setup">Ubuntu / APT</a>
+        <a class="btn btn-ghost" href="#rpm-setup">Fedora / DNF</a>
+      </div>
     </section>
 
     <section id="repo-setup" class="repo-setup">
       <div class="repo-card">
-        <h2>Install the cerberix-extra repo</h2>
+        <h2>Arch / Cerberix: pacman repository</h2>
         <p>Add the signing key once, add the repo to <code>/etc/pacman.conf</code>, then install packages normally with pacman.</p>
         <div class="repo-code">
 <pre><code>sudo pacman-key --init
@@ -48,13 +54,41 @@ SigLevel = Required DatabaseOptional
 Server = https://repo.cerberix.org/$arch/</code></pre>
         </div>
         <div class="repo-note">
-          Put the repo block at the end of <code>/etc/pacman.conf</code>, then run <code>sudo pacman -Sy</code>.
-          After that, package commands like <code>sudo pacman -S krellix</code> work directly.
+          Add the block at the end of <code>/etc/pacman.conf</code> if it isn't already there.
+          Run <code>sudo pacman -Syu krellix</code> to refresh and upgrade the system while installing Krellix.
         </div>
         <div class="card-actions">
-          <a class="card-link" href="https://repo.cerberix.org/x86_64/">Browse repo</a>
+          <a class="card-link" href="https://repo.cerberix.org/x86_64/cerberix-extra.db">Signed repository index</a>
         </div>
       </div>
+
+      <div class="repo-card" id="apt-setup">
+        <h2>Ubuntu 24.04: APT repository</h2>
+        <p>For amd64. Download the signing key and the APT source file, then run these commands from the download folder. If you already configured this same URL in another APT source file, keep only one entry.</p>
+        <p><a href="/gpg.asc" download>Download signing key</a> &middot; <a href="/extras/repositories/cerberix.sources" download>Download cerberix.sources</a></p>
+        <div class="repo-code">
+<pre><code>gpg --show-keys --fingerprint ./gpg.asc
+sudo install -d -m 0755 /etc/apt/keyrings
+sudo install -m 0644 ./gpg.asc /etc/apt/keyrings/cerberix.asc</code></pre>
+<pre><code>sudo install -m 0644 ./cerberix.sources /etc/apt/sources.list.d/cerberix.sources
+sudo apt update
+sudo apt install krellix</code></pre>
+        </div>
+        <div class="repo-note">Verify the fingerprint before installing the key: <code>4984 0314 FFF3 DFE2 D6E7 5439 5770 40DE DD8E 521E</code>. APT uses this key only for the Cerberix source.</div>
+      </div>
+
+      <div class="repo-card" id="rpm-setup">
+        <h2>Fedora 43: DNF repository</h2>
+        <p>For x86-64. Download the repository file, then run these commands from the download folder. DNF checks both the repository metadata and the RPM packages.</p>
+        <p><a href="/extras/repositories/cerberix-fedora43.repo" download>Download cerberix-fedora43.repo</a></p>
+        <div class="repo-code">
+<pre><code>sudo install -m 0644 ./cerberix-fedora43.repo /etc/yum.repos.d/cerberix-fedora43.repo</code></pre>
+<pre><code>sudo dnf install krellix</code></pre>
+        </div>
+        <div class="repo-note">When prompted, confirm that the key fingerprint is <code>4984 0314 FFF3 DFE2 D6E7 5439 5770 40DE DD8E 521E</code>.</div>
+      </div>
+
+      <p>APT and DNF currently carry <code>krellix</code>, <code>krellix-server</code>, and <code>krellix-krellbluetooth</code>. See the <a href="/extras/krellix/">Krellix download page</a> for direct packages, or the <a href="/extras/krellix/plugins/">plugin catalog</a> for other formats.</p>
     </section>
 
     <section class="features" style="padding-top: 0;">

@@ -1,0 +1,7 @@
+[cerberix-extra]
+name=Cerberix Extras (Fedora 43 x86-64)
+baseurl=https://repo.cerberix.org/rpm/x86_64/
+enabled=1
+gpgcheck=1
+repo_gpgcheck=1
+gpgkey=https://cerberix.org/gpg.asc

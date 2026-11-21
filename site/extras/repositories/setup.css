@@ -1,0 +1,16 @@
+.repo-code > pre {
+  min-width: 0;
+}
+
+.repo-card:target {
+  scroll-margin-top: 1rem;
+}
+
+.repo-note code {
+  overflow-wrap: anywhere;
+}
+
+.foot-links {
+  flex-wrap: wrap;
+  min-width: 0;
+}
