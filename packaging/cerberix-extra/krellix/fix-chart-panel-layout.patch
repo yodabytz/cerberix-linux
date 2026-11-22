@@ -1,0 +1,455 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 6c2c13c..4065c18 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -396,6 +396,20 @@ install(TARGETS krellstock LIBRARY DESTINATION lib/krellix/plugins)
+ 
+ include(CTest)
+ if(BUILD_TESTING)
++    qt_add_executable(chart-panel-layout tests/chart-panel-layout.cpp
++        src/monitors/MonitorBase.cpp src/monitors/CpuMonitor.cpp
++        src/monitors/NetMonitor.cpp src/monitors/DiskMonitor.cpp
++        src/sysdep/CpuStat.cpp src/sysdep/NetStat.cpp src/sysdep/DiskStat.cpp
++        src/sysdep/DockerNet.cpp src/theme/Theme.cpp
++        src/widgets/Chart.cpp src/widgets/Panel.cpp src/widgets/Decal.cpp
++        src/widgets/Krell.cpp src/widgets/Meter.cpp)
++    target_include_directories(chart-panel-layout PRIVATE src)
++    target_link_libraries(chart-panel-layout PRIVATE Qt6::Widgets Qt6::Network)
++    foreach(scale IN ITEMS 1 1.5 2)
++        add_test(NAME chart-panel-layout-${scale} COMMAND chart-panel-layout)
++        set_tests_properties(chart-panel-layout-${scale} PROPERTIES
++            ENVIRONMENT "QT_QPA_PLATFORM=offscreen;QT_SCALE_FACTOR=${scale}" TIMEOUT 20)
++    endforeach()
+     set(LIFECYCLE_SOURCES ${KRELLIX_SOURCES})
+     list(REMOVE_ITEM LIFECYCLE_SOURCES src/krellix/main.cpp)
+     qt_add_executable(settings-lifecycle tests/settings-lifecycle.cpp ${LIFECYCLE_SOURCES})
+diff --git a/src/monitors/CpuMonitor.cpp b/src/monitors/CpuMonitor.cpp
+index 6e07a7d..c88102a 100644
+--- a/src/monitors/CpuMonitor.cpp
++++ b/src/monitors/CpuMonitor.cpp
+@@ -127,7 +127,6 @@ void CpuMonitor::buildPanels(const QList<CpuSample> &samples)
+         auto *p = new Panel(theme(), container);
+         p->setSurfaceKey(QStringLiteral("panel_bg_cpu"));
+         p->setTitle(QStringLiteral("CPU"));
+-        Krell *aggKrell = p->addKrell();
+         Chart *chart = p->addChart();
+         chart->setMaxValue(1.0);
+         const int nCores = cores.size();
+@@ -137,24 +136,19 @@ void CpuMonitor::buildPanels(const QList<CpuSample> &samples)
+                                   .arg(nCores));
+ 
+         m_combinedChart = chart;
+-        m_aggregateUI.krell = aggKrell;
++        m_aggregateUI.krell = p->addKrell();
+         for (const CpuSample &core : cores)
+             m_combinedCoreIndices.append(core.index);
+         vbox->addWidget(p);
+     } else if (m_mode == Mode::Aggregate) {
+-        // Per-CPU panel layout is intentionally compact: just a krell
+-        // row and a chart, with the core name + current % drawn as an
+-        // overlay inside the chart (top-left). Saves a decal row.
+         auto *p = new Panel(theme(), container);
+         p->setSurfaceKey(QStringLiteral("panel_bg_cpu"));
+         p->setTitle(QStringLiteral("CPU"));
+         CoreUI ui;
+-        ui.krell = p->addKrell();
+         ui.chart = p->addChart(QStringLiteral("chart_line_cpu"));
+-        if (ui.chart) {
+-            ui.chart->setMaxValue(1.0);
+-            ui.chart->setOverlayText(QStringLiteral("CPU 0%"));
+-        }
++        ui.chart->setMaxValue(1.0);
++        ui.chart->setOverlayText(percentText(0));
++        ui.krell = p->addKrell();
+         m_aggregateUI = ui;
+         vbox->addWidget(p);
+     } else {
+@@ -169,18 +163,11 @@ void CpuMonitor::buildPanels(const QList<CpuSample> &samples)
+             auto *p = new Panel(theme(), container);
+             p->setSurfaceKey(QStringLiteral("panel_bg_cpu"));
+             CoreUI ui;
+-            ui.valueDecal = p->addDecal(QStringLiteral("label"),
+-                                        QStringLiteral("text_secondary"));
+-            if (ui.valueDecal) {
+-                ui.valueDecal->setAlignment(Qt::AlignHCenter);
+-                ui.valueDecal->setText(displayName);
+-            }
+-            ui.krell = p->addKrell();
++            p->setTitle(displayName);
+             ui.chart = p->addChart(QStringLiteral("chart_line_cpu"));
+-            if (ui.chart) {
+-                ui.chart->setMaxValue(1.0);
+-                ui.chart->setOverlayText(QStringLiteral("0%"));
+-            }
++            ui.chart->setMaxValue(1.0);
++            ui.chart->setOverlayText(percentText(0));
++            ui.krell = p->addKrell();
+             m_cores.append(ui);
+             m_visibleCoreIndices.append(smp.index);
+             m_visibleCoreLabels.append(displayName);
+@@ -218,7 +205,7 @@ void CpuMonitor::tick()
+ 
+     if (m_mode == Mode::Combined) {
+         if (m_havePrev && m_combinedChart && !m_combinedCoreIndices.isEmpty()) {
+-            // Per-core series + aggregate krell at the top.
++            // Per-core series and an aggregate krell below the chart.
+             int sumPct = 0;
+             int counted = 0;
+             const int n = m_combinedCoreIndices.size();
+@@ -271,8 +258,7 @@ void CpuMonitor::tick()
+             if (m_aggregateUI.chart) {
+                 m_aggregateUI.chart->appendSample(util);
+                 const int pct = static_cast<int>(util * 100.0 + 0.5);
+-                m_aggregateUI.chart->setOverlayText(
+-                    QStringLiteral("CPU %1").arg(percentText(pct)));
++                m_aggregateUI.chart->setOverlayText(percentText(pct));
+             }
+         }
+     } else if (m_havePrev) {
+diff --git a/src/monitors/CpuMonitor.h b/src/monitors/CpuMonitor.h
+index 38e6173..31bccea 100644
+--- a/src/monitors/CpuMonitor.h
++++ b/src/monitors/CpuMonitor.h
+@@ -9,13 +9,12 @@
+ #include <QPointer>
+ 
+ class Chart;
+-class Decal;
+ class Krell;
+ class QVBoxLayout;
+ class QWidget;
+ 
+ // Per-core CPU monitor: one Panel per core (cpu0, cpu1, ...) holding a
+-// percent decal, a krell (instant utilization), and a chart (1 Hz history).
++// title, history chart with its live readout, and an instant-utilization krell.
+ class CpuMonitor : public MonitorBase
+ {
+     Q_OBJECT
+@@ -33,7 +32,6 @@ public:
+ 
+ private:
+     struct CoreUI {
+-        QPointer<Decal> valueDecal;
+         QPointer<Krell> krell;
+         QPointer<Chart> chart;
+     };
+diff --git a/src/monitors/DiskMonitor.cpp b/src/monitors/DiskMonitor.cpp
+index 4abbd15..7072a3a 100644
+--- a/src/monitors/DiskMonitor.cpp
++++ b/src/monitors/DiskMonitor.cpp
+@@ -70,14 +70,11 @@ QWidget *DiskMonitor::createWidget(QWidget *parent)
+         p->setTitle(s.name);
+ 
+         DiskUI ui;
+-        ui.textDecal = p->addDecal(QStringLiteral("label"),
+-                                   QStringLiteral("text_primary"));
+-        ui.textDecal->setAlignment(Qt::AlignHCenter);
+-        ui.textDecal->setText(QStringLiteral("R 0  W 0"));
++        ui.chart      = p->addChart(QStringLiteral("chart_line_disk"));
++        ui.chart->setMaxValue(ui.maxBps);
++        ui.chart->setOverlayText(QStringLiteral("R 0  W 0"));
+         ui.readKrell  = p->addKrell();
+         ui.writeKrell = p->addKrell();
+-        ui.chart      = p->addChart(QStringLiteral("chart_line_disk"));
+-        if (ui.chart) ui.chart->setMaxValue(ui.maxBps);
+ 
+         m_disks.insert(s.name, ui);
+         m_prevSamples.insert(s.name, s);
+@@ -136,9 +133,7 @@ void DiskMonitor::tick()
+         if (ui.chart) {
+             ui.chart->setMaxValue(ui.maxBps);
+             ui.chart->appendSample(readBps + writeBps);
+-        }
+-        if (ui.textDecal) {
+-            ui.textDecal->setText(QStringLiteral("R %1  W %2")
++            ui.chart->setOverlayText(QStringLiteral("R %1  W %2")
+                                   .arg(humanBps(readBps), humanBps(writeBps)));
+         }
+ 
+diff --git a/src/monitors/DiskMonitor.h b/src/monitors/DiskMonitor.h
+index 48a81c9..8e07e26 100644
+--- a/src/monitors/DiskMonitor.h
++++ b/src/monitors/DiskMonitor.h
+@@ -30,7 +30,6 @@ public:
+ 
+ private:
+     struct DiskUI {
+-        QPointer<Decal> textDecal;
+         QPointer<Krell> readKrell;
+         QPointer<Krell> writeKrell;
+         QPointer<Chart> chart;
+diff --git a/src/monitors/NetMonitor.cpp b/src/monitors/NetMonitor.cpp
+index 9566594..7154995 100644
+--- a/src/monitors/NetMonitor.cpp
++++ b/src/monitors/NetMonitor.cpp
+@@ -65,13 +65,11 @@ static NetMonitor::IfaceUI buildIfacePanel(Theme *theme, QWidget *parent,
+     p->setSurfaceKey(QStringLiteral("panel_bg_net"));
+     p->setTitle(alias.isEmpty() ? name : alias);
+     NetMonitor::IfaceUI ui;
++    ui.chart   = p->addChart(QStringLiteral("chart_line_net_rx"));
++    ui.chart->setMaxValue(ui.maxBps);
++    ui.chart->setOverlayText(QStringLiteral("RX 0  TX 0"));
+     ui.rxKrell = p->addKrell();
+     ui.txKrell = p->addKrell();
+-    ui.chart   = p->addChart(QStringLiteral("chart_line_net_rx"));
+-    if (ui.chart) {
+-        ui.chart->setMaxValue(ui.maxBps);
+-        ui.chart->setOverlayText(QStringLiteral("RX 0  TX 0"));
+-    }
+     into->addWidget(p);
+     return ui;
+ }
+diff --git a/src/widgets/Chart.cpp b/src/widgets/Chart.cpp
+index 59b24d7..03d20f3 100644
+--- a/src/widgets/Chart.cpp
++++ b/src/widgets/Chart.cpp
+@@ -2,12 +2,14 @@
+ 
+ #include "theme/Theme.h"
+ 
++#include <QFontMetrics>
+ #include <QLinearGradient>
+ #include <QPaintEvent>
+ #include <QPainter>
+ #include <QPainterPath>
+ #include <QPolygonF>
+ #include <QResizeEvent>
++#include <QTransform>
+ #include <QtGlobal>
+ 
+ #include <algorithm>
+@@ -174,6 +176,7 @@ void Chart::setOverlayText(const QString &text)
+ {
+     if (m_overlayText == text) return;
+     m_overlayText = text;
++    setAccessibleName(text);
+     update();
+ }
+ 
+@@ -333,16 +336,7 @@ void Chart::paintEvent(QPaintEvent *)
+             p.drawTiledPixmap(r, overlay);
+     }
+ 
+-    QFont overlayFont = m_theme->font(QStringLiteral("label"));
+-    const bool hasOverlay = !m_overlayText.isEmpty();
+-    const QFontMetrics overlayMetrics(overlayFont);
+-    int overlayBand = 0;
+-    if (hasOverlay && r.height() >= overlayMetrics.height() + 12)
+-        overlayBand = overlayMetrics.height() + 2;
+-
+-    QRect graphRect = r;
+-    if (overlayBand > 0)
+-        graphRect.setTop(r.top() + overlayBand);
++    const QRect &graphRect = r;
+ 
+     const int maxGridLines = qMax(0, m_theme->metric(QStringLiteral("chart_grid_lines"), 5));
+     const double fullScale = (m_max > 0.0) ? m_max : 1.0;
+@@ -427,43 +421,31 @@ void Chart::paintEvent(QPaintEvent *)
+         }
+     }
+ 
+-    // Optional overlay label: reserve a short top band when there is enough
+-    // height so 100% samples do not run through the number.
+-    if (hasOverlay) {
+-        p.setRenderHint(QPainter::TextAntialiasing, true);
+-        p.setFont(overlayFont);
+-        // Themes can give chart-overlay text its own color/shadow via
+-        // the dedicated "chart_overlay" key (e.g. amber-on-grey on the
+-        // egan-grey theme). Falls back to text_primary so themes that
+-        // don't define it get the previous behavior.
++    // Paint the glyphs last, without a backing strip or clipping the graph.
++    const QRect textRect = r.adjusted(4, 2, -4, -2);
++    if (!m_overlayText.isEmpty() && !textRect.isEmpty()) {
++        const QFont font = m_theme->font(QStringLiteral("label"));
++        const QFontMetrics metrics(font, this);
++        const qreal scale = qMin<qreal>(1.0, qreal(textRect.height()) / metrics.height());
++        const QString text = metrics.elidedText(m_overlayText, Qt::ElideRight,
++                                                 static_cast<int>(textRect.width() / scale));
+         const Theme::TextStyle ts = m_theme->textStyle(
+             QStringLiteral("chart_overlay"),
+             QStringLiteral("text_primary"));
+-        const QRect textRect = overlayBand > 0
+-            ? QRect(r.left() + 4, r.top() + 1, qMax(0, r.width() - 8), overlayBand)
+-            : r.adjusted(4, 1, -4, -1);
+-        const QString displayText =
+-            overlayMetrics.elidedText(m_overlayText, Qt::ElideRight, textRect.width());
+-        if (ts.shadow.present) {
+-            p.setPen(ts.shadow.color);
+-            p.drawText(textRect.translated(ts.shadow.offsetX, ts.shadow.offsetY),
+-                       Qt::AlignTop | Qt::AlignLeft, displayText);
+-        }
+-        const QColor textColor = ts.color.isValid()
+-            ? ts.color
+-            : m_theme->color(QStringLiteral("text_primary"));
+-        QColor outline = ts.shadow.present ? ts.shadow.color : QColor(0, 0, 0, 200);
+-        if (!outline.isValid() || outline.alpha() == 0)
+-            outline = QColor(0, 0, 0, 200);
+-        QPainterPath textPath;
+-        textPath.addText(QPointF(textRect.left(),
+-                                 textRect.top() + overlayMetrics.ascent()),
+-                         overlayFont,
+-                         displayText);
+-        QPen outlinePen(outline);
+-        outlinePen.setWidthF(2.0);
+-        outlinePen.setJoinStyle(Qt::RoundJoin);
++        const QColor textColor = ts.color;
++        const int contrast = qGray(textColor.rgb()) >= 128 ? 0 : 255;
++        QPainterPath glyphs;
++        glyphs.addText(QPointF(0, metrics.ascent()), font, text);
++        QTransform transform;
++        transform.translate(textRect.x(), textRect.y()).scale(scale, scale);
++        const QPainterPath textPath = transform.map(glyphs);
++
+         p.setRenderHint(QPainter::Antialiasing, true);
++        if (ts.shadow.present)
++            p.fillPath(textPath.translated(ts.shadow.offsetX, ts.shadow.offsetY),
++                       ts.shadow.color);
++        QPen outlinePen(QColor(contrast, contrast, contrast, 185), 2.0);
++        outlinePen.setJoinStyle(Qt::RoundJoin);
+         p.strokePath(textPath, outlinePen);
+         p.fillPath(textPath, textColor);
+     }
+diff --git a/src/widgets/Chart.h b/src/widgets/Chart.h
+index 5fd0094..3726f24 100644
+--- a/src/widgets/Chart.h
++++ b/src/widgets/Chart.h
+@@ -38,9 +38,7 @@ public:
+     // setSeriesColors. Useful for "all CPU cores in one chart" displays.
+     void setRainbowSeries(int n);
+ 
+-    // Optional text drawn over the chart in the top-left corner — used by
+-    // CpuMonitor (and any other monitor that wants to label its data
+-    // inside the graph instead of in a separate decal row, saving height).
++    // Optional live readout over the graph in its upper-left corner.
+     void setOverlayText(const QString &text);
+ 
+     QSize sizeHint() const override;
+diff --git a/tests/chart-panel-layout.cpp b/tests/chart-panel-layout.cpp
+new file mode 100644
+index 0000000..7c41ecf
+--- /dev/null
++++ b/tests/chart-panel-layout.cpp
+@@ -0,0 +1,123 @@
++#include "monitors/CpuMonitor.h"
++#include "monitors/DiskMonitor.h"
++#include "monitors/NetMonitor.h"
++#include "theme/Theme.h"
++#include "widgets/Chart.h"
++#include "widgets/Decal.h"
++#include "widgets/Krell.h"
++#include "widgets/Panel.h"
++
++#include <QApplication>
++#include <QImage>
++#include <QLayout>
++#include <QSettings>
++#include <QTemporaryDir>
++#include <memory>
++
++namespace {
++
++quint64 ticks = 100;
++
++QList<CpuSample> cpuSamples()
++{
++    return {{QStringLiteral("cpu"), -1, ticks, 0, 0, ticks},
++            {QStringLiteral("cpu0"), 0, ticks, 0, 0, ticks}};
++}
++
++QList<NetSample> netSamples()
++{
++    return {{QStringLiteral("eth0"), QStringLiteral("Uplink"), ticks * 1024, ticks * 2048}};
++}
++
++QList<DiskSample> diskSamples()
++{
++    return {{QStringLiteral("testdisk"), ticks, ticks * 2}};
++}
++
++Chart *checkPanel(QWidget &container, const QString &title, int tracks)
++{
++    const auto panels = container.findChildren<Panel *>(QString(), Qt::FindDirectChildrenOnly);
++    if (panels.size() != 1) qFatal("Expected one chart panel");
++    auto *layout = panels.first()->layout();
++    if (layout->count() != 2 + tracks) qFatal("Unexpected widget rows");
++    const auto *decal = qobject_cast<Decal *>(layout->itemAt(0)->widget());
++    if (!decal || decal->text() != title) qFatal("Chart title is not the first row");
++    auto *chart = qobject_cast<Chart *>(layout->itemAt(1)->widget());
++    if (!chart) qFatal("Chart does not immediately follow the title");
++    for (int i = 0; i < tracks; ++i) {
++        auto *krell = qobject_cast<Krell *>(layout->itemAt(i + 2)->widget());
++        if (!krell) qFatal("Moving krell track is not below the chart");
++    }
++    return chart;
++}
++
++void checkOverlay(Theme &theme)
++{
++    Chart chart(&theme);
++    chart.resize(160, 32);
++    chart.show();
++    QApplication::processEvents();
++    for (int i = 0; i < 160; ++i) chart.appendSample(0.75);
++    const QImage graph = chart.grab().toImage();
++    chart.setOverlayText(QStringLiteral("75%"));
++    const QImage readout = chart.grab().toImage();
++    if (graph == readout) qFatal("The chart did not render its readout");
++    const QRect unaffected(graph.width() / 2, 0, graph.width() / 2, graph.height());
++    if (graph.copy(unaffected) != readout.copy(unaffected))
++        qFatal("The readout resized the graph or painted a full-width backing strip");
++    const QRect below(0, graph.height() * 3 / 4, graph.width(), graph.height() / 4);
++    if (graph.copy(below) != readout.copy(below))
++        qFatal("The readout is not near the top of the chart");
++}
++
++} // namespace
++
++int main(int argc, char **argv)
++{
++    QApplication app(argc, argv);
++    QTemporaryDir config;
++    if (!config.isValid()) qFatal("Temporary config unavailable");
++    QCoreApplication::setOrganizationName(QStringLiteral("chart-panel-layout-test"));
++    QCoreApplication::setApplicationName(QStringLiteral("chart-panel-layout-test"));
++    QSettings::setDefaultFormat(QSettings::IniFormat);
++    QSettings::setPath(QSettings::IniFormat, QSettings::UserScope, config.path());
++    QSettings settings;
++    settings.setValue(QStringLiteral("monitors/cpu/label_format"), QStringLiteral("Core {index}"));
++    settings.setValue(QStringLiteral("monitors/net/eth0"), true);
++
++    Theme theme;
++    CpuStat::setReadOverride(cpuSamples);
++    NetStat::setReadOverride(netSamples);
++    DiskStat::setReadOverride(diskSamples);
++    for (const QString &mode : {QStringLiteral("per-core"), QStringLiteral("aggregate"),
++                                QStringLiteral("combined")}) {
++        settings.setValue(QStringLiteral("monitors/cpu/mode"), mode);
++        CpuMonitor cpu(&theme);
++        std::unique_ptr<QWidget> panel(cpu.createWidget(nullptr));
++        auto *chart = checkPanel(*panel, mode == QStringLiteral("per-core")
++                                 ? QStringLiteral("Core 0") : QStringLiteral("CPU"), 1);
++        ++ticks;
++        cpu.tick();
++        if (!chart->accessibleName().startsWith(QStringLiteral("50%")))
++            qFatal("CPU chart readout does not show the current percentage first");
++    }
++
++    NetMonitor net(&theme);
++    std::unique_ptr<QWidget> link(net.createWidget(nullptr));
++    auto *netChart = checkPanel(*link, QStringLiteral("Uplink"), 2);
++    DiskMonitor disk(&theme);
++    std::unique_ptr<QWidget> device(disk.createWidget(nullptr));
++    // Let Windows initialize its disk layout signature before obtaining the chart.
++    disk.tick();
++    auto *diskChart = checkPanel(*device, QStringLiteral("testdisk"), 2);
++    ++ticks;
++    net.tick();
++    disk.tick();
++    if (!netChart->accessibleName().startsWith(QStringLiteral("RX "))
++        || !netChart->accessibleName().contains(QStringLiteral(" TX "))
++        || !diskChart->accessibleName().startsWith(QStringLiteral("R "))
++        || !diskChart->accessibleName().contains(QStringLiteral(" W ")))
++        qFatal("The throughput readouts lost their direction labels");
++    checkOverlay(theme);
++    qInfo("PASS: title, live chart readout and moving tracks on all charted monitors");
++}

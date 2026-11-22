@@ -2,7 +2,7 @@
 pkgbase=krellix
 pkgname=('krellix' 'krellix-server' 'krellix-krellbluetooth')
 pkgver=0.1.2
-pkgrel=30
+pkgrel=31
 arch=('x86_64' 'aarch64')
 url='https://github.com/yodabytz/krellix'
 license=('GPL-3.0-or-later')
@@ -20,6 +20,8 @@ source+=("fix-daemon-security.patch")
 sha256sums+=('8bc8c885667abc9fb2865d9d4902ff4477ed79169f70605fae8e1b8b987187da')
 source+=("fix-hostname-only-drag.patch")
 sha256sums+=('9ad0b7e30fcc6a1af0773f3b7d2dbb3493b575a306b0d71ac8178c11c6b07283')
+source+=("fix-chart-panel-layout.patch")
+sha256sums+=('79c20bd074106b8acf4c8f8878f7fd4237d6d3ffff72cbc68efd17139349e2c4')
 
 prepare() {
     cd "$pkgbase-$pkgver"
@@ -27,6 +29,7 @@ prepare() {
     patch -p1 < "$srcdir/fix-netports-layout.patch"
     patch -p1 < "$srcdir/fix-daemon-security.patch"
     patch -p1 < "$srcdir/fix-hostname-only-drag.patch"
+    patch --fuzz=0 -p1 < "$srcdir/fix-chart-panel-layout.patch"
 }
 
 build() {

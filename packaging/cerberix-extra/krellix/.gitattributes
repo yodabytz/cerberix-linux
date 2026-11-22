@@ -1,0 +1,2 @@
+# A unified diff uses one space for a blank context line.
+fix-chart-panel-layout.patch whitespace=-blank-at-eol
