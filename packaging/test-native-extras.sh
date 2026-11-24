@@ -15,7 +15,7 @@ case "$ID:$VERSION_ID" in
         printf 'deb [arch=amd64 signed-by=%s] %s/debian stable main\n' "$key" "$base" > /etc/apt/sources.list.d/cerberix-test.list
         apt-get update
         apt-get install -y --no-install-recommends "${packages[@]}"
-        for pair in krellix:32 krellix-server:29 krellix-krellbluetooth:29; do
+        for pair in krellix:33 krellix-server:29 krellix-krellbluetooth:29; do
             [[ "$(dpkg-query -W -f '${Version}' "${pair%:*}")" == "0.1.2-${pair#*:}" ]]
         done
         dpkg-query -W "${packages[@]}"
@@ -26,7 +26,7 @@ case "$ID:$VERSION_ID" in
         mkdir -p /etc/yum.repos.d
         printf '[cerberix-test]\nname=Cerberix Test\nbaseurl=%s/rpm/x86_64/\ngpgcheck=1\nrepo_gpgcheck=1\ngpgkey=%s\n' "$base" "$key" > /etc/yum.repos.d/cerberix-test.repo
         dnf -y --setopt=install_weak_deps=False install "${packages[@]}"
-        for pair in krellix:32 krellix-server:29 krellix-krellbluetooth:29; do
+        for pair in krellix:33 krellix-server:29 krellix-krellbluetooth:29; do
             [[ "$(rpm -q --qf '%{VERSION}-%{RELEASE}' "${pair%:*}")" == "0.1.2-${pair#*:}.fc43" ]]
         done
         rpm -q "${packages[@]}"

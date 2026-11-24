@@ -2,7 +2,7 @@
 pkgbase=krellix
 pkgname=('krellix' 'krellix-server' 'krellix-krellbluetooth')
 pkgver=0.1.2
-pkgrel=32
+pkgrel=33
 arch=('x86_64' 'aarch64')
 url='https://github.com/yodabytz/krellix'
 license=('GPL-3.0-or-later')
@@ -24,6 +24,8 @@ source+=("fix-chart-panel-layout.patch")
 sha256sums+=('79c20bd074106b8acf4c8f8878f7fd4237d6d3ffff72cbc68efd17139349e2c4')
 source+=("fix-panel-title-fonts.patch")
 sha256sums+=('069d0eac64f39ad6ee2f49a6d5d33e3580d62776e60ad5961bd258823638b58b')
+source+=("fix-clock-overflow.patch")
+sha256sums+=('58b63ebe2cb823e2d171dbbb022a90d989ddebbff2d300493fbf7cfb1ee6f5eb')
 
 prepare() {
     cd "$pkgbase-$pkgver"
@@ -33,6 +35,7 @@ prepare() {
     patch -p1 < "$srcdir/fix-hostname-only-drag.patch"
     patch --fuzz=0 -p1 < "$srcdir/fix-chart-panel-layout.patch"
     patch --fuzz=0 -p1 < "$srcdir/fix-panel-title-fonts.patch"
+    patch --fuzz=0 -p1 < "$srcdir/fix-clock-overflow.patch"
 }
 
 build() {

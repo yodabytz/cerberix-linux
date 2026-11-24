@@ -1,0 +1,12 @@
+diff --git a/src/monitors/ClockMonitor.cpp b/src/monitors/ClockMonitor.cpp
+index a2c4d06..4d29f63 100644
+--- a/src/monitors/ClockMonitor.cpp
++++ b/src/monitors/ClockMonitor.cpp
+@@ -26,7 +26,6 @@ QWidget *ClockMonitor::createWidget(QWidget *parent)
+     m_dateDecal = p->addDecal(QStringLiteral("label"),
+                               QStringLiteral("text_secondary"));
+     if (m_timeDecal) m_timeDecal->setAlignment(Qt::AlignHCenter);
+-    if (m_timeDecal) m_timeDecal->setAlwaysScroll(true);
+     if (m_dateDecal) m_dateDecal->setAlignment(Qt::AlignHCenter);
+     tick();
+     return p;
