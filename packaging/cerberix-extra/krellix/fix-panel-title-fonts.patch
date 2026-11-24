@@ -1,0 +1,120 @@
+diff --git a/src/theme/Theme.cpp b/src/theme/Theme.cpp
+index f8eefa8..d042823 100644
+--- a/src/theme/Theme.cpp
++++ b/src/theme/Theme.cpp
+@@ -344,12 +344,16 @@ bool Theme::parseJsonFile(const QString &path)
+     const QJsonValue fontsVal = root.value(QStringLiteral("fonts"));
+     if (fontsVal.isObject()) {
+         const QJsonObject fObj = fontsVal.toObject();
++        const auto titleKey = QStringLiteral("panel_title");
+         for (auto it = fObj.constBegin(); it != fObj.constEnd(); ++it) {
+-            if (!it.value().isObject()) continue;
++            if (it.key() == titleKey || !it.value().isObject()) continue;
+             m_fonts.insert(it.key(),
+                            fontFromJson(it.value().toObject(),
+                                         m_fonts.value(it.key())));
+         }
++        const auto title = fObj.value(titleKey);
++        if (title.isObject())
++            m_fonts.insert(titleKey, fontFromJson(title.toObject(), font(titleKey)));
+     }
+ 
+     const QJsonValue metricsVal = root.value(QStringLiteral("metrics"));
+@@ -468,6 +472,12 @@ QBrush Theme::brush(const QString &key,
+ 
+ QFont Theme::font(const QString &key, const QFont &fallback) const
+ {
++    if (key == QStringLiteral("panel_title") && !m_fonts.contains(key)) {
++        QFont title = m_fonts.value(QStringLiteral("label"));
++        title.setPointSizeF(qMin(72.0, title.pointSizeF() + 2.0));
++        title.setWeight(QFont::DemiBold);
++        return title;
++    }
+     return m_fonts.value(key, fallback);
+ }
+ 
+diff --git a/src/widgets/Panel.cpp b/src/widgets/Panel.cpp
+index 446f46c..5e632a3 100644
+--- a/src/widgets/Panel.cpp
++++ b/src/widgets/Panel.cpp
+@@ -115,10 +115,8 @@ void Panel::setSurfaceKey(const QString &key)
+ void Panel::setTitle(const QString &title)
+ {
+     if (!m_titleDecal) {
+-        // Non-bold "label" font with center alignment — bold/left-aligned
+-        // titles overpowered the data below them.
+         m_titleDecal = new Decal(m_theme,
+-                                 QStringLiteral("label"),
++                                 QStringLiteral("panel_title"),
+                                  QStringLiteral("text_secondary"),
+                                  this);
+         m_titleDecal->setAlignment(Qt::AlignHCenter);
+diff --git a/tests/chart-panel-layout.cpp b/tests/chart-panel-layout.cpp
+index 7c41ecf..2dbf79c 100644
+--- a/tests/chart-panel-layout.cpp
++++ b/tests/chart-panel-layout.cpp
+@@ -8,6 +8,9 @@
+ #include "widgets/Panel.h"
+ 
+ #include <QApplication>
++#include <QDir>
++#include <QFile>
++#include <QFontMetrics>
+ #include <QImage>
+ #include <QLayout>
+ #include <QSettings>
+@@ -51,6 +54,47 @@ Chart *checkPanel(QWidget &container, const QString &title, int tracks)
+     return chart;
+ }
+ 
++void checkTitleFont(Theme &theme, const QString &configPath)
++{
++    Panel panel(&theme);
++    panel.setTitle(QStringLiteral("Memory"));
++    const auto *title = panel.layout()->itemAt(0)->widget();
++    auto *label = panel.addDecal(QStringLiteral("label"));
++    label->setText(QStringLiteral("75%"));
++    const auto check = [&](int overrideSize = 0) {
++        const QFont base = theme.font(QStringLiteral("label"));
++        QFont expected = base;
++        expected.setPointSizeF(overrideSize ? overrideSize : base.pointSizeF() + 2.0);
++        expected.setWeight(QFont::DemiBold);
++        const QFont actual = theme.font(QStringLiteral("panel_title"));
++        if (actual != expected) qFatal("Wrong panel title font");
++        if (title->sizeHint().height() != QFontMetrics(expected).height() + 2)
++            qFatal("Panel title did not size itself for its font");
++        if (label->sizeHint().height() != QFontMetrics(base).height() + 2)
++            qFatal("Ordinary label did not keep the theme label font");
++    };
++    check();
++
++    const auto originalPath = QDir::currentPath();
++    if (!QDir::setCurrent(configPath)) qFatal("Could not enter the theme fixture directory");
++    for (const int size : {0, 17}) {
++        const auto name = QStringLiteral("title-font-test-%1").arg(size);
++        const auto fixture = QStringLiteral("themes/") + name;
++        if (!QDir().mkpath(fixture)) qFatal("Could not create the custom theme directory");
++        QFile json(fixture + QStringLiteral("/theme.json"));
++        QByteArray data = R"({"fonts":{"label":{"family":"Monospace","size":14})";
++        if (size) data += R"(,"panel_title":{"size":17})";
++        data += "}}";
++        if (!json.open(QIODevice::WriteOnly) || json.write(data) != data.size())
++            qFatal("Could not write the custom theme fixture");
++        json.close();
++        if (!theme.load(name) || theme.font(QStringLiteral("label")).pointSize() != 14)
++            qFatal("Could not load the custom theme fixture");
++        check(size);
++    }
++    if (!QDir::setCurrent(originalPath)) qFatal("Could not restore the working directory");
++}
++
+ void checkOverlay(Theme &theme)
+ {
+     Chart chart(&theme);
+@@ -119,5 +163,6 @@ int main(int argc, char **argv)
+         || !diskChart->accessibleName().contains(QStringLiteral(" W ")))
+         qFatal("The throughput readouts lost their direction labels");
+     checkOverlay(theme);
++    checkTitleFont(theme, config.path());
+     qInfo("PASS: title, live chart readout and moving tracks on all charted monitors");
+ }
