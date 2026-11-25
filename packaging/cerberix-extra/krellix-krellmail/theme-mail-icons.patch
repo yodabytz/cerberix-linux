@@ -1,0 +1,133 @@
+diff --git a/plugins/krellmail/KrellmailPlugin.cpp b/plugins/krellmail/KrellmailPlugin.cpp
+index 009619b..5bd26ca 100644
+--- a/plugins/krellmail/KrellmailPlugin.cpp
++++ b/plugins/krellmail/KrellmailPlugin.cpp
+@@ -31,6 +31,8 @@ constexpr int kTimeoutMs = 12000;
+ constexpr qsizetype kMaxMailLineBytes = 64 * 1024;
+ constexpr qsizetype kMaxMailBufferBytes = 256 * 1024;
+ constexpr qsizetype kMaxOAuthBytes = 512 * 1024;
++constexpr int kEnvelopeFrames = 18;
++constexpr int kMaxUnreadFrames = 128;
+
+ QString accountKey(int index, const QString &name)
+ {
+@@ -123,11 +125,14 @@ KrellmailEnvelope::KrellmailEnvelope(Theme *theme, QWidget *parent)
+ {
+     setFixedSize(28, 20);
+     setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+-    m_timer.setInterval(120);
++    setObjectName(QStringLiteral("krellmail-icon"));
+     connect(&m_timer, &QTimer::timeout, this, [this]() {
+-        m_phase = (m_phase + 1) % 18;
++        m_phase = (m_phase + 1) % animationFrames();
+         update();
+     });
++    if (m_theme)
++        connect(m_theme, &Theme::themeChanged, this, &KrellmailEnvelope::reloadArtwork);
++    reloadArtwork();
+ }
+
+ void KrellmailEnvelope::setMailCount(int count)
+@@ -135,18 +140,62 @@ void KrellmailEnvelope::setMailCount(int count)
+     count = qMax(0, count);
+     if (m_count == count) return;
+     m_count = count;
+-    if (m_count > 0) {
+-        if (!m_timer.isActive()) m_timer.start();
++    syncAnimation();
++    update();
++}
++
++void KrellmailEnvelope::reloadArtwork()
++{
++    if (m_theme) {
++        const auto spriteKey = QStringLiteral("panel_icon_krellmail_unread");
++        m_idleIcon = m_theme->pixmap(QStringLiteral("panel_icon_krellmail"));
++        m_unreadSprite = m_theme->pixmap(spriteKey);
++        const int frames = m_theme->imageInt(spriteKey + QStringLiteral(".frames"), 0);
++        m_unreadFrames = !m_unreadSprite.isNull() && frames >= 2 && frames <= kMaxUnreadFrames
++            && m_unreadSprite.width() % frames == 0 ? frames : 0;
++        if (m_unreadFrames == 0)
++            m_unreadSprite = {};
++    }
++    m_phase = 0;
++    m_timer.setInterval(m_unreadFrames > 0 ? 50 : 120);
++    syncAnimation();
++    update();
++}
++
++int KrellmailEnvelope::animationFrames() const
++{
++    if (m_unreadFrames > 0)
++        return m_unreadFrames;
++    return m_idleIcon.isNull() ? kEnvelopeFrames : 1;
++}
++
++void KrellmailEnvelope::syncAnimation()
++{
++    if (m_count > 0 && animationFrames() > 1) {
++        if (!m_timer.isActive())
++            m_timer.start();
+     } else {
+         m_timer.stop();
+         m_phase = 0;
+     }
+-    update();
+ }
+
+ void KrellmailEnvelope::paintEvent(QPaintEvent *)
+ {
+     QPainter p(this);
++    const bool unreadArtwork = m_count > 0 && m_unreadFrames > 0;
++    const QPixmap &artwork = unreadArtwork ? m_unreadSprite : m_idleIcon;
++    if (!artwork.isNull()) {
++        const int frameWidth = artwork.width() / (unreadArtwork ? m_unreadFrames : 1);
++        const QSize targetSize = QSize(frameWidth, artwork.height()).scaled(size(), Qt::KeepAspectRatio);
++        QRect target(QPoint(), targetSize);
++        target.moveCenter(rect().center());
++        p.setRenderHint(QPainter::SmoothPixmapTransform, true);
++        const int frameX = unreadArtwork ? m_phase * frameWidth : 0;
++        p.drawPixmap(target, artwork, QRect(frameX, 0, frameWidth, artwork.height()));
++        return;
++    }
++
+     p.setRenderHint(QPainter::Antialiasing, true);
+     p.scale(width() / 36.0, height() / 26.0);
+
+@@ -173,7 +222,7 @@ void KrellmailEnvelope::paintEvent(QPaintEvent *)
+
+     QPainterPath flap;
+     flap.moveTo(body.left() + 1.0, body.top() + 1.0);
+-    flap.lineTo(body.center().x(), body.top() + 9.5 + (m_count > 0 ? qSin(m_phase / 18.0 * M_PI * 2.0) * 1.1 : 0.0));
++    flap.lineTo(body.center().x(), body.top() + 9.5 + (m_count > 0 ? qSin(double(m_phase) / kEnvelopeFrames * M_PI * 2.0) * 1.1 : 0.0));
+     flap.lineTo(body.right() - 1.0, body.top() + 1.0);
+     p.setBrush(paper);
+     p.drawPath(flap);
+diff --git a/plugins/krellmail/KrellmailPlugin.h b/plugins/krellmail/KrellmailPlugin.h
+index c9c3c45..5265495 100644
+--- a/plugins/krellmail/KrellmailPlugin.h
++++ b/plugins/krellmail/KrellmailPlugin.h
+@@ -5,6 +5,7 @@
+
+ #include <QNetworkAccessManager>
+ #include <QPaintEvent>
++#include <QPixmap>
+ #include <QPointer>
+ #include <QSslSocket>
+ #include <QTimer>
+@@ -41,8 +42,15 @@ protected:
+     void paintEvent(QPaintEvent *event) override;
+
+ private:
++    void reloadArtwork();
++    void syncAnimation();
++    int animationFrames() const;
++
+     Theme *m_theme = nullptr;
++    QPixmap m_idleIcon;
++    QPixmap m_unreadSprite;
+     QTimer m_timer;
++    int m_unreadFrames = 0;
+     int m_count = 0;
+     int m_phase = 0;
+ };
