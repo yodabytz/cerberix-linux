@@ -2,7 +2,7 @@
 pkgbase=krellix
 pkgname=('krellix' 'krellix-server' 'krellix-krellbluetooth')
 pkgver=0.1.2
-pkgrel=36
+pkgrel=37
 arch=('x86_64' 'aarch64')
 url='https://github.com/yodabytz/krellix'
 license=('GPL-3.0-or-later')
@@ -33,6 +33,8 @@ sha256sums+=('9ff418b791ee0de0b3351b6f22177f50763dadb3f7bf0c434acf1e5b264ee86a')
 
 source+=("theme-animation.patch")
 sha256sums+=('a7f8e6aac7675de8cb90e7e8ef25cda6022f3f12e1f41daf23b09fa40e6caa3e')
+source+=("slim-krell-bars.patch")
+sha256sums+=('7347f9c859467c4dba8c9ae22d27887d49ca9fcff66abd14c9bca4c7ab6b18d2')
 
 prepare() {
     cd "$pkgbase-$pkgver"
@@ -46,6 +48,7 @@ prepare() {
     patch --fuzz=0 -p1 < "$srcdir/krellmail-configuration.patch"
     patch --fuzz=0 -p1 < "$srcdir/weather-icon-settings.patch"
     patch --fuzz=0 -p1 < "$srcdir/theme-animation.patch"
+    patch --fuzz=0 -p1 < "$srcdir/slim-krell-bars.patch"
 }
 
 build() {

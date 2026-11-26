@@ -1,0 +1,92 @@
+--- a/plugins/krellmail/KrellmailPlugin.cpp
++++ b/plugins/krellmail/KrellmailPlugin.cpp
+@@ -3,19 +3,22 @@
+ #include "theme/Theme.h"
+ #include "widgets/Panel.h"
+ 
+-#include <QDesktopServices>
+ #include <QEvent>
+ #include <QFontMetricsF>
+ #include <QHBoxLayout>
+ #include <QJsonDocument>
+ #include <QJsonObject>
+ #include <QLabel>
++#include <QMouseEvent>
+ #include <QNetworkReply>
+ #include <QNetworkRequest>
+ #include <QPainter>
+ #include <QPainterPath>
++#include <QProcess>
++#include <QRegularExpression>
+ #include <QSettings>
+ #include <QSizePolicy>
++#include <QStandardPaths>
+ #include <QUrl>
+ #include <QUrlQuery>
+ #include <QVBoxLayout>
+@@ -23,6 +26,45 @@
+ 
+ namespace {
+ 
++void openDefaultMail(QObject *owner)
++{
++    const QString queryName = QStringLiteral("krellmail-default-app-query");
++    if (owner->findChild<QProcess *>(queryName, Qt::FindDirectChildrenOnly)) return;
++    const QString query = QStandardPaths::findExecutable(QStringLiteral("xdg-mime"));
++    if (query.isEmpty()) {
++        qWarning("KrellMail: xdg-mime is unavailable");
++        return;
++    }
++    auto *process = new QProcess(owner);
++    process->setObjectName(queryName);
++    QObject::connect(process, &QProcess::errorOccurred, process, [process](QProcess::ProcessError error) {
++        if (error != QProcess::FailedToStart) return;
++        qWarning("KrellMail: could not look up the default mail app");
++        process->deleteLater();
++    });
++    QObject::connect(process, &QProcess::finished, process, [process](int code, QProcess::ExitStatus status) {
++        const QString id = QString::fromUtf8(process->readAllStandardOutput()).trimmed();
++        process->deleteLater();
++        static const QRegularExpression desktopId(QStringLiteral("\\A[A-Za-z0-9][A-Za-z0-9_.-]{0,247}\\.desktop\\z"));
++        if (status == QProcess::NormalExit && code == 0 && desktopId.match(id).hasMatch()) {
++            // Launch the app, not the protocol handler's compose command.
++            const QString gtk = QStandardPaths::findExecutable(QStringLiteral("gtk-launch"));
++            if (!gtk.isEmpty() && QProcess::startDetached(gtk, {id})) return;
++            const QString gio = QStandardPaths::findExecutable(QStringLiteral("gio"));
++            const QString entry = QStandardPaths::locate(QStandardPaths::GenericDataLocation,
++                                                         QStringLiteral("applications/") + id);
++            if (!gio.isEmpty() && !entry.isEmpty()
++                && QProcess::startDetached(gio, {QStringLiteral("launch"), entry})) return;
++        }
++        qWarning("KrellMail: could not open the default mail app");
++    });
++    QTimer::singleShot(2500, process, [process] {
++        if (process->state() != QProcess::NotRunning) process->kill();
++    });
++    process->start(query, {QStringLiteral("query"), QStringLiteral("default"),
++                           QStringLiteral("x-scheme-handler/mailto")});
++}
++
+ constexpr int kMaxAccounts = 3;
+ constexpr int kMaxDynamicAccounts = 10;
+ constexpr int kTimeoutMs = 12000;
+@@ -408,7 +450,9 @@
+         fitStatusText();
+     if (event && event->type() == QEvent::MouseButtonRelease) {
+         if (watched == m_icon.data()) {
+-            QDesktopServices::openUrl(QUrl(QStringLiteral("mailto:")));
++            if (static_cast<QMouseEvent *>(event)->button() != Qt::LeftButton)
++                return MonitorBase::eventFilter(watched, event);
++            openDefaultMail(this);
+             return true;
+         }
+         startCheck(true);
+@@ -909,7 +953,7 @@
+ 
+ QString KrellmailPlugin::pluginVersion() const
+ {
+-    return QStringLiteral("0.1.6");
++    return QStringLiteral("0.1.7");
+ }
+ 
+ QList<MonitorBase *> KrellmailPlugin::createMonitors(Theme *theme, QObject *parent)
