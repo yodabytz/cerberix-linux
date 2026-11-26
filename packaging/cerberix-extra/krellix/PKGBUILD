@@ -2,7 +2,7 @@
 pkgbase=krellix
 pkgname=('krellix' 'krellix-server' 'krellix-krellbluetooth')
 pkgver=0.1.2
-pkgrel=40
+pkgrel=41
 arch=('x86_64' 'aarch64')
 url='https://github.com/yodabytz/krellix'
 license=('GPL-3.0-or-later')
@@ -41,6 +41,8 @@ source+=("theme-series-colors.patch")
 sha256sums+=('dd2fa8810f5b0ec4395f1f24af80e7c5717a8dbc35458568ba8bfdb948259234')
 source+=("combined-cpu-area-fill.patch")
 sha256sums+=('422d76df8c406d7f985950da3633e80207fd75efa68823648e4410244b45b79c')
+source+=("fix-cpu-chart-scale.patch")
+sha256sums+=('8fead942f55f9845c6dd27cacf81c3f53fcc4ab6133dd7c04dbfb8427ba1b6a3')
 
 prepare() {
     cd "$pkgbase-$pkgver"
@@ -58,6 +60,7 @@ prepare() {
     patch --fuzz=0 -p1 < "$srcdir/compact-memory-meters.patch"
     patch --fuzz=0 -p1 < "$srcdir/theme-series-colors.patch"
     patch --fuzz=0 -p1 < "$srcdir/combined-cpu-area-fill.patch"
+    patch --fuzz=0 -p1 < "$srcdir/fix-cpu-chart-scale.patch"
 }
 
 build() {
