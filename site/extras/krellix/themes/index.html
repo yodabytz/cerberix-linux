@@ -53,7 +53,6 @@
               <option value="">All themes</option>
               <option value="download">Download-only</option>
               <option value="bundled">Bundled</option>
-              <option value="preview">Preview only</option>
             </select>
           </label>
         </div>
@@ -63,7 +62,6 @@
         <a href="#collection-classic">Classic &amp; sculpted</a>
         <a href="#collection-illustrated">Illustrated &amp; sci-fi</a>
         <a href="#collection-palette">Palette themes</a>
-        <a href="#collection-preview">Preview only</a>
       </nav>
       <p class="theme-status" role="status"></p>
       <div class="theme-empty" hidden>
@@ -104,6 +102,12 @@
           <p>Bevels, glass, and textures that recall classic system monitors.</p>
         </header>
         <div class="theme-grid">
+          <article class="theme-card" id="card-blackrock" data-availability="download">
+            <a class="theme-preview" href="#theme-blackrock" aria-label="Preview Blackrock"><img src="/images/krellix/themes/thumbs/blackrock.jpg" width="144" height="144" alt="Blackrock theme preview" loading="lazy" decoding="async" /></a>
+            <div class="theme-card-heading"><h4>Blackrock</h4><span class="theme-availability">Download-only</span></div>
+            <p>Rough obsidian textures and molten amber chart traces.</p>
+            <div class="theme-card-actions"><a class="theme-download" href="https://repo.cerberix.org/macos/themes/blackrock-1.0.tar.gz" aria-label="Blackrock: Download tar.gz">tar.gz</a> <a class="theme-signature" href="https://repo.cerberix.org/macos/themes/blackrock-1.0.tar.gz.sig" aria-label="Blackrock: tar.gz signature">tar.gz signature</a> <a class="theme-download" href="https://repo.cerberix.org/macos/themes/blackrock-1.0.zip" aria-label="Blackrock: Download ZIP">ZIP</a> <a class="theme-signature" href="https://repo.cerberix.org/macos/themes/blackrock-1.0.zip.sig" aria-label="Blackrock: ZIP signature">ZIP signature</a></div>
+          </article>
           <article class="theme-card" id="card-bluesteel" data-availability="bundled">
             <a class="theme-preview" href="#theme-bluesteel" aria-label="Preview Bluesteel 2.1"><img src="/images/krellix/themes/thumbs/bluesteel-v21.jpg" width="144" height="144" alt="Bluesteel 2.1 theme preview" loading="lazy" decoding="async" /></a>
             <div class="theme-card-heading"><h4>Bluesteel 2.1</h4><span class="theme-availability">Bundled</span></div>
@@ -149,6 +153,12 @@
           <p>Artwork, animation, and themes with a world of their own.</p>
         </header>
         <div class="theme-grid">
+          <article class="theme-card" id="card-alienverse" data-availability="download">
+            <a class="theme-preview" href="#theme-alienverse" aria-label="Preview Alienverse"><img src="/images/krellix/themes/thumbs/alienverse.jpg" width="144" height="144" alt="Alienverse theme preview" loading="lazy" decoding="async" /></a>
+            <div class="theme-card-heading"><h4>Alienverse</h4><span class="theme-availability">Download-only</span></div>
+            <p>Biomechanical violet panels with acid-green CPU traces.</p>
+            <div class="theme-card-actions"><a class="theme-download" href="https://repo.cerberix.org/macos/themes/alienverse-1.0.tar.gz" aria-label="Alienverse: Download tar.gz">tar.gz</a> <a class="theme-signature" href="https://repo.cerberix.org/macos/themes/alienverse-1.0.tar.gz.sig" aria-label="Alienverse: tar.gz signature">tar.gz signature</a> <a class="theme-download" href="https://repo.cerberix.org/macos/themes/alienverse-1.0.zip" aria-label="Alienverse: Download ZIP">ZIP</a> <a class="theme-signature" href="https://repo.cerberix.org/macos/themes/alienverse-1.0.zip.sig" aria-label="Alienverse: ZIP signature">ZIP signature</a></div>
+          </article>
           <article class="theme-card" id="card-anubis" data-availability="download">
             <a class="theme-preview" href="#theme-anubis" aria-label="Preview Anubis"><img src="/images/krellix/themes/thumbs/anubis.jpg" width="144" height="144" alt="Anubis theme preview" loading="lazy" decoding="async" /></a>
             <div class="theme-card-heading"><h4>Anubis</h4><span class="theme-availability">Download-only</span></div>
@@ -254,6 +264,12 @@
             <p>The baseline Krellix theme.</p>
             <div class="theme-card-actions"><a class="theme-download" href="/download/krellix/themes/default.tar.gz" aria-label="Default: Download tar.gz">tar.gz</a></div>
           </article>
+          <article class="theme-card" id="card-default-hacker" data-availability="bundled">
+            <a class="theme-preview" href="#theme-default-hacker" aria-label="Preview Default Hacker"><img src="/images/krellix/themes/thumbs/default-hacker.jpg" width="144" height="144" alt="Default Hacker theme preview" loading="lazy" decoding="async" /></a>
+            <div class="theme-card-heading"><h4>Default Hacker</h4><span class="theme-availability">Bundled</span></div>
+            <p>The green-on-black look shown here uses Krellix's built-in Default theme.</p>
+            <div class="theme-card-actions"><a class="theme-download" href="/download/krellix/themes/default.tar.gz" aria-label="Default Hacker: Download the Default theme archive">Default tar.gz</a></div>
+          </article>
           <article class="theme-card" id="card-dracula" data-availability="bundled">
             <a class="theme-preview" href="#theme-dracula" aria-label="Preview Dracula"><img src="/images/krellix/themes/thumbs/dracula.jpg" alt="Dracula theme preview thumbnail" loading="lazy" /></a>
             <div class="theme-card-heading"><h4>Dracula</h4><span class="theme-availability">Bundled</span></div>
@@ -341,26 +357,6 @@
         </div>
       </section>
 
-      <section class="theme-collection" id="collection-preview" aria-labelledby="collection-title-preview">
-        <header class="theme-collection-head">
-          <h3 id="collection-title-preview">Preview only</h3>
-          <p>These themes do not have standalone downloads yet.</p>
-        </header>
-        <div class="theme-grid">
-          <article class="theme-card" id="card-alienverse" data-availability="preview">
-            <a class="theme-preview" href="#theme-alienverse" aria-label="Preview Alienverse"><img src="/images/krellix/themes/thumbs/alienverse.jpg" alt="Alienverse theme preview thumbnail" loading="lazy" /></a>
-            <div class="theme-card-heading"><h4>Alienverse</h4><span class="theme-availability">Preview only</span></div>
-          </article>
-          <article class="theme-card" id="card-blackrock" data-availability="preview">
-            <a class="theme-preview" href="#theme-blackrock" aria-label="Preview Blackrock"><img src="/images/krellix/themes/thumbs/blackrock.jpg" alt="Blackrock theme preview thumbnail" loading="lazy" /></a>
-            <div class="theme-card-heading"><h4>Blackrock</h4><span class="theme-availability">Preview only</span></div>
-          </article>
-          <article class="theme-card" id="card-default-hacker" data-availability="preview">
-            <a class="theme-preview" href="#theme-default-hacker" aria-label="Preview Default Hacker"><img src="/images/krellix/themes/thumbs/default-hacker.jpg" alt="Default Hacker theme preview thumbnail" loading="lazy" /></a>
-            <div class="theme-card-heading"><h4>Default Hacker</h4><span class="theme-availability">Preview only</span></div>
-          </article>
-        </div>
-      </section>
     </section>
 
     <section class="theme-install" id="install-a-theme" aria-labelledby="theme-install-title">
@@ -605,7 +601,7 @@
   <div class="lightbox" id="theme-kronix"><a class="lightbox-close" href="#card-kronix" aria-label="Close preview"></a><figure><img src="/images/krellix/themes/kronix.png" alt="Kronix theme full preview" loading="lazy" decoding="async" /><figcaption>Kronix</figcaption></figure></div>
   <div class="lightbox" id="theme-cobalt2"><a class="lightbox-close" href="#card-cobalt2" aria-label="Close preview"></a><figure><img src="/images/krellix/themes/cobolt2.jpeg" alt="Cobalt2 theme full preview" loading="lazy" decoding="async" /><figcaption>cobalt2</figcaption></figure></div>
   <div class="lightbox" id="theme-cthulhain"><a class="lightbox-close" href="#card-cthulhain" aria-label="Close preview"></a><figure><img src="/images/krellix/themes/cthulhain.jpeg" alt="Cthulhain theme full preview" loading="lazy" decoding="async" /><figcaption>cthulhain</figcaption></figure></div>
-  <div class="lightbox" id="theme-default-hacker"><a class="lightbox-close" href="#card-default-hacker" aria-label="Close preview"></a><figure><img src="/images/krellix/themes/default-hacker.jpeg" alt="Default Hacker theme full preview" loading="lazy" decoding="async" /><figcaption>default-hacker</figcaption></figure></div>
+  <div class="lightbox" id="theme-default-hacker"><a class="lightbox-close" href="#card-default-hacker" aria-label="Close preview"></a><figure><img src="/images/krellix/themes/default-hacker.jpeg" alt="Default Hacker theme full preview" loading="lazy" decoding="async" /><figcaption>Default Hacker, a green-on-black view of the bundled Default theme</figcaption></figure></div>
   <div class="lightbox" id="theme-dracula"><a class="lightbox-close" href="#card-dracula" aria-label="Close preview"></a><figure><img src="/images/krellix/themes/dracula.jpeg" alt="Dracula theme full preview" loading="lazy" decoding="async" /><figcaption>dracula</figcaption></figure></div>
   <div class="lightbox" id="theme-duskfox"><a class="lightbox-close" href="#card-duskfox" aria-label="Close preview"></a><figure><img src="/images/krellix/themes/duskfox.jpeg" alt="Duskfox theme full preview" loading="lazy" decoding="async" /><figcaption>duskfox</figcaption></figure></div>
   <div class="lightbox" id="theme-everforest"><a class="lightbox-close" href="#card-everforest" aria-label="Close preview"></a><figure><img src="/images/krellix/themes/everforest.jpeg" alt="Everforest theme full preview" loading="lazy" decoding="async" /><figcaption>everforest</figcaption></figure></div>
