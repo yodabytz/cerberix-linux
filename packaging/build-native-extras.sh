@@ -120,6 +120,7 @@ build_one() (
             snitch) depends='python3, whois'; optional='fail2ban' ;;
             netscope|swapwatch) depends='python3, python3-psutil' ;;
             krellix-krelltop) depends+=', procps' ;;
+            krellix-krellmail) depends='krellix (>= 0.1.2-34)' ;;
             krellix-krellkam) optional='yt-dlp, ffmpeg' ;;
             krellix-krelldacious) optional='audacious' ;;
             krellix-krellwifi) optional='network-manager' ;;
@@ -149,6 +150,7 @@ build_one() (
             snitch) rpm_arch=noarch; depends='python3, whois'; optional='fail2ban' ;;
             netscope|swapwatch) rpm_arch=noarch; depends='python3, python3-psutil' ;;
             krellix-krelltop) depends='krellix >= 0.1.2-30, procps-ng' ;;
+            krellix-krellmail) depends='krellix >= 0.1.2-34' ;;
             krellix-*) depends='krellix >= 0.1.2-30' ;;
         esac
         case "$pkgname" in

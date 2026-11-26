@@ -1,0 +1,7 @@
+<RCC>
+  <qresource prefix="/krellmail/art">
+    <file>closed-mail.png</file>
+    <file>envelope-strip.png</file>
+    <file>tux-mail.png</file>
+  </qresource>
+</RCC>

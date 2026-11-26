@@ -1,0 +1,74 @@
+diff --git a/src/krellix/SettingsDialog.cpp b/src/krellix/SettingsDialog.cpp
+index d8fc5fc..2b9d60c 100644
+--- a/src/krellix/SettingsDialog.cpp
++++ b/src/krellix/SettingsDialog.cpp
+@@ -27,4 +27,5 @@
+ #include <QPalette>
+ #include <QPushButton>
++#include <QScreen>
+ #include <QScrollArea>
+ #include <QSet>
+@@ -155,6 +156,11 @@ SettingsDialog::SettingsDialog(Theme *theme, KrellmailOAuthBroker *krellmailOAut
+     setWindowModality(Qt::NonModal);
+     setModal(false);
+-    resize(700, 560);
+-    setMinimumSize(560, 380);
++    const QScreen *screen = parent ? parent->screen() : QGuiApplication::primaryScreen();
++    const QSize preferred(920, 740);
++    const QSize available = screen
++        ? (screen->availableGeometry().size() - QSize(24, 56)).expandedTo(QSize(1, 1))
++        : preferred;
++    setMinimumSize(QSize(560, 380).boundedTo(available));
++    resize(preferred.boundedTo(available));
+     setSizeGripEnabled(true);
+ 
+@@ -902,8 +908,16 @@ SettingsDialog::SettingsDialog(Theme *theme, KrellmailOAuthBroker *krellmailOAut
+ 
+             m_krellmailUpdateMs = new QSpinBox(group);
++            m_krellmailUpdateMs->setObjectName(QStringLiteral("krellmail-update-interval"));
+             m_krellmailUpdateMs->setRange(30000, 3600000);
+             m_krellmailUpdateMs->setSingleStep(30000);
+             m_krellmailUpdateMs->setSuffix(QStringLiteral(" ms"));
+             form->addRow(QStringLiteral("Update interval:"), m_krellmailUpdateMs);
++
++            m_krellmailIconStyle = new QComboBox(group);
++            m_krellmailIconStyle->setObjectName(QStringLiteral("krellmail-icon-style"));
++            m_krellmailIconStyle->addItem(QStringLiteral("Envelope"), QStringLiteral("envelope"));
++            m_krellmailIconStyle->addItem(QStringLiteral("Envelope with Tux"), QStringLiteral("tux"));
++            m_krellmailIconStyle->addItem(QStringLiteral("Follow Theme"), QStringLiteral("theme"));
++            form->addRow(QStringLiteral("Mail animation:"), m_krellmailIconStyle);
+             groupLayout->addLayout(form);
+ 
+@@ -1644,4 +1658,11 @@ SettingsDialog::SettingsDialog(Theme *theme, KrellmailOAuthBroker *krellmailOAut
+     if (m_krellmailAddAccount)
+         connect(m_krellmailAddAccount, &QPushButton::clicked, this, &SettingsDialog::addKrellmailAccount);
++    if (m_krellmailIconStyle) {
++        connect(m_krellmailIconStyle, &QComboBox::activated, this, [this](int index) {
++            QSettings().setValue(QStringLiteral("plugins/krellmail/icon_style"),
++                                 m_krellmailIconStyle->itemData(index));
++            emit settingsApplied();
++        });
++    }
+     if (m_krellspectrumEnabled) {
+         connect(m_krellspectrumEnabled, &QCheckBox::toggled, this, [this](bool v) {
+@@ -1976,5 +1997,9 @@ void SettingsDialog::loadFromSettings()
+     if (m_krellmailUpdateMs) {
+         m_krellmailUpdateMs->setValue(
+-            s.value(QStringLiteral("plugins/krellmail/update_ms"), 300000).toInt());
++            s.value(QStringLiteral("plugins/krellmail/update_ms"), 60000).toInt());
++    }
++    if (m_krellmailIconStyle) {
++        const QString style = s.value(QStringLiteral("plugins/krellmail/icon_style")).toString();
++        m_krellmailIconStyle->setCurrentIndex(qMax(0, m_krellmailIconStyle->findData(style)));
+     }
+     rebuildKrellmailAccounts();
+diff --git a/src/krellix/SettingsDialog.h b/src/krellix/SettingsDialog.h
+index 8a4250b..d624559 100644
+--- a/src/krellix/SettingsDialog.h
++++ b/src/krellix/SettingsDialog.h
+@@ -147,4 +147,5 @@ private:
+     QCheckBox   *m_krellmailEnabled = nullptr;
+     QSpinBox    *m_krellmailUpdateMs = nullptr;
++    QComboBox   *m_krellmailIconStyle = nullptr;
+     QWidget     *m_krellmailAccountsContainer = nullptr;
+     QVBoxLayout *m_krellmailAccountsLayout = nullptr;
