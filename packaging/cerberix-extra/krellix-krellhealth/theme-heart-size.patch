@@ -1,0 +1,75 @@
+diff --git a/plugins/krellhealth/HeartArtwork.h b/plugins/krellhealth/HeartArtwork.h
+index f26d647..b1fc866 100644
+--- a/plugins/krellhealth/HeartArtwork.h
++++ b/plugins/krellhealth/HeartArtwork.h
+@@ -12,4 +12,12 @@ inline QPixmap heart(const Theme &theme)
+ }
+ 
++inline QSize requestedSize(const Theme &theme, const QPixmap &icon)
++{
++    const int size = theme.metric(QStringLiteral("panel_icon_krellhealth_heart_size"), 0);
++    if (icon.isNull() || size <= 0) return {};
++    const int edge = qBound(8, size, 32);
++    return icon.size().scaled(edge, edge, Qt::KeepAspectRatio);
++}
++
+ inline void paint(QPainter &painter, const QPixmap &icon, const QRect &slot)
+ {
+diff --git a/plugins/krellhealth/KrellhealthPlugin.cpp b/plugins/krellhealth/KrellhealthPlugin.cpp
+index 655f209..da28609 100644
+--- a/plugins/krellhealth/KrellhealthPlugin.cpp
++++ b/plugins/krellhealth/KrellhealthPlugin.cpp
+@@ -130,6 +130,8 @@ public:
+         const QFontMetrics ifm(iconFont);
+         const QFontMetrics tfm(textFont);
+-        return QSize(ifm.horizontalAdvance(m_icon) + tfm.horizontalAdvance(m_text) + 12,
+-                     qMax(ifm.height(), tfm.height()) + 2);
++        const auto size = KrellHealthArtwork::requestedSize(*m_theme, artwork());
++        const int iconW = size.isEmpty() ? ifm.horizontalAdvance(m_icon) : size.width();
++        return QSize(iconW + tfm.horizontalAdvance(m_text) + 12,
++                     qMax(qMax(ifm.height(), tfm.height()), size.height()) + 2);
+     }
+ 
+@@ -157,5 +159,7 @@ protected:
+         const QFontMetrics ifm(iconFont);
+         const QFontMetrics tfm(textFont);
+-        const int iconW = ifm.horizontalAdvance(m_icon);
++        const auto icon = artwork();
++        const auto size = KrellHealthArtwork::requestedSize(*m_theme, icon);
++        const int iconW = size.isEmpty() ? ifm.horizontalAdvance(m_icon) : size.width();
+         const int textW = tfm.horizontalAdvance(m_text);
+         const int totalW = iconW + 5 + textW;
+@@ -165,10 +169,8 @@ protected:
+         p.setPen(fg);
+         const int iconY = (r.height() + ifm.ascent() - ifm.descent()) / 2;
+-        const auto artwork = m_icon == QStringLiteral("\u2665")
+-            ? KrellHealthArtwork::heart(*m_theme) : QPixmap();
+-        if (artwork.isNull())
++        if (icon.isNull())
+             p.drawText(x, iconY, m_icon);
+         else
+-            KrellHealthArtwork::paint(p, artwork, QRect(x, 0, iconW, r.height()));
++            KrellHealthArtwork::paint(p, icon, QRect(x, 0, iconW, r.height()));
+ 
+         p.setFont(textFont);
+@@ -179,4 +181,9 @@ protected:
+ 
+ private:
++    QPixmap artwork() const
++    {
++        return m_icon == QStringLiteral("\u2665") ? KrellHealthArtwork::heart(*m_theme) : QPixmap();
++    }
++
+     Theme *m_theme = nullptr;
+     QString m_icon = QStringLiteral("♥");
+diff --git a/plugins/krellhealth/KrellhealthPlugin.h b/plugins/krellhealth/KrellhealthPlugin.h
+index 7700a6b..dafb0dd 100644
+--- a/plugins/krellhealth/KrellhealthPlugin.h
++++ b/plugins/krellhealth/KrellhealthPlugin.h
+@@ -70,5 +70,5 @@ public:
+     QString pluginId() const override { return QStringLiteral("io.krellix.krellhealth"); }
+     QString pluginName() const override { return QStringLiteral("KrellHealth"); }
+-    QString pluginVersion() const override { return QStringLiteral("0.1.1"); }
++    QString pluginVersion() const override { return QStringLiteral("0.1.2"); }
+     QList<MonitorBase *> createMonitors(Theme *theme, QObject *parent) override;
+ };
