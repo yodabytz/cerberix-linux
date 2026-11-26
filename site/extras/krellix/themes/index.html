@@ -4,10 +4,11 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Krellix Themes — Cerberix Extras</title>
-  <meta name="description" content="Download Krellix themes for the Cerberix system monitor." />
+  <meta name="description" content="Download Krellix themes or build your own with the Workbench starter and a guide to colors, artwork, animation, and testing." />
   <meta name="theme-color" content="#222436" />
   <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
   <link rel="stylesheet" href="/style.css?v=20260506-badges" />
+  <link rel="stylesheet" href="/extras/krellix/authoring.css" />
 </head>
 <body>
   <div class="bg-grid"></div>
@@ -32,12 +33,16 @@
         Download optional themes or get a standalone copy of a bundled theme.
         Click a preview image to see it full size.
       </p>
+      <div class="author-actions">
+        <a class="btn btn-primary" href="#build-a-theme">Build a theme</a>
+        <a class="btn btn-ghost" href="#theme-downloads">Browse theme downloads</a>
+      </div>
       <div class="mini-grid">
         <article class="mini-card">
           <h3>User install</h3>
           <p>Unpack the archive into your user theme directory, then select it under Settings &gt; Appearance.</p>
           <code>~/.config/krellix/themes</code>
-          <p>On Windows, put the extracted theme folder in <code>themes</code> beside <code>krellix.exe</code>.</p>
+          <p>On Windows, use <code>%LOCALAPPDATA%\krellix\themes\</code> or the <code>themes</code> folder beside <code>krellix.exe</code>.</p>
         </article>
         <article class="mini-card">
           <h3>Package install</h3>
@@ -47,7 +52,7 @@
       </div>
     </section>
 
-    <section class="features" style="padding-top: 0;">
+    <section class="features" id="theme-downloads" style="padding-top: 0;">
       <div class="section-head">
         <h2>Download-only themes</h2>
         <p>Install these separately. Use the latest Krellix for artwork and scaling support.</p>
@@ -105,6 +110,181 @@
         <article class="theme-card"><a class="theme-preview" href="#theme-alienverse"><img src="/images/krellix/themes/thumbs/alienverse.jpg" alt="Alienverse theme preview thumbnail" loading="lazy" /></a><h3>alienverse</h3><p>Preview available.</p></article>
         <article class="theme-card"><a class="theme-preview" href="#theme-blackrock"><img src="/images/krellix/themes/thumbs/blackrock.jpg" alt="Blackrock theme preview thumbnail" loading="lazy" /></a><h3>blackrock</h3><p>Preview available.</p></article>
         <article class="theme-card"><a class="theme-preview" href="#theme-default-hacker"><img src="/images/krellix/themes/thumbs/default-hacker.jpg" alt="Default Hacker theme preview thumbnail" loading="lazy" /></a><h3>default-hacker</h3><p>Preview available.</p></article>
+      </div>
+    </section>
+
+    <section class="author-guide" id="build-a-theme" aria-labelledby="theme-guide-title">
+      <h2 id="theme-guide-title">Build a Krellix theme</h2>
+      <p class="guide-lead">A theme is a folder with a <code>theme.json</code> file and, optionally, artwork. Start with colors and type. Once those are readable, add frames, buttons, or animation without rebuilding Krellix.</p>
+      <div class="author-actions">
+        <a class="btn btn-primary" href="/download/krellix/authoring/workbench-theme.zip" download>Download Workbench starter</a>
+        <a class="btn btn-ghost" href="https://github.com/yodabytz/krellix/blob/main/docs/theme-spec.md">Theme format reference</a>
+      </div>
+      <div class="guide-layout">
+        <nav class="guide-toc" aria-label="Theme guide contents">
+          <strong>On this page</strong>
+          <ul>
+            <li><a href="#theme-quick-start">Quick start</a></li>
+            <li><a href="#theme-palette">Colors, type, and sizing</a></li>
+            <li><a href="#theme-artwork">Artwork and scaling</a></li>
+            <li><a href="#theme-animation">Animation</a></li>
+            <li><a href="#theme-plugin-artwork">Mail and weather artwork</a></li>
+            <li><a href="#theme-release">Test, troubleshoot, and share</a></li>
+          </ul>
+        </nav>
+        <div class="guide-content">
+          <section id="theme-quick-start">
+            <h3>1. Install your first theme</h3>
+            <ol>
+              <li>Extract the Workbench ZIP, or create a folder named <code>workbench</code> and save the JSON below as <code>theme.json</code> immediately inside it.</li>
+              <li>Move the whole theme folder into your user theme directory. Create the directory if it does not exist. You do not need administrator access.</li>
+              <li>Open <strong>Settings &gt; Appearance</strong> and choose <strong>workbench</strong> in the Theme list. If Settings was already open, close and reopen it to refresh the list.</li>
+            </ol>
+            <dl class="guide-pairs">
+              <dt>Linux</dt><dd><code>~/.config/krellix/themes/</code>. If set, use <code>$XDG_CONFIG_HOME/krellix/themes/</code> instead.</dd>
+              <dt>macOS</dt><dd><code>~/.config/krellix/themes/</code>. Do not modify the application bundle.</dd>
+              <dt>Windows</dt><dd><code>%LOCALAPPDATA%\krellix\themes\</code>. For a portable copy, you can also use the <code>themes</code> folder beside <code>krellix.exe</code>.</dd>
+            </dl>
+            <p>The selected name comes from the folder, not the JSON metadata. Use 1&ndash;64 letters, digits, dots, underscores, or hyphens, without a leading dot. Use a new name when editing a copy of a bundled theme.</p>
+            <pre tabindex="0" aria-label="Complete Workbench theme JSON"><code>{
+  "name": "workbench",
+  "version": "1.0",
+  "description": "A color-only starter for Krellix theme authors.",
+  "colors": {
+    "panel_bg": "#182725",
+    "panel_border": "#39534e",
+    "chart_bg": "#101b19",
+    "chart_grid": "#36524c",
+    "text_primary": "#effaf7",
+    "text_secondary": "#b2cbc5",
+    "krell_track": "#314843",
+    "krell_indicator": "#69dfbf",
+    "chart_line_cpu": "#69dfbf",
+    "chart_line_mem": "#8ac7ff",
+    "chart_line_swap": "#ffc478"
+  },
+  "fonts": {
+    "label": { "size": 9 },
+    "panel_title": { "size": 11 },
+    "value": { "size": 10, "bold": true }
+  },
+  "metrics": {
+    "panel_padding": 4,
+    "panel_spacing": 2,
+    "krell_height": 12,
+    "meter_height": 12,
+    "chart_height": 48,
+    "chart_grid_lines": 4
+  }
+}</code></pre>
+            <p>Use a plain-text editor. JSON needs double quotes, paired braces, and no trailing commas or comments. On Windows, check that it is <code>theme.json</code>, not <code>theme.json.txt</code>.</p>
+            <p class="guide-note"><strong>Iterate without restarting.</strong> Save <code>theme.json</code> while it is selected and Krellix reloads it. If you changed only a PNG or <code>animation.json</code>, save <code>theme.json</code> again or switch away and back. To preview without changing your usual local theme, launch <code>krellix --instance theme-preview --theme workbench</code> with a new instance name.</p>
+          </section>
+
+          <section id="theme-palette">
+            <h3>2. Set colors, type, and sizing</h3>
+            <dl class="guide-pairs">
+              <dt>Panel and chart</dt><dd><code>panel_bg</code>, <code>panel_border</code>, <code>chart_bg</code>, and <code>chart_grid</code>. Keep gridlines dim enough that data traces stand out.</dd>
+              <dt>Labels and live values</dt><dd><code>text_primary</code>, <code>text_secondary</code>, <code>text_clock</code>, and <code>chart_overlay</code>. The chart overlay is the live readout drawn on the chart.</dd>
+              <dt>Series and gauges</dt><dd>Use <code>chart_line_cpu</code>, <code>chart_line_mem</code>, <code>chart_line_swap</code>, <code>chart_line_net_rx</code>, and <code>chart_line_net_tx</code>. <code>krell_track</code> and <code>krell_indicator</code> set the ordinary slider colors. <code>net_krell_track</code> and <code>net_krell_indicator</code> can override the Network sliders without affecting Memory or Swap.</dd>
+              <dt>Fonts</dt><dd>Use <code>fonts.label</code> for ordinary text, <code>fonts.panel_title</code> for headings, and <code>fonts.value</code> where a monitor uses a value font. Font sizes are in points; <code>family</code>, <code>bold</code>, and <code>italic</code> are optional. Avoid depending on a font that is absent on other platforms.</dd>
+              <dt>Dimensions</dt><dd><code>panel_padding</code>, <code>panel_spacing</code>, <code>chart_height</code>, and <code>chart_grid_lines</code> are separate metrics. Users may override dimensions in their profile.</dd>
+            </dl>
+            <p><code>krell_height</code> and <code>meter_height</code> are base heights, not the rendered thickness. In current builds, sliders and Memory/Swap bars use two-thirds of their base height, rounded to logical pixels. A slider sprite can supply its base height. Uptime and the charts keep their own heights.</p>
+            <p>For a gradient, use an object instead of a flat color. Angle <code>0</code> runs left to right and <code>90</code> top to bottom. Prefer flat colors for text and chart traces; widgets that cannot paint gradients use the first stop. This fragment can be merged into your theme.</p>
+            <pre tabindex="0" aria-label="Gradient and text shadow example"><code>{
+  "colors": {
+    "panel_bg": {
+      "gradient": "linear",
+      "angle": 90,
+      "stops": [[0, "#263b36"], [1, "#182725"]]
+    }
+  },
+  "text_styles": {
+    "text_primary": {
+      "color": "#effaf7",
+      "shadow": { "x": 0, "y": 1, "color": "#80000000" }
+    }
+  }
+}</code></pre>
+            <p>Qt uses <code>#AARRGGBB</code> for eight-digit colors: alpha comes first. A restrained shadow helps over artwork, but it does not substitute for contrast on busy backgrounds.</p>
+          </section>
+
+          <section id="theme-artwork">
+            <h3>3. Add artwork without stretching the details</h3>
+            <p>Keep portable PNG assets in an <code>assets</code> subfolder. Use forward slashes and exact filename case. Asset paths must be relative to <code>theme.json</code>; the loader rejects paths that escape the theme directory.</p>
+            <pre tabindex="0" aria-label="Image and nine-slice surface example"><code>{
+  "surfaces": {
+    "panel_bg": {
+      "image": "assets/panel.png",
+      "slice": 4
+    }
+  },
+  "images": {
+    "chart_bg": "assets/chart.png",
+    "panel_icon_cpu": "assets/cpu.png",
+    "krell_track": { "image": "assets/track.png", "mode": "tile" },
+    "krell": { "image": "assets/indicator.png", "frames": 1 }
+  }
+}</code></pre>
+            <dl class="guide-pairs">
+              <dt>Nine-slice surfaces</dt><dd><code>slice</code> preserves the corners and border thickness while the middle stretches. Leave room for a center in both the PNG and the rendered panel. A key in <code>surfaces</code> can take precedence over the matching legacy image. <code>overlays</code> can add artwork without stretching it with the border.</dd>
+              <dt>Panel icons</dt><dd>Use <code>panel_icon_cpu</code>, <code>panel_icon_mem</code>, or <code>panel_icon_net</code> to sit beside the title. Start with square transparent art and test it at the configured <code>panel_icon_size</code>.</dd>
+              <dt>Frame vs. header</dt><dd><code>frame_left</code> and <code>frame_right</code> form the sides. <code>frame_top</code> is a tiled strip, not a banner; omit it if you do not want a repeated band. For single top artwork, use <code>surfaces.panel_bg_top</code> and a positive <code>metrics.top_strip_height</code>. For a single footer, set <code>images.frame_bottom</code> to an object with <code>"mode": "stretch"</code> and test on your target builds.</dd>
+              <dt>Slider sprites</dt><dd><code>images.krell</code> can be a single moving sprite or a strip of equal-size frames. With multiple frames the current reading selects the frame; it is not a timer animation. Horizontal is the default, and <code>"vertical": true</code> stacks frames vertically.</dd>
+            </dl>
+          </section>
+
+          <section id="theme-animation">
+            <h3>4. Add motion with PNG sprite sheets</h3>
+            <p>Create the static artwork first and reference it from <code>theme.json</code>. Export equal-size frames in one horizontal PNG strip. A sequence of 8 frames at 64 &times; 24 pixels produces a 512 &times; 24 PNG. For example, if your <code>surfaces.panel_bg_top</code> uses <code>assets/header.png</code>, create this <code>animation.json</code> beside <code>theme.json</code>:</p>
+            <pre tabindex="0" aria-label="Complete animation manifest example"><code>{
+  "version": 1,
+  "animations": {
+    "header-pulse": {
+      "target": "surfaces.panel_bg_top",
+      "trigger": "continuous",
+      "sheet": "assets/header-strip.png",
+      "fallback": "assets/header.png",
+      "frame_width": 64,
+      "frame_height": 24,
+      "frames": 8,
+      "fps": 8,
+      "layout": "horizontal",
+      "loop": true
+    }
+  }
+}</code></pre>
+            <p>Each frame must match the dimensions of the static source used by the target. The manifest must point to existing assets, including the fallback. Krellix uses the static image when animation is Off or the sheet cannot be used. Animated GIFs are not played by the theme engine; convert them to horizontal PNG sheets.</p>
+            <p>Continuous targets include <code>surfaces.panel_bg</code>, <code>surfaces.panel_bg_host</code>, <code>surfaces.panel_bg_top</code>, <code>images.frame_left</code>, <code>images.frame_right</code>, <code>images.frame_bottom</code>, and <code>images.krell</code> with a single static frame. <code>mail.new</code> uses the <code>new_mail</code> trigger instead. Use one entry per target, 2&ndash;120 frames, and 1&ndash;30 frames per second. Keep decoded sheets small; start at 8&ndash;12 FPS.</p>
+            <p>Try Full, Reduced, and Off under <strong>Settings &gt; Appearance &gt; Theme animation</strong>. The <a href="https://github.com/yodabytz/krellix/blob/main/packaging/themes/reactor/animation.json">Reactor manifest</a> also shows how top-strip motion can respond to CPU load.</p>
+          </section>
+
+          <section id="theme-plugin-artwork">
+            <h3>5. Override mail and weather icons</h3>
+            <dl class="guide-pairs">
+              <dt>KrellMail</dt><dd>Set <code>images.panel_icon_krellmail</code> for idle art and <code>images.panel_icon_krellmail_new</code> for unread art. Use transparent PNGs. The user must choose <strong>Follow Theme</strong> in the KrellMail settings; an explicit Envelope or Tux choice stays in effect. For unread animation, target <code>mail.new</code> with the <code>new_mail</code> trigger.</dd>
+              <dt>KrellWeather</dt><dd>Use static keys such as <code>images.panel_icon_krellweather_clear</code>, <code>images.panel_icon_krellweather_clear_night</code>, or <code>images.panel_icon_krellweather_light_rain</code>. They apply only in Weather <strong>Theme</strong> mode and fit the existing icon slot. Missing artwork falls back to a vector icon. See the <a href="https://github.com/yodabytz/krellix/blob/main/plugins/krellweather/README.md#theme-artwork">weather suffix list</a>.</dd>
+            </dl>
+            <p>Dots in the examples describe where the key goes: <code>images.panel_icon_krellmail</code> means a <code>panel_icon_krellmail</code> entry inside the <code>images</code> object, not a dotted key in <code>theme.json</code>. Animation <code>target</code> values, by contrast, contain the dot.</p>
+          </section>
+
+          <section id="theme-release">
+            <h3>6. Test and share it</h3>
+            <ul>
+              <li>Check narrow (120) and wide (240) panels and at least one HiDPI display. Try local and remote profiles, with both short and long labels and different monitor orders.</li>
+              <li>Check CPU, Network, RAM, Swap, clock, and any plugin artwork. Test motion Off, and capture a preview without private hostnames or live account details.</li>
+              <li>Package a single top-level folder containing <code>theme.json</code>, your assets, optional <code>animation.json</code>, and credits or license information. Keep the folder name stable when releasing updates. Do not include preferences, credentials, or absolute paths.</li>
+              <li>Share the ZIP or tar.gz and a preview, and list any minimum Krellix version or optional fonts. Share your creation in <a href="https://github.com/yodabytz/krellix/discussions">Krellix Discussions</a>.</li>
+            </ul>
+            <h4>Troubleshooting</h4>
+            <dl class="guide-pairs">
+              <dt>Not in the list</dt><dd>Check for a double-nested folder, the correct user path, and the exact filename <code>theme.json</code>. Reopen Settings.</dd>
+              <dt>Default styling appears</dt><dd>Validate the JSON and check for another copy with the same folder name. The user copy normally takes precedence. Start from a known-good file and add one change at a time.</dd>
+              <dt>Artwork or motion missing</dt><dd>Check filename case, asset dimensions, target name, and mode. Save <code>theme.json</code> again after replacing images. Run Krellix from a terminal and look for messages under <code>krellix.theme</code>.</dd>
+            </dl>
+          </section>
+        </div>
       </div>
     </section>
   </main>

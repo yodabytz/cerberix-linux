@@ -4,11 +4,12 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Krellix Plugins — Cerberix Extras</title>
-  <meta name="description" content="Download all 14 optional Krellix plugins for Windows x64, Cerberix/Arch, Ubuntu 24.04, and Fedora 43 and 44." />
+  <meta name="description" content="Download Krellix plugins or build a cross-platform Qt monitor with the KrellHello SDK example and authoring guide." />
   <meta name="theme-color" content="#222436" />
   <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
   <link rel="stylesheet" href="/style.css?v=20260506-badges" />
   <link rel="stylesheet" href="/extras/krellix/downloads.css" />
+  <link rel="stylesheet" href="/extras/krellix/authoring.css" />
 </head>
 <body>
   <div class="bg-grid"></div>
@@ -32,9 +33,13 @@
       <p>All 14 optional panels have direct downloads for Windows x64, Cerberix/Arch, Ubuntu 24.04 (amd64), and Fedora 43 and 44 (x86-64). On Linux, use the <a href="/extras/#repo-setup">signed repositories</a> if you want dependencies and updates handled by your package manager.</p>
       <p>On Windows, close Krellix, extract the .zip file, and follow its README. Older standalone installers check the exact host preview listed below. Keep your newer host installed and read the compatibility notes before upgrading.</p>
       <p><a class="card-link" href="/extras/krellix/#downloads">Download Krellix</a> <a class="card-link" href="https://repo.cerberix.org/windows/index.html">Windows install notes, signatures, and source archives</a></p>
+      <div class="author-actions">
+        <a class="btn btn-primary" href="#build-a-plugin">Build a plugin</a>
+        <a class="btn btn-ghost" href="#plugin-downloads">Browse plugin downloads</a>
+      </div>
     </section>
 
-    <section class="features" style="padding-top: 0;">
+    <section class="features" id="plugin-downloads" aria-label="Plugin downloads" style="padding-top: 0;">
       <div class="feature-grid">
         <article class="feature-card">
           <h3>KrellTop</h3><p>See the processes using the most CPU or memory, locally or on a remote host. Included in the current Intel Mac bundle and Windows preview.6.</p>
@@ -163,6 +168,108 @@
             <a class="card-link" href="https://repo.cerberix.org/rpm/x86_64/krellix-krellmoon-0.1.1-2.fc43.x86_64.rpm">Fedora RPM</a>
           </div>
         </article>
+      </div>
+    </section>
+
+    <section class="author-guide" id="build-a-plugin" aria-labelledby="plugin-guide-title">
+      <h2 id="plugin-guide-title">Build a Krellix plugin</h2>
+      <p class="guide-lead">Build KrellHello, a small monitor with a text readout and a moving bar. It uses the same C++ and Qt widgets as other Krellix monitors but needs no hardware, network service, or credentials.</p>
+      <div class="author-actions">
+        <a class="btn btn-primary" href="/download/krellix/authoring/krellhello-source.zip" download>Download KrellHello source</a>
+        <a class="btn btn-ghost" href="https://github.com/yodabytz/krellix/blob/main/docs/plugin-spec.md">Plugin SDK reference</a>
+      </div>
+      <div class="guide-layout">
+        <nav class="guide-toc" aria-label="Plugin guide contents">
+          <strong>On this page</strong>
+          <ul>
+            <li><a href="#plugin-quick-start">Build and run KrellHello</a></li>
+            <li><a href="#plugin-sdk">Factory and monitor lifecycle</a></li>
+            <li><a href="#plugin-platforms">Platform and remote data</a></li>
+            <li><a href="#plugin-test">Test and troubleshoot</a></li>
+            <li><a href="#plugin-release">Install, package, and share</a></li>
+          </ul>
+        </nav>
+        <div class="guide-content">
+          <section id="plugin-quick-start">
+            <h3>1. Build and run KrellHello</h3>
+            <p class="guide-note"><strong>A plugin is native code, not a theme.</strong> It runs in the Krellix process with your user permissions. Only load modules you trust. If you just want to change colors or artwork, <a href="/extras/krellix/themes/#build-a-theme">build a theme instead</a>.</p>
+            <p>Use the <a href="https://github.com/yodabytz/krellix">Krellix source checkout</a>, a C++17 compiler, CMake 3.21 or newer, Ninja, and Qt 6 development libraries (Core, Gui, Widgets, Network, and DBus on Linux/macOS). Use the source and toolchain of the Krellix version you want to support. The opt-in example is under <code>examples/krellhello</code>; the ZIP contains those source files, not an installable binary.</p>
+            <h4>Linux and macOS</h4>
+            <p>Use your distribution's Qt 6 development packages on Linux. On macOS, install the Xcode command-line tools and matching Qt 6 development libraries. If CMake cannot find a Homebrew Qt installation, pass <code>-DCMAKE_PREFIX_PATH="$(brew --prefix qtbase)"</code> when configuring, if <code>qtbase</code> is the formula you installed.</p>
+            <pre tabindex="0" aria-label="Build and run the example on Linux or macOS"><code>cmake -S . -B build-author -G Ninja -DCMAKE_BUILD_TYPE=Release \
+  -DKRELLIX_BUILD_EXAMPLES=ON -DBUILD_TESTING=OFF
+cmake --build build-author --target krellix krellhello
+cd build-author
+KRELLIX_DEV_PLUGINS=1 ./bin/krellix --instance plugin-preview \
+  --monitors host,krellhello</code></pre>
+            <h4>Windows x64</h4>
+            <p>Use the matching MSYS2 UCRT64 compiler and Qt 6 runtime used for the portable host. In the UCRT64 shell, make the compiler, Qt tools, CMake, and Ninja available on <code>PATH</code>. Set <code>KRELLIX_SENSOR_DIR</code> to the <code>sensors</code> directory from the matching portable build (it contains <code>krellix-sensors.exe</code>), or build it using <a href="https://github.com/yodabytz/krellix/blob/main/packaging/windows/build-sensors.ps1">the sensor helper build script</a>.</p>
+            <pre tabindex="0" aria-label="Build and run the example in the Windows UCRT64 shell"><code>cmake -S . -B build-author -G Ninja -DCMAKE_BUILD_TYPE=Release \
+  -DKRELLIX_BUILD_EXAMPLES=ON -DBUILD_TESTING=OFF \
+  -DKRELLIX_SENSOR_DIR="C:/path/to/Krellix/sensors"
+cmake --build build-author --target krellix krellhello
+cd build-author
+KRELLIX_DEV_PLUGINS=1 QT_FORCE_STDERR_LOGGING=1 \
+  ./sensors-candidate/krellix.exe --instance plugin-preview \
+  --monitors host,krellhello</code></pre>
+            <p>Run those commands from the source root, then from <code>build-author</code> as shown. <code>KRELLIX_DEV_PLUGINS=1</code> adds <code>./plugins</code> relative to the working directory for that process only. KrellHello should show a changing counter and a bar. The named instance keeps test settings separate from your regular profile.</p>
+          </section>
+
+          <section id="plugin-sdk">
+            <h3>2. Give the factory and the monitor separate jobs</h3>
+            <dl class="guide-pairs">
+              <dt>Plugin factory</dt><dd>Implement <code>IKrellixPlugin</code> in a <code>QObject</code>. Register <code>Q_OBJECT</code>, <code>Q_PLUGIN_METADATA(IID KrellixPlugin_iid)</code>, and <code>Q_INTERFACES(IKrellixPlugin)</code>. Use a unique reverse-domain ID and a version. Let CMake AUTOMOC generate the Qt metadata.</dd>
+              <dt>Monitor</dt><dd>Give each <code>MonitorBase</code> a stable slug <code>id()</code> and a <code>displayName()</code>. In <code>createWidget(parent)</code>, use <code>Panel</code>, <code>Decal</code>, <code>Chart</code>, or <code>Krell</code> with the passed-in theme. The host owns the parented monitor and panel. Keep widget references in <code>QPointer</code>.</dd>
+              <dt>Updates</dt><dd><code>tick()</code> runs on the GUI thread. Use it to apply results and schedule bounded background work, not to wait for a network request, a subprocess, or a slow filesystem. Request a sensible <code>tickIntervalMs()</code> and respect the host's global update cadence.</dd>
+              <dt>Teardown</dt><dd>Stop work in <code>shutdown()</code>. Cancel requests or processes, prevent overlapping polls, and ignore late results. Give Qt connections a QObject context. The host can recreate or discard a monitor during settings changes even if its plugin library remains loaded.</dd>
+            </dl>
+            <p>For bespoke settings, use an owned namespace under <code>plugins/</code> in the current profile, with validated defaults. The current SDK does not automatically generate a plugin settings form. Use a namespaced test profile and avoid moving controls into the monitor if they belong in configuration.</p>
+            <p>Read the <a href="https://github.com/yodabytz/krellix/blob/main/examples/krellhello/KrellHello.cpp">complete KrellHello implementation</a> to see the factory, theme-aware panel, and tick method together.</p>
+          </section>
+
+          <section id="plugin-platforms">
+            <h3>3. Keep the client platform separate from the monitored host</h3>
+            <p>Keep UI and formatting shared. Select local backends at build time with Qt's <code>Q_OS_LINUX</code>, <code>Q_OS_MACOS</code>, or <code>Q_OS_WIN</code> guards. At runtime, first ask whether the window represents a remote host. A Windows client can be showing Linux data; the Windows backend is not the right source for that window.</p>
+            <pre tabindex="0" aria-label="Local-only monitor factory example"><code>QList&lt;MonitorBase *&gt; createMonitors(Theme *theme,
+                                     QObject *parent) override
+{
+    if (RemoteSource::instance())
+        return {};
+    return {new HelloMonitor(theme, parent)};
+}</code></pre>
+            <p>KrellHello uses this local-only pattern. For a remote-enabled plugin, use data from the active <code>RemoteSource</code> when available; do not silently substitute the client's counters. Show unavailable data and clear stale readings on disconnect. Not every metric is available from every daemon.</p>
+            <p>Use Qt's asynchronous APIs and known argument lists when calling a helper. Set deadlines and output limits, handle missing dependencies, validate external responses, and never log passwords, tokens, or private payloads. Test denied permissions and missing devices as normal states.</p>
+          </section>
+
+          <section id="plugin-test">
+            <h3>4. Test the module before installing it</h3>
+            <ol>
+              <li>Use a fresh named instance and confirm that the factory loads and the panel actually updates. Pick IDs that do not collide with existing plugins or monitors.</li>
+              <li>Change theme, width, ordering, and enabled monitors while it runs. Repeat opening/closing settings and quit while an operation is pending. Make sure a late reply cannot access a retired widget.</li>
+              <li>Test a local, connected remote, and disconnected remote instance. Make sure a local-only monitor stays hidden remotely. For a network-backed monitor, use a controlled local fixture instead of real accounts.</li>
+              <li>Test the final module with the actual packaged host and runtime for each advertised OS and architecture, not only an in-tree debug build.</li>
+            </ol>
+            <h4>If it does not show up</h4>
+            <dl class="guide-pairs">
+              <dt>No loader message</dt><dd>Check the output folder, filename extension, and working directory. Development discovery requires <code>KRELLIX_DEV_PLUGINS=1</code>; regular user folders do not.</dd>
+              <dt>Load failure or missing symbol</dt><dd>Check the host build, Qt runtime, architecture, dependencies, and exported symbols. Use <code>QT_DEBUG_PLUGINS=1</code> for detailed loader diagnostics; turn it off after debugging.</dd>
+              <dt>Factory ready, no panel</dt><dd>Check the monitor ID and whether the factory returns a monitor for that platform or remote mode. Check for duplicate monitor IDs. A loaded factory does not guarantee a panel was created.</dd>
+              <dt>Slow or crashes on close</dt><dd>Look for blocking calls in <code>tick()</code>, multiple in-flight requests, and callbacks that outlive the monitor. Reproduce in the test profile, then add a regression test.</dd>
+            </dl>
+          </section>
+
+          <section id="plugin-release">
+            <h3>5. Install, package, and share</h3>
+            <p>For a user install, put the module itself directly in the right directory, not one folder deeper inside an archive. The host loads native modules at startup, so restart it after adding or replacing a binary.</p>
+            <dl class="guide-pairs">
+              <dt>Linux</dt><dd><code>~/.local/share/krellix/plugins/</code>, or <code>$XDG_DATA_HOME/krellix/plugins/</code> when set. Distribution packages normally use the host's system plugin path, such as <code>/usr/lib/krellix/plugins/</code>.</dd>
+              <dt>macOS</dt><dd><code>~/Library/Application Support/krellix/plugins/</code>. Leave the signed <code>Krellix.app</code> bundle untouched.</dd>
+              <dt>Windows</dt><dd><code>%LOCALAPPDATA%\krellix\plugins\</code>. The example links to the Windows host target; do not copy another build's Qt or C++ runtime DLLs over the installed ones.</dd>
+            </dl>
+            <p>One source archive can serve all platforms. Native binaries cannot: build separately for each advertised OS and architecture. Keep the plugin interface IID unchanged unless changing the interface itself, and document the actual minimum host and ABI compatibility. Matching <code>io.krellix.IKrellixPlugin/1.0</code> alone does not guarantee binary compatibility.</p>
+            <p>Include a version, license, dependencies, install/remove steps, and a tested host matrix. For Pacman, DEB, and RPM, let the package manager own the module and declare the host version requirement. For archives, include a checksum and preferably a signature. Never overwrite an unknown or newer install. Share the sources and release notes in <a href="https://github.com/yodabytz/krellix/discussions">Krellix Discussions</a>.</p>
+          </section>
+        </div>
       </div>
     </section>
   </main>
