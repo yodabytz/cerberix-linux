@@ -2,7 +2,7 @@
 pkgbase=krellix
 pkgname=('krellix' 'krellix-server' 'krellix-krellbluetooth')
 pkgver=0.1.2
-pkgrel=41
+pkgrel=42
 arch=('x86_64' 'aarch64')
 url='https://github.com/yodabytz/krellix'
 license=('GPL-3.0-or-later')
@@ -44,6 +44,12 @@ sha256sums+=('422d76df8c406d7f985950da3633e80207fd75efa68823648e4410244b45b79c')
 source+=("fix-cpu-chart-scale.patch")
 sha256sums+=('8fead942f55f9845c6dd27cacf81c3f53fcc4ab6133dd7c04dbfb8427ba1b6a3')
 
+# The desktop is built from the same revision as the Windows renderer build.
+# Keep the existing source/patch stack for the independently shipped daemon and plugin.
+_desktop_commit=c749a48a41e41efe140f6cc9f7f7c83bdade726c
+source+=("krellix-desktop-${_desktop_commit}.tar.gz::https://codeload.github.com/yodabytz/krellix/tar.gz/${_desktop_commit}")
+sha256sums+=('48e1bcc7228bf5a0ed7d10b22aa598ab66daac48e38d502964c707ebbd2be961')
+
 prepare() {
     cd "$pkgbase-$pkgver"
     patch -p4 < "$srcdir/fix-remote-recovery.patch"
@@ -70,6 +76,9 @@ build() {
         -DCMAKE_INSTALL_PREFIX=/usr
     cmake --build build -j4
     QT_QPA_PLATFORM=offscreen ctest --test-dir build --output-on-failure
+    cmake -GNinja -S "$srcdir/krellix-$_desktop_commit" -B "$srcdir/desktop-build" \
+        -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_SKIP_RPATH=ON -DBUILD_TESTING=OFF
+    cmake --build "$srcdir/desktop-build" --target krellix -j4
 }
 
 package_krellix() {
@@ -100,6 +109,7 @@ package_krellix() {
     # phase PNGs under share/krellix/plugins/krellmoon/) — leaving them
     # in place causes a file-ownership conflict with the plugin package.
     DESTDIR="$pkgdir" cmake --install build
+    install -m755 "$srcdir/desktop-build/bin/krellix" "$pkgdir/usr/bin/krellix"
     rm -f "$pkgdir/usr/bin/krellixd"
     rm -f "$pkgdir/usr/lib/systemd/system/krellixd.service"
     rm -rf "$pkgdir/usr/lib/systemd/system/krellixd.service.d"
