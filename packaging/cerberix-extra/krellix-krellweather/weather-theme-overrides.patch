@@ -1,0 +1,141 @@
+diff --git a/plugins/krellweather/KrellweatherPlugin.cpp b/plugins/krellweather/KrellweatherPlugin.cpp
+index ab3ac5d..d0e2d37 100644
+--- a/plugins/krellweather/KrellweatherPlugin.cpp
++++ b/plugins/krellweather/KrellweatherPlugin.cpp
+@@ -34,6 +34,86 @@ constexpr const char *kMetarUrl = "https://aviationweather.gov/api/data/metar";
+ constexpr int kFetchTimeoutMs = 15000;
+ constexpr qsizetype kMaxWeatherBytes = 256 * 1024;
+ 
++QStringView iconSuffix(KrellWeather::Kind kind)
++{
++    using KrellWeather::Kind;
++    switch (kind) {
++    case Kind::Unknown: return u"unknown";
++    case Kind::Clear: return u"clear";
++    case Kind::MostlyClear: return u"mostly_clear";
++    case Kind::PartlyCloudy: return u"partly_cloudy";
++    case Kind::MostlyCloudy: return u"mostly_cloudy";
++    case Kind::Cloudy: return u"cloudy";
++    case Kind::Overcast: return u"overcast";
++    case Kind::Drizzle: return u"drizzle";
++    case Kind::LightRain: return u"light_rain";
++    case Kind::Rain: return u"rain";
++    case Kind::HeavyRain: return u"heavy_rain";
++    case Kind::RainShowers: return u"rain_showers";
++    case Kind::FreezingRain: return u"freezing_rain";
++    case Kind::LightSnow: return u"light_snow";
++    case Kind::Snow: return u"snow";
++    case Kind::HeavySnow: return u"heavy_snow";
++    case Kind::SnowShowers: return u"snow_showers";
++    case Kind::Sleet: return u"sleet";
++    case Kind::Mixed: return u"mixed";
++    case Kind::Hail: return u"hail";
++    case Kind::BlowingSnow: return u"blowing_snow";
++    case Kind::Fog: return u"fog";
++    case Kind::Mist: return u"mist";
++    case Kind::Haze: return u"haze";
++    case Kind::Smoke: return u"smoke";
++    case Kind::Dust: return u"dust";
++    case Kind::Wind: return u"wind";
++    case Kind::StrongWind: return u"strong_wind";
++    case Kind::Thunderstorm: return u"thunderstorm";
++    case Kind::SevereThunderstorm: return u"severe_thunderstorm";
++    case Kind::Tornado: return u"tornado";
++    case Kind::Hurricane: return u"hurricane";
++    case Kind::TropicalStorm: return u"tropical_storm";
++    }
++    return u"unknown";
++}
++
++QPixmap themeArtwork(const Theme &theme, KrellWeather::Condition condition)
++{
++    using KrellWeather::Kind;
++    const QString key = QStringLiteral("panel_icon_krellweather_") + iconSuffix(condition.kind).toString();
++    if (condition.night) {
++        const auto night = theme.pixmap(key + QStringLiteral("_night"));
++        if (!night.isNull()) return night;
++        // A sun drawn into daytime artwork is not a nighttime fallback.
++        switch (condition.kind) {
++        case Kind::Clear:
++        case Kind::MostlyClear:
++        case Kind::PartlyCloudy:
++        case Kind::MostlyCloudy:
++        case Kind::Haze:
++            return {};
++        default:
++            break;
++        }
++    }
++    return theme.pixmap(key);
++}
++
++QPixmap fitThemeArtwork(const QPixmap &artwork, QSize slot, qreal dpr)
++{
++    const QSize backing(qCeil(slot.width() * dpr), qCeil(slot.height() * dpr));
++    QPixmap result(backing);
++    if (result.isNull()) return {};
++    result.setDevicePixelRatio(dpr);
++    result.fill(Qt::transparent);
++    const QSizeF fitted = QSizeF(artwork.size()).scaled(QSizeF(slot), Qt::KeepAspectRatio);
++    QRectF target(QPointF(), fitted);
++    target.moveCenter(QRectF(QPointF(), QSizeF(slot)).center());
++    QPainter painter(&result);
++    painter.setRenderHint(QPainter::SmoothPixmapTransform, true);
++    painter.drawPixmap(target, artwork, QRectF(artwork.rect()));
++    painter.end();
++    return result;
++}
++
+ class WeatherIconWidget : public QWidget
+ {
+ public:
+@@ -75,14 +155,7 @@ protected:
+     {
+         const qreal dpr = devicePixelRatioF();
+         if (m_pixmap.isNull() || m_cachedSize != size() || m_pixmap.devicePixelRatio() != dpr) {
+-            KrellWeather::Colors colors;
+-            if (m_theme) {
+-                colors.background = m_theme->color(QStringLiteral("panel_bg"), colors.background);
+-                colors.primary = m_theme->color(QStringLiteral("text_primary"), colors.primary);
+-                colors.secondary = m_theme->color(QStringLiteral("text_secondary"), colors.secondary);
+-                colors.accent = m_theme->color(QStringLiteral("text_accent"), colors.accent);
+-            }
+-            m_pixmap = QPixmap::fromImage(KrellWeather::renderIcon(m_condition, m_mode, colors, size(), dpr));
++            m_pixmap = iconPixmap(dpr);
+             m_cachedSize = size();
+         }
+         QPainter painter(this);
+@@ -90,6 +163,22 @@ protected:
+     }
+ 
+ private:
++    QPixmap iconPixmap(qreal dpr) const
++    {
++        if (m_theme && m_mode == KrellWeather::Mode::Theme) {
++            const auto artwork = themeArtwork(*m_theme, m_condition);
++            if (!artwork.isNull()) return fitThemeArtwork(artwork, size(), dpr);
++        }
++        KrellWeather::Colors colors;
++        if (m_theme) {
++            colors.background = m_theme->color(QStringLiteral("panel_bg"), colors.background);
++            colors.primary = m_theme->color(QStringLiteral("text_primary"), colors.primary);
++            colors.secondary = m_theme->color(QStringLiteral("text_secondary"), colors.secondary);
++            colors.accent = m_theme->color(QStringLiteral("text_accent"), colors.accent);
++        }
++        return QPixmap::fromImage(KrellWeather::renderIcon(m_condition, m_mode, colors, size(), dpr));
++    }
++
+     Theme *m_theme;
+     QPixmap m_pixmap;
+     QSize m_cachedSize;
+@@ -506,9 +595,9 @@ QString KrellweatherPlugin::pluginName() const
+ QString KrellweatherPlugin::pluginVersion() const
+ {
+ #ifdef Q_OS_WIN
+-    return QStringLiteral("0.1.1-windows.1");
++    return QStringLiteral("0.1.2-windows.1");
+ #else
+-    return QStringLiteral("0.1.1");
++    return QStringLiteral("0.1.2");
+ #endif
+ }
