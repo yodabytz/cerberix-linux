@@ -9,6 +9,8 @@
   <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
   <link rel="stylesheet" href="/style.css?v=20260506-badges" />
   <link rel="stylesheet" href="/extras/krellix/authoring.css" />
+  <link rel="stylesheet" href="/extras/krellix/themes/gallery.css?v=1" />
+  <script defer src="/extras/krellix/themes/gallery.js?v=1"></script>
 </head>
 <body>
   <div class="bg-grid"></div>
@@ -25,95 +27,345 @@
   </header>
 
   <main>
-    <section class="page-hero">
+    <section class="page-hero theme-page-hero" aria-labelledby="theme-page-title">
       <div class="crumbs"><a href="/">Home</a> / <a href="/extras/">Extras</a> / <a href="/extras/krellix/">Krellix</a> / Themes</div>
-      <div class="eyebrow">theme downloads</div>
-      <h1>Krellix themes</h1>
-      <p>
-        Download optional themes or get a standalone copy of a bundled theme.
-        Click a preview image to see it full size.
-      </p>
+      <h1 id="theme-page-title">Krellix themes</h1>
+      <p>Find a new look for your monitor, from classic silver bevels to clean editor palettes.</p>
       <div class="author-actions">
-        <a class="btn btn-primary" href="#build-a-theme">Build a theme</a>
-        <a class="btn btn-ghost" href="#theme-downloads">Browse theme downloads</a>
-      </div>
-      <div class="mini-grid">
-        <article class="mini-card">
-          <h3>User install</h3>
-          <p>Unpack the archive into your user theme directory, then select it under Settings &gt; Appearance.</p>
-          <code>~/.config/krellix/themes</code>
-          <p>On Windows, use <code>%LOCALAPPDATA%\krellix\themes\</code> or the <code>themes</code> folder beside <code>krellix.exe</code>.</p>
-        </article>
-        <article class="mini-card">
-          <h3>Package install</h3>
-          <p>The current Mac app includes Cheese and Bluesteel. The download-only themes below are not bundled.</p>
-          <a class="card-link" href="/extras/krellix/#downloads">Get Krellix</a>
-        </article>
+        <a class="btn btn-primary" href="#theme-downloads">Browse themes</a>
+        <a class="btn btn-ghost" href="#install-a-theme">How to install</a>
+        <a class="btn btn-ghost" href="#build-a-theme">Build a theme</a>
       </div>
     </section>
 
-    <section class="features" id="theme-downloads" style="padding-top: 0;">
-      <div class="section-head">
-        <h2>Download-only themes</h2>
-        <p>Install these separately. Use the latest Krellix for artwork and scaling support.</p>
+    <section class="theme-catalog" id="theme-downloads" aria-labelledby="theme-catalog-title">
+      <div class="theme-catalog-head">
+        <div>
+          <h2 id="theme-catalog-title">Browse by style</h2>
+          <p>Select a thumbnail for a full preview. Bundled themes come with Krellix; availability can vary by package.</p>
+        </div>
+        <div class="theme-controls" role="search" aria-label="Filter themes" hidden>
+          <label>Search themes
+            <input id="theme-query" type="search" placeholder="e.g. blue, MMD3" />
+          </label>
+          <label>Availability
+            <select id="theme-availability">
+              <option value="">All themes</option>
+              <option value="download">Download-only</option>
+              <option value="bundled">Bundled</option>
+              <option value="preview">Preview only</option>
+            </select>
+          </label>
+        </div>
       </div>
-      <div class="theme-grid">
-        <article class="theme-card"><a class="theme-preview" href="#theme-debian"><img src="/images/krellix/themes/thumbs/debian-1.3.jpg" width="144" height="144" alt="Debian theme preview" loading="lazy" decoding="async" /></a><h3>Debian</h3><p>Flat charcoal panels with a raspberry-red edge, red CPU charts and slider spacing, a Debian-branded header, and a spiral for KrellHealth's OK state.</p><div><a class="btn btn-ghost" href="https://repo.cerberix.org/macos/themes/debian-1.3.tar.gz">Download tar.gz</a> <a class="btn btn-ghost" href="https://repo.cerberix.org/macos/themes/debian-1.3.tar.gz.sig">Signature</a> <a class="btn btn-ghost" href="https://repo.cerberix.org/macos/themes/debian-1.3.zip">Download ZIP</a> <a class="btn btn-ghost" href="https://repo.cerberix.org/macos/themes/debian-1.3.zip.sig">ZIP signature</a></div></article>
-        <article class="theme-card"><a class="theme-preview" href="#theme-mmd3"><img src="/images/krellix/themes/thumbs/mmd3-1.6-compact.jpg" width="144" height="144" alt="MMD3 theme preview from Krellix on macOS" loading="lazy" decoding="async" /></a><h3>MMD3</h3><p>Sculpted silver over transparent edges, recessed blue-glass charts, refreshed monitor icons, and an animated footer. Use the <a href="/extras/krellix/#downloads">latest Krellix</a> and set chart height to 64 for the compact layout shown.</p><div><a class="btn btn-ghost" href="https://repo.cerberix.org/macos/themes/mmd3-1.6.tar.gz">Download tar.gz</a> <a class="btn btn-ghost" href="https://repo.cerberix.org/macos/themes/mmd3-1.6.tar.gz.sig">Signature</a> <a class="btn btn-ghost" href="https://repo.cerberix.org/macos/themes/mmd3-1.6.zip">Download ZIP</a> <a class="btn btn-ghost" href="https://repo.cerberix.org/macos/themes/mmd3-1.6.zip.sig">ZIP signature</a></div></article>
-        <article class="theme-card"><a class="theme-preview" href="#theme-ubuntu-ember"><img src="/images/krellix/themes/thumbs/ubuntu-ember-1.1.jpg" width="144" height="144" alt="Ubuntu-Ember theme preview from Krellix on macOS" loading="lazy" decoding="async" /></a><h3>Ubuntu-Ember</h3><p>Orange outlines, aubergine panels, transparent corners, and the Ubuntu Circle of Friends badge for KrellHealth. Older Krellix builds may still show the system window shadow.</p><div><a class="btn btn-ghost" href="https://repo.cerberix.org/macos/themes/ubuntu-ember-1.1.tar.gz">Download tar.gz</a> <a class="btn btn-ghost" href="https://repo.cerberix.org/macos/themes/ubuntu-ember-1.1.tar.gz.sig">Signature</a> <a class="btn btn-ghost" href="https://repo.cerberix.org/macos/themes/ubuntu-ember-1.1.zip">Download ZIP</a> <a class="btn btn-ghost" href="https://repo.cerberix.org/macos/themes/ubuntu-ember-1.1.zip.sig">ZIP signature</a></div></article>
-        <article class="theme-card"><a class="theme-preview" href="#theme-reactor"><img src="/images/krellix/themes/thumbs/reactor-preview.jpg" width="144" height="144" alt="Reactor theme preview" loading="lazy" decoding="async" /></a><h3>Reactor</h3><p>Animated plasma, blue containment rails, and glowing panel edges. The latest Krellix supports Full, Reduced, and Off motion.</p><div><a class="btn btn-ghost" href="https://repo.cerberix.org/macos/themes/reactor-1.1.tar.gz">Download tar.gz</a> <a class="btn btn-ghost" href="https://repo.cerberix.org/macos/themes/reactor-1.1.tar.gz.sig">Signature</a> <a class="btn btn-ghost" href="https://repo.cerberix.org/macos/themes/reactor-1.1.zip">Download ZIP</a> <a class="btn btn-ghost" href="https://repo.cerberix.org/macos/themes/reactor-1.1.zip.sig">ZIP signature</a></div></article>
-        <article class="theme-card"><a class="theme-preview" href="#theme-bluemask"><img src="/images/krellix/themes/thumbs/bluemask-v7.jpg" width="144" height="144" alt="Bluemask 7.0 theme preview" loading="lazy" decoding="async" /></a><h3>Bluemask 7.0</h3><p>Thin side borders, dusty blue charts, and a larger silver mail icon with an updated unread animation.</p><div><a class="btn btn-ghost" href="https://repo.cerberix.org/macos/themes/bluemask-7.0.tar.gz">Download</a> <a class="btn btn-ghost" href="https://repo.cerberix.org/macos/themes/bluemask-7.0.tar.gz.sig">Signature</a></div></article>
-        <article class="theme-card"><a class="theme-preview" href="#theme-obsidian"><img src="/images/krellix/themes/thumbs/obsidian.jpg" width="144" height="144" alt="Obsidian theme preview" loading="lazy" decoding="async" /></a><h3>Obsidian</h3><p>Charcoal panels with warm gold accents and cool chart traces.</p><div><a class="btn btn-ghost" href="https://repo.cerberix.org/macos/themes/obsidian-1.0.tar.gz">Download</a> <a class="btn btn-ghost" href="https://repo.cerberix.org/macos/themes/obsidian-1.0.tar.gz.sig">Signature</a></div></article>
-        <article class="theme-card"><a class="theme-preview" href="#theme-arctic"><img src="/images/krellix/themes/thumbs/arctic.jpg" width="144" height="144" alt="Arctic theme preview" loading="lazy" decoding="async" /></a><h3>Arctic</h3><p>Ice-blue panels, dark text, and a warm orange slider.</p><div><a class="btn btn-ghost" href="https://repo.cerberix.org/macos/themes/arctic-1.0.tar.gz">Download</a> <a class="btn btn-ghost" href="https://repo.cerberix.org/macos/themes/arctic-1.0.tar.gz.sig">Signature</a></div></article>
-        <article class="theme-card"><a class="theme-preview" href="#theme-spectrum"><img src="/images/krellix/themes/thumbs/spectrum.jpg" width="144" height="144" alt="Spectrum theme preview" loading="lazy" decoding="async" /></a><h3>Spectrum</h3><p>Indigo panels with bright, distinct colors for each chart.</p><div><a class="btn btn-ghost" href="https://repo.cerberix.org/macos/themes/spectrum-1.0.tar.gz">Download</a> <a class="btn btn-ghost" href="https://repo.cerberix.org/macos/themes/spectrum-1.0.tar.gz.sig">Signature</a></div></article>
-        <article class="theme-card"><a class="theme-preview" href="#theme-blueheart"><img src="/images/krellix/themes/thumbs/blueheart.jpg" width="144" height="144" alt="BlueHeart theme preview" loading="lazy" /></a><h3>BlueHeart</h3><p>Layered navy panels and cool blue chart traces.</p><div><a class="btn btn-ghost" href="https://repo.cerberix.org/macos/themes/blueheart-1.0.tar.gz">Download</a> <a class="btn btn-ghost" href="https://repo.cerberix.org/macos/themes/blueheart-1.0.tar.gz.sig">Signature</a></div></article>
-        <article class="theme-card"><a class="theme-preview" href="#theme-kronix"><img src="/images/krellix/themes/thumbs/kronix.jpg" width="144" height="144" alt="Kronix theme preview" loading="lazy" /></a><h3>Kronix</h3><p>Foliage artwork, dark panels, and neon-green and violet accents.</p><div><a class="btn btn-ghost" href="https://repo.cerberix.org/macos/themes/kronix-1.0.tar.gz">Download</a> <a class="btn btn-ghost" href="https://repo.cerberix.org/macos/themes/kronix-1.0.tar.gz.sig">Signature</a></div></article>
-        <article class="theme-card"><a class="theme-preview" href="#theme-nucleo"><img src="/images/krellix/themes/thumbs/nucleo.jpg" width="144" height="144" alt="Nucleo theme preview" loading="lazy" decoding="async" /></a><h3>Nucleo</h3><p>Brushed-steel panels with blue LEDs, a nameplate, and a decorative playback strip.</p><div><a class="btn btn-ghost" href="https://repo.cerberix.org/macos/themes/nucleo-1.0.tar.gz">Download</a> <a class="btn btn-ghost" href="https://repo.cerberix.org/macos/themes/nucleo-1.0.tar.gz.sig">Signature</a></div></article>
-        <article class="theme-card"><a class="theme-preview" href="#theme-anubis"><img src="/images/krellix/themes/thumbs/anubis.jpg" width="144" height="144" alt="Anubis theme preview" loading="lazy" decoding="async" /></a><h3>Anubis</h3><p>Gold and lapis panels, a jackal banner, and a winged scarab footer.</p><div><a class="btn btn-ghost" href="https://repo.cerberix.org/macos/themes/anubis-1.0.tar.gz">Download</a> <a class="btn btn-ghost" href="https://repo.cerberix.org/macos/themes/anubis-1.0.tar.gz.sig">Signature</a></div></article>
-        <article class="theme-card"><a class="theme-preview" href="#theme-leviathan"><img src="/images/krellix/themes/thumbs/leviathan.jpg" width="144" height="144" alt="Leviathan theme preview" loading="lazy" decoding="async" /></a><h3>Leviathan</h3><p>Undersea monster artwork, weathered bronze frames, and cyan monitor icons.</p><div><a class="btn btn-ghost" href="https://repo.cerberix.org/macos/themes/leviathan-1.0.tar.gz">Download</a> <a class="btn btn-ghost" href="https://repo.cerberix.org/macos/themes/leviathan-1.0.tar.gz.sig">Signature</a></div></article>
-        <article class="theme-card"><a class="theme-preview" href="#theme-fenrir"><img src="/images/krellix/themes/thumbs/fenrir.jpg" width="144" height="144" alt="Fenrir theme preview" loading="lazy" decoding="async" /></a><h3>Fenrir</h3><p>Wolf-and-moon banner, dark armor panels, and amber and cyan monitor icons.</p><div><a class="btn btn-ghost" href="https://repo.cerberix.org/macos/themes/fenrir-1.0.tar.gz">Download</a> <a class="btn btn-ghost" href="https://repo.cerberix.org/macos/themes/fenrir-1.0.tar.gz.sig">Signature</a></div></article>
-      </div>
-
-      <div class="section-head" style="margin-top: 28px;">
-        <h2>Bundled themes</h2>
-        <p>Themes included in Krellix packages, with standalone downloads where available.</p>
-      </div>
-      <div class="theme-grid">
-        <article class="theme-card"><a class="theme-preview" href="#theme-aurora"><img src="/images/krellix/themes/thumbs/aurora.jpg" alt="Aurora theme preview thumbnail" loading="lazy" /></a><h3>aurora</h3><p>Animated aurora-style gradients for a brighter monitor stack.</p><a class="btn btn-ghost" href="/download/krellix/themes/aurora.tar.gz">Download</a></article>
-        <article class="theme-card"><a class="theme-preview" href="#theme-bluesteel"><img src="/images/krellix/themes/thumbs/bluesteel-v21.jpg" width="144" height="144" alt="Bluesteel 2.1 theme preview" loading="lazy" decoding="async" /></a><h3>Bluesteel 2.1</h3><p>Soft cloudy satin steel with shallow bevels, charcoal charts, and cyan accents.</p><div><a class="btn btn-ghost" href="https://repo.cerberix.org/macos/themes/bluesteel-2.1.tar.gz">Download</a> <a class="btn btn-ghost" href="https://repo.cerberix.org/macos/themes/bluesteel-2.1.tar.gz.sig">Signature</a></div></article>
-        <article class="theme-card"><a class="theme-preview" href="#theme-catppuccin-mocha"><img src="/images/krellix/themes/thumbs/catppuccin-mocha.jpg" alt="Catppuccin Mocha theme preview thumbnail" loading="lazy" /></a><h3>catppuccin-mocha</h3><p>Soft dark Catppuccin colors for a clean desktop monitor.</p><a class="btn btn-ghost" href="/download/krellix/themes/catppuccin-mocha.tar.gz">Download</a></article>
-        <article class="theme-card"><a class="theme-preview" href="#theme-cheese"><img src="/images/krellix/themes/thumbs/cheese-v2.jpg" width="144" height="144" alt="Cheese 2.0 theme preview" loading="lazy" /></a><h3>Cheese 2.0</h3><p>Warm yellow textures and dark brown text. Replaces the classic Cheese and comes with the current Mac app.</p><div><a class="btn btn-ghost" href="https://repo.cerberix.org/macos/themes/cheese-2.0.tar.gz">Download</a> <a class="btn btn-ghost" href="https://repo.cerberix.org/macos/themes/cheese-2.0.tar.gz.sig">Signature</a></div></article>
-        <article class="theme-card"><a class="theme-preview" href="#theme-cobalt2"><img src="/images/krellix/themes/thumbs/cobolt2.jpg" alt="Cobalt2 theme preview thumbnail" loading="lazy" /></a><h3>cobalt2</h3><p>Bright blue Cobalt-style colors with high contrast text.</p><a class="btn btn-ghost" href="/download/krellix/themes/colbalt2.tar.gz">Download</a></article>
-        <article class="theme-card"><a class="theme-preview" href="#theme-cthulhain"><img src="/images/krellix/themes/thumbs/cthulhain.jpg" alt="Cthulhain theme preview thumbnail" loading="lazy" /></a><h3>cthulhain</h3><p>Dark green terminal colors with brighter readable text.</p><a class="btn btn-ghost" href="/download/krellix/themes/cthulhain.tar.gz">Download</a></article>
-        <article class="theme-card"><a class="theme-preview" href="#theme-default"><img src="/images/krellix/themes/thumbs/default.jpg" width="144" height="144" alt="Default theme preview" loading="lazy" decoding="async" /></a><h3>default</h3><p>The baseline Krellix theme.</p><a class="btn btn-ghost" href="/download/krellix/themes/default.tar.gz">Download</a></article>
-        <article class="theme-card"><a class="theme-preview" href="#theme-dracula"><img src="/images/krellix/themes/thumbs/dracula.jpg" alt="Dracula theme preview thumbnail" loading="lazy" /></a><h3>dracula</h3><p>Dracula-inspired dark purple and neon accent colors.</p><a class="btn btn-ghost" href="/download/krellix/themes/dracula.tar.gz">Download</a></article>
-        <article class="theme-card"><a class="theme-preview" href="#theme-duskfox"><img src="/images/krellix/themes/thumbs/duskfox.jpg" alt="Duskfox theme preview thumbnail" loading="lazy" /></a><h3>duskfox</h3><p>Muted dusk colors for a low-glare desktop.</p><a class="btn btn-ghost" href="/download/krellix/themes/duskfox.tar.gz">Download</a></article>
-        <article class="theme-card"><a class="theme-preview" href="#theme-egan"><img src="/images/krellix/themes/thumbs/egan.jpg" width="144" height="144" alt="Egan theme preview" loading="lazy" decoding="async" /></a><h3>egan</h3><p>Classic slate panels with white shadowed labels, warm gold readouts, and grayscale CPU traces.</p><div><a class="btn btn-ghost" href="https://repo.cerberix.org/macos/themes/egan-1.3.tar.gz">Download for Mac</a> <a class="btn btn-ghost" href="https://repo.cerberix.org/macos/themes/egan-1.3.tar.gz.sig">Mac archive signature</a></div></article>
-        <article class="theme-card"><a class="theme-preview" href="#theme-everforest"><img src="/images/krellix/themes/thumbs/everforest.jpg" alt="Everforest theme preview thumbnail" loading="lazy" /></a><h3>everforest</h3><p>Earthy Everforest-style greens and warm highlights.</p><a class="btn btn-ghost" href="/download/krellix/themes/everforest.tar.gz">Download</a></article>
-        <article class="theme-card"><a class="theme-preview" href="#theme-gorilla"><img src="/images/krellix/themes/thumbs/gorilla.jpg" width="144" height="144" alt="Gorilla theme preview" loading="lazy" decoding="async" /></a><h3>gorilla</h3><p>Classic light panels and dark charts. The Mac theme has thin dark grid lines, gray Network bars and Memory and Swap meters, and softly shadowed labels.</p><div><a class="btn btn-ghost" href="/download/krellix/themes/gorilla.tar.gz">Download</a> <a class="btn btn-ghost" href="https://repo.cerberix.org/macos/themes/gorilla-1.7.tar.gz">Download for Mac</a> <a class="btn btn-ghost" href="https://repo.cerberix.org/macos/themes/gorilla-1.7.tar.gz.sig">Mac archive signature</a></div></article>
-        <article class="theme-card"><a class="theme-preview" href="#theme-gotham"><img src="/images/krellix/themes/thumbs/gotham.jpg" width="144" height="144" alt="Gotham theme preview" loading="lazy" decoding="async" /></a><h3>gotham</h3><p>Blue-black Gotham palette for a sharp monitoring layout.</p><a class="btn btn-ghost" href="/download/krellix/themes/gotham.tar.gz">Download</a></article>
-        <article class="theme-card"><a class="theme-preview" href="#theme-gruvbox-dark"><img src="/images/krellix/themes/thumbs/gruvbox-dark.jpg" width="144" height="144" alt="Gruvbox-dark theme preview" loading="lazy" decoding="async" /></a><h3>gruvbox-dark</h3><p>Gruvbox dark colors with warm graph accents.</p><a class="btn btn-ghost" href="/download/krellix/themes/gruvbox-dark.tar.gz">Download</a></article>
-        <article class="theme-card"><a class="theme-preview" href="#theme-lcars"><img src="/images/krellix/themes/thumbs/lcars.jpg" width="144" height="144" alt="Lcars theme preview" loading="lazy" decoding="async" /></a><h3>lcars</h3><p>LCARS-inspired panels and color blocks.</p><a class="btn btn-ghost" href="/download/krellix/themes/lcars.tar.gz">Download</a></article>
-        <article class="theme-card"><a class="theme-preview" href="#theme-lumon"><img src="/images/krellix/themes/thumbs/lumon.jpg" width="144" height="144" alt="Lumon theme preview" loading="lazy" decoding="async" /></a><h3>lumon</h3><p>Clean corporate dark styling with restrained highlights.</p><a class="btn btn-ghost" href="/download/krellix/themes/lumon.tar.gz">Download</a></article>
-        <article class="theme-card"><a class="theme-preview" href="#theme-nightfox"><img src="/images/krellix/themes/thumbs/nightfox.jpg" width="144" height="144" alt="Nightfox theme preview" loading="lazy" decoding="async" /></a><h3>nightfox</h3><p>Nightfox dark theme colors for calm graph readability.</p><a class="btn btn-ghost" href="/download/krellix/themes/nightfox.tar.gz">Download</a></article>
-        <article class="theme-card"><a class="theme-preview" href="#theme-nord"><img src="/images/krellix/themes/thumbs/nord.jpg" width="144" height="144" alt="Nord theme preview" loading="lazy" decoding="async" /></a><h3>nord</h3><p>Cool Nord palette with icy blues and soft contrast.</p><a class="btn btn-ghost" href="/download/krellix/themes/nord.tar.gz">Download</a></article>
-        <article class="theme-card"><a class="theme-preview" href="#theme-onedark"><img src="/images/krellix/themes/thumbs/onedark.jpg" width="144" height="144" alt="Onedark theme preview" loading="lazy" decoding="async" /></a><h3>onedark</h3><p>One Dark colors for a familiar editor-style look.</p><a class="btn btn-ghost" href="/download/krellix/themes/onedark.tar.gz">Download</a></article>
-        <article class="theme-card"><a class="theme-preview" href="#theme-prime23"><img src="/images/krellix/themes/thumbs/prime23.jpg" width="144" height="144" alt="Prime23 theme preview" loading="lazy" decoding="async" /></a><h3>Prime23</h3><p>A vivid sci-fi theme with strong accent colors.</p><a class="btn btn-ghost" href="/download/krellix/themes/prime23.tar.gz">Download</a></article>
-        <article class="theme-card"><a class="theme-preview" href="#theme-solarized"><img src="/images/krellix/themes/thumbs/solarized.jpg" width="144" height="144" alt="Solarized Dark theme preview" loading="lazy" decoding="async" /></a><h3>Solarized</h3><p>Deep teal panels with cyan and yellow accents. Included in Krellix for macOS.</p><a class="btn btn-ghost" href="/extras/krellix/#downloads">Get the Mac app</a></article>
-        <article class="theme-card"><a class="theme-preview" href="#theme-tokyo-night"><img src="/images/krellix/themes/thumbs/tokyo-night.jpg" width="144" height="144" alt="Tokyo-night theme preview" loading="lazy" decoding="async" /></a><h3>tokyo-night</h3><p>Tokyo Night base palette for a polished dark monitor.</p><a class="btn btn-ghost" href="/download/krellix/themes/tokyo-night.tar.gz">Download</a></article>
-        <article class="theme-card"><a class="theme-preview" href="#theme-tokyo-night-moon"><img src="/images/krellix/themes/thumbs/tokyo-night-moon.jpg" alt="Tokyo Night Moon theme preview thumbnail" loading="lazy" /></a><h3>tokyo-night-moon</h3><p>Moon variant with softer blues and purples.</p><a class="btn btn-ghost" href="/download/krellix/themes/tokyo-night-moon.tar.gz">Download</a></article>
-        <article class="theme-card"><a class="theme-preview" href="#theme-tokyo-night-storm"><img src="/images/krellix/themes/thumbs/tokyo-night-storm.jpg" width="144" height="144" alt="Tokyo-night-storm theme preview" loading="lazy" decoding="async" /></a><h3>tokyo-night-storm</h3><p>Storm variant with deeper contrast and cooler tones.</p><a class="btn btn-ghost" href="/download/krellix/themes/tokyo-night-storm.tar.gz">Download</a></article>
+      <nav class="theme-collections" aria-label="Theme collections">
+        <a href="#collection-desktop">Desktop-inspired</a>
+        <a href="#collection-classic">Classic &amp; sculpted</a>
+        <a href="#collection-illustrated">Illustrated &amp; sci-fi</a>
+        <a href="#collection-palette">Palette themes</a>
+        <a href="#collection-preview">Preview only</a>
+      </nav>
+      <p class="theme-status" role="status"></p>
+      <div class="theme-empty" hidden>
+        <p>Try a broader search or change the availability filter.</p>
+        <button type="button" class="theme-download" id="clear-theme-filters">Clear filters</button>
       </div>
 
-      <div class="section-head" style="margin-top: 28px;">
-        <h2>Additional previews</h2>
-        <p>These screenshots are ready for future downloadable theme archives.</p>
-      </div>
-      <div class="theme-grid">
-        <article class="theme-card"><a class="theme-preview" href="#theme-alienverse"><img src="/images/krellix/themes/thumbs/alienverse.jpg" alt="Alienverse theme preview thumbnail" loading="lazy" /></a><h3>alienverse</h3><p>Preview available.</p></article>
-        <article class="theme-card"><a class="theme-preview" href="#theme-blackrock"><img src="/images/krellix/themes/thumbs/blackrock.jpg" alt="Blackrock theme preview thumbnail" loading="lazy" /></a><h3>blackrock</h3><p>Preview available.</p></article>
-        <article class="theme-card"><a class="theme-preview" href="#theme-default-hacker"><img src="/images/krellix/themes/thumbs/default-hacker.jpg" alt="Default Hacker theme preview thumbnail" loading="lazy" /></a><h3>default-hacker</h3><p>Preview available.</p></article>
-      </div>
+      <section class="theme-collection" id="collection-desktop" aria-labelledby="collection-title-desktop">
+        <header class="theme-collection-head">
+          <h3 id="collection-title-desktop">Desktop-inspired</h3>
+          <p>Distro colors and familiar desktop branding.</p>
+        </header>
+        <div class="theme-grid">
+          <article class="theme-card" id="card-debian" data-availability="download">
+            <a class="theme-preview" href="#theme-debian" aria-label="Preview Debian"><img src="/images/krellix/themes/thumbs/debian-1.3.jpg" width="144" height="144" alt="Debian theme preview" loading="lazy" decoding="async" /></a>
+            <div class="theme-card-heading"><h4>Debian</h4><span class="theme-availability">Download-only</span></div>
+            <p>Charcoal panels, raspberry-red edges, red CPU traces, and a Debian spiral for KrellHealth.</p>
+            <div class="theme-card-actions"><a class="theme-download" href="https://repo.cerberix.org/macos/themes/debian-1.3.tar.gz" aria-label="Debian: Download tar.gz">tar.gz</a> <a class="theme-signature" href="https://repo.cerberix.org/macos/themes/debian-1.3.tar.gz.sig" aria-label="Debian: tar.gz signature">tar.gz signature</a> <a class="theme-download" href="https://repo.cerberix.org/macos/themes/debian-1.3.zip" aria-label="Debian: Download ZIP">ZIP</a> <a class="theme-signature" href="https://repo.cerberix.org/macos/themes/debian-1.3.zip.sig" aria-label="Debian: ZIP signature">ZIP signature</a></div>
+          </article>
+          <article class="theme-card" id="card-ubuntu-ember" data-availability="download">
+            <a class="theme-preview" href="#theme-ubuntu-ember" aria-label="Preview Ubuntu-Ember"><img src="/images/krellix/themes/thumbs/ubuntu-ember-1.1.jpg" width="144" height="144" alt="Ubuntu-Ember theme preview from Krellix on macOS" loading="lazy" decoding="async" /></a>
+            <div class="theme-card-heading"><h4>Ubuntu-Ember</h4><span class="theme-availability">Download-only</span></div>
+            <p>Orange outlines, aubergine panels, and an Ubuntu health badge. Older Krellix builds may show a window shadow.</p>
+            <div class="theme-card-actions"><a class="theme-download" href="https://repo.cerberix.org/macos/themes/ubuntu-ember-1.1.tar.gz" aria-label="Ubuntu-Ember: Download tar.gz">tar.gz</a> <a class="theme-signature" href="https://repo.cerberix.org/macos/themes/ubuntu-ember-1.1.tar.gz.sig" aria-label="Ubuntu-Ember: tar.gz signature">tar.gz signature</a> <a class="theme-download" href="https://repo.cerberix.org/macos/themes/ubuntu-ember-1.1.zip" aria-label="Ubuntu-Ember: Download ZIP">ZIP</a> <a class="theme-signature" href="https://repo.cerberix.org/macos/themes/ubuntu-ember-1.1.zip.sig" aria-label="Ubuntu-Ember: ZIP signature">ZIP signature</a></div>
+          </article>
+        </div>
+      </section>
+
+      <section class="theme-collection" id="collection-classic" aria-labelledby="collection-title-classic">
+        <header class="theme-collection-head">
+          <h3 id="collection-title-classic">Classic &amp; sculpted</h3>
+          <p>Bevels, glass, and textures that recall classic system monitors.</p>
+        </header>
+        <div class="theme-grid">
+          <article class="theme-card" id="card-bluesteel" data-availability="bundled">
+            <a class="theme-preview" href="#theme-bluesteel" aria-label="Preview Bluesteel 2.1"><img src="/images/krellix/themes/thumbs/bluesteel-v21.jpg" width="144" height="144" alt="Bluesteel 2.1 theme preview" loading="lazy" decoding="async" /></a>
+            <div class="theme-card-heading"><h4>Bluesteel 2.1</h4><span class="theme-availability">Bundled</span></div>
+            <p>Soft cloudy satin steel with shallow bevels, charcoal charts, and cyan accents.</p>
+            <div class="theme-card-actions"><a class="theme-download" href="https://repo.cerberix.org/macos/themes/bluesteel-2.1.tar.gz" aria-label="Bluesteel 2.1: Download tar.gz">tar.gz</a> <a class="theme-signature" href="https://repo.cerberix.org/macos/themes/bluesteel-2.1.tar.gz.sig" aria-label="Bluesteel 2.1: tar.gz signature">tar.gz signature</a></div>
+          </article>
+          <article class="theme-card" id="card-cheese" data-availability="bundled">
+            <a class="theme-preview" href="#theme-cheese" aria-label="Preview Cheese 2.0"><img src="/images/krellix/themes/thumbs/cheese-v2.jpg" width="144" height="144" alt="Cheese 2.0 theme preview" loading="lazy" /></a>
+            <div class="theme-card-heading"><h4>Cheese 2.0</h4><span class="theme-availability">Bundled</span></div>
+            <p>Warm yellow texture with dark brown text. Replaces the classic Cheese theme.</p>
+            <div class="theme-card-actions"><a class="theme-download" href="https://repo.cerberix.org/macos/themes/cheese-2.0.tar.gz" aria-label="Cheese 2.0: Download tar.gz">tar.gz</a> <a class="theme-signature" href="https://repo.cerberix.org/macos/themes/cheese-2.0.tar.gz.sig" aria-label="Cheese 2.0: tar.gz signature">tar.gz signature</a></div>
+          </article>
+          <article class="theme-card" id="card-egan" data-availability="bundled">
+            <a class="theme-preview" href="#theme-egan" aria-label="Preview Egan"><img src="/images/krellix/themes/thumbs/egan.jpg" width="144" height="144" alt="Egan theme preview" loading="lazy" decoding="async" /></a>
+            <div class="theme-card-heading"><h4>Egan</h4><span class="theme-availability">Bundled</span></div>
+            <p>Classic slate panels with white shadowed labels, warm gold readouts, and grayscale CPU traces.</p>
+            <div class="theme-card-actions"><a class="theme-download" href="https://repo.cerberix.org/macos/themes/egan-1.3.tar.gz" aria-label="Egan: Download Mac tar.gz">Mac tar.gz</a> <a class="theme-signature" href="https://repo.cerberix.org/macos/themes/egan-1.3.tar.gz.sig" aria-label="Egan: Mac signature">Mac signature</a></div>
+          </article>
+          <article class="theme-card" id="card-gorilla" data-availability="bundled">
+            <a class="theme-preview" href="#theme-gorilla" aria-label="Preview Gorilla"><img src="/images/krellix/themes/thumbs/gorilla.jpg" width="144" height="144" alt="Gorilla theme preview" loading="lazy" decoding="async" /></a>
+            <div class="theme-card-heading"><h4>Gorilla</h4><span class="theme-availability">Bundled</span></div>
+            <p>Classic light panels, dark charts, and softly shadowed labels. The Mac version uses gray sliders.</p>
+            <div class="theme-card-actions"><a class="theme-download" href="/download/krellix/themes/gorilla.tar.gz" aria-label="Gorilla: Download tar.gz">tar.gz</a> <a class="theme-download" href="https://repo.cerberix.org/macos/themes/gorilla-1.7.tar.gz" aria-label="Gorilla: Download Mac tar.gz">Mac tar.gz</a> <a class="theme-signature" href="https://repo.cerberix.org/macos/themes/gorilla-1.7.tar.gz.sig" aria-label="Gorilla: Mac signature">Mac signature</a></div>
+          </article>
+          <article class="theme-card" id="card-mmd3" data-availability="download">
+            <a class="theme-preview" href="#theme-mmd3" aria-label="Preview MMD3"><img src="/images/krellix/themes/thumbs/mmd3-1.6-compact.jpg" width="144" height="144" alt="MMD3 theme preview from Krellix on macOS" loading="lazy" decoding="async" /></a>
+            <div class="theme-card-heading"><h4>MMD3</h4><span class="theme-availability">Download-only</span></div>
+            <p>Sculpted silver, recessed blue glass, and an animated footer. Best with the <a href="/extras/krellix/#downloads">latest Krellix</a>.</p>
+            <div class="theme-card-actions"><a class="theme-download" href="https://repo.cerberix.org/macos/themes/mmd3-1.6.tar.gz" aria-label="MMD3: Download tar.gz">tar.gz</a> <a class="theme-signature" href="https://repo.cerberix.org/macos/themes/mmd3-1.6.tar.gz.sig" aria-label="MMD3: tar.gz signature">tar.gz signature</a> <a class="theme-download" href="https://repo.cerberix.org/macos/themes/mmd3-1.6.zip" aria-label="MMD3: Download ZIP">ZIP</a> <a class="theme-signature" href="https://repo.cerberix.org/macos/themes/mmd3-1.6.zip.sig" aria-label="MMD3: ZIP signature">ZIP signature</a></div>
+          </article>
+          <article class="theme-card" id="card-nucleo" data-availability="download">
+            <a class="theme-preview" href="#theme-nucleo" aria-label="Preview Nucleo"><img src="/images/krellix/themes/thumbs/nucleo.jpg" width="144" height="144" alt="Nucleo theme preview" loading="lazy" decoding="async" /></a>
+            <div class="theme-card-heading"><h4>Nucleo</h4><span class="theme-availability">Download-only</span></div>
+            <p>Brushed-steel panels with blue LEDs, a nameplate, and a decorative playback strip.</p>
+            <div class="theme-card-actions"><a class="theme-download" href="https://repo.cerberix.org/macos/themes/nucleo-1.0.tar.gz" aria-label="Nucleo: Download tar.gz">tar.gz</a> <a class="theme-signature" href="https://repo.cerberix.org/macos/themes/nucleo-1.0.tar.gz.sig" aria-label="Nucleo: tar.gz signature">tar.gz signature</a></div>
+          </article>
+        </div>
+      </section>
+
+      <section class="theme-collection" id="collection-illustrated" aria-labelledby="collection-title-illustrated">
+        <header class="theme-collection-head">
+          <h3 id="collection-title-illustrated">Illustrated &amp; sci-fi</h3>
+          <p>Artwork, animation, and themes with a world of their own.</p>
+        </header>
+        <div class="theme-grid">
+          <article class="theme-card" id="card-anubis" data-availability="download">
+            <a class="theme-preview" href="#theme-anubis" aria-label="Preview Anubis"><img src="/images/krellix/themes/thumbs/anubis.jpg" width="144" height="144" alt="Anubis theme preview" loading="lazy" decoding="async" /></a>
+            <div class="theme-card-heading"><h4>Anubis</h4><span class="theme-availability">Download-only</span></div>
+            <p>Gold and lapis panels, a jackal banner, and a winged scarab footer.</p>
+            <div class="theme-card-actions"><a class="theme-download" href="https://repo.cerberix.org/macos/themes/anubis-1.0.tar.gz" aria-label="Anubis: Download tar.gz">tar.gz</a> <a class="theme-signature" href="https://repo.cerberix.org/macos/themes/anubis-1.0.tar.gz.sig" aria-label="Anubis: tar.gz signature">tar.gz signature</a></div>
+          </article>
+          <article class="theme-card" id="card-aurora" data-availability="bundled">
+            <a class="theme-preview" href="#theme-aurora" aria-label="Preview Aurora"><img src="/images/krellix/themes/thumbs/aurora.jpg" alt="Aurora theme preview thumbnail" loading="lazy" /></a>
+            <div class="theme-card-heading"><h4>Aurora</h4><span class="theme-availability">Bundled</span></div>
+            <p>Animated aurora-style gradients for a brighter monitor stack.</p>
+            <div class="theme-card-actions"><a class="theme-download" href="/download/krellix/themes/aurora.tar.gz" aria-label="Aurora: Download tar.gz">tar.gz</a></div>
+          </article>
+          <article class="theme-card" id="card-fenrir" data-availability="download">
+            <a class="theme-preview" href="#theme-fenrir" aria-label="Preview Fenrir"><img src="/images/krellix/themes/thumbs/fenrir.jpg" width="144" height="144" alt="Fenrir theme preview" loading="lazy" decoding="async" /></a>
+            <div class="theme-card-heading"><h4>Fenrir</h4><span class="theme-availability">Download-only</span></div>
+            <p>Wolf-and-moon banner, dark armor panels, and amber and cyan monitor icons.</p>
+            <div class="theme-card-actions"><a class="theme-download" href="https://repo.cerberix.org/macos/themes/fenrir-1.0.tar.gz" aria-label="Fenrir: Download tar.gz">tar.gz</a> <a class="theme-signature" href="https://repo.cerberix.org/macos/themes/fenrir-1.0.tar.gz.sig" aria-label="Fenrir: tar.gz signature">tar.gz signature</a></div>
+          </article>
+          <article class="theme-card" id="card-kronix" data-availability="download">
+            <a class="theme-preview" href="#theme-kronix" aria-label="Preview Kronix"><img src="/images/krellix/themes/thumbs/kronix.jpg" width="144" height="144" alt="Kronix theme preview" loading="lazy" /></a>
+            <div class="theme-card-heading"><h4>Kronix</h4><span class="theme-availability">Download-only</span></div>
+            <p>Foliage artwork, dark panels, and neon-green and violet accents.</p>
+            <div class="theme-card-actions"><a class="theme-download" href="https://repo.cerberix.org/macos/themes/kronix-1.0.tar.gz" aria-label="Kronix: Download tar.gz">tar.gz</a> <a class="theme-signature" href="https://repo.cerberix.org/macos/themes/kronix-1.0.tar.gz.sig" aria-label="Kronix: tar.gz signature">tar.gz signature</a></div>
+          </article>
+          <article class="theme-card" id="card-lcars" data-availability="bundled">
+            <a class="theme-preview" href="#theme-lcars" aria-label="Preview LCARS"><img src="/images/krellix/themes/thumbs/lcars.jpg" width="144" height="144" alt="Lcars theme preview" loading="lazy" decoding="async" /></a>
+            <div class="theme-card-heading"><h4>LCARS</h4><span class="theme-availability">Bundled</span></div>
+            <p>LCARS-inspired panels and color blocks.</p>
+            <div class="theme-card-actions"><a class="theme-download" href="/download/krellix/themes/lcars.tar.gz" aria-label="LCARS: Download tar.gz">tar.gz</a></div>
+          </article>
+          <article class="theme-card" id="card-leviathan" data-availability="download">
+            <a class="theme-preview" href="#theme-leviathan" aria-label="Preview Leviathan"><img src="/images/krellix/themes/thumbs/leviathan.jpg" width="144" height="144" alt="Leviathan theme preview" loading="lazy" decoding="async" /></a>
+            <div class="theme-card-heading"><h4>Leviathan</h4><span class="theme-availability">Download-only</span></div>
+            <p>Undersea monster artwork, weathered bronze frames, and cyan monitor icons.</p>
+            <div class="theme-card-actions"><a class="theme-download" href="https://repo.cerberix.org/macos/themes/leviathan-1.0.tar.gz" aria-label="Leviathan: Download tar.gz">tar.gz</a> <a class="theme-signature" href="https://repo.cerberix.org/macos/themes/leviathan-1.0.tar.gz.sig" aria-label="Leviathan: tar.gz signature">tar.gz signature</a></div>
+          </article>
+          <article class="theme-card" id="card-lumon" data-availability="bundled">
+            <a class="theme-preview" href="#theme-lumon" aria-label="Preview Lumon"><img src="/images/krellix/themes/thumbs/lumon.jpg" width="144" height="144" alt="Lumon theme preview" loading="lazy" decoding="async" /></a>
+            <div class="theme-card-heading"><h4>Lumon</h4><span class="theme-availability">Bundled</span></div>
+            <p>Clean corporate dark styling with restrained highlights.</p>
+            <div class="theme-card-actions"><a class="theme-download" href="/download/krellix/themes/lumon.tar.gz" aria-label="Lumon: Download tar.gz">tar.gz</a></div>
+          </article>
+          <article class="theme-card" id="card-prime23" data-availability="bundled">
+            <a class="theme-preview" href="#theme-prime23" aria-label="Preview Prime23"><img src="/images/krellix/themes/thumbs/prime23.jpg" width="144" height="144" alt="Prime23 theme preview" loading="lazy" decoding="async" /></a>
+            <div class="theme-card-heading"><h4>Prime23</h4><span class="theme-availability">Bundled</span></div>
+            <p>A vivid sci-fi theme with strong accent colors.</p>
+            <div class="theme-card-actions"><a class="theme-download" href="/download/krellix/themes/prime23.tar.gz" aria-label="Prime23: Download tar.gz">tar.gz</a></div>
+          </article>
+          <article class="theme-card" id="card-reactor" data-availability="download">
+            <a class="theme-preview" href="#theme-reactor" aria-label="Preview Reactor"><img src="/images/krellix/themes/thumbs/reactor-preview.jpg" width="144" height="144" alt="Reactor theme preview" loading="lazy" decoding="async" /></a>
+            <div class="theme-card-heading"><h4>Reactor</h4><span class="theme-availability">Download-only</span></div>
+            <p>Animated plasma, blue containment rails, and glowing panel edges. The latest Krellix supports Full, Reduced, and Off motion.</p>
+            <div class="theme-card-actions"><a class="theme-download" href="https://repo.cerberix.org/macos/themes/reactor-1.1.tar.gz" aria-label="Reactor: Download tar.gz">tar.gz</a> <a class="theme-signature" href="https://repo.cerberix.org/macos/themes/reactor-1.1.tar.gz.sig" aria-label="Reactor: tar.gz signature">tar.gz signature</a> <a class="theme-download" href="https://repo.cerberix.org/macos/themes/reactor-1.1.zip" aria-label="Reactor: Download ZIP">ZIP</a> <a class="theme-signature" href="https://repo.cerberix.org/macos/themes/reactor-1.1.zip.sig" aria-label="Reactor: ZIP signature">ZIP signature</a></div>
+          </article>
+        </div>
+      </section>
+
+      <section class="theme-collection" id="collection-palette" aria-labelledby="collection-title-palette">
+        <header class="theme-collection-head">
+          <h3 id="collection-title-palette">Palette themes</h3>
+          <p>Color-first themes, from a clean default to familiar editor palettes.</p>
+        </header>
+        <div class="theme-grid">
+          <article class="theme-card" id="card-arctic" data-availability="download">
+            <a class="theme-preview" href="#theme-arctic" aria-label="Preview Arctic"><img src="/images/krellix/themes/thumbs/arctic.jpg" width="144" height="144" alt="Arctic theme preview" loading="lazy" decoding="async" /></a>
+            <div class="theme-card-heading"><h4>Arctic</h4><span class="theme-availability">Download-only</span></div>
+            <p>Ice-blue panels, dark text, and a warm orange slider.</p>
+            <div class="theme-card-actions"><a class="theme-download" href="https://repo.cerberix.org/macos/themes/arctic-1.0.tar.gz" aria-label="Arctic: Download tar.gz">tar.gz</a> <a class="theme-signature" href="https://repo.cerberix.org/macos/themes/arctic-1.0.tar.gz.sig" aria-label="Arctic: tar.gz signature">tar.gz signature</a></div>
+          </article>
+          <article class="theme-card" id="card-blueheart" data-availability="download">
+            <a class="theme-preview" href="#theme-blueheart" aria-label="Preview BlueHeart"><img src="/images/krellix/themes/thumbs/blueheart.jpg" width="144" height="144" alt="BlueHeart theme preview" loading="lazy" /></a>
+            <div class="theme-card-heading"><h4>BlueHeart</h4><span class="theme-availability">Download-only</span></div>
+            <p>Layered navy panels and cool blue chart traces.</p>
+            <div class="theme-card-actions"><a class="theme-download" href="https://repo.cerberix.org/macos/themes/blueheart-1.0.tar.gz" aria-label="BlueHeart: Download tar.gz">tar.gz</a> <a class="theme-signature" href="https://repo.cerberix.org/macos/themes/blueheart-1.0.tar.gz.sig" aria-label="BlueHeart: tar.gz signature">tar.gz signature</a></div>
+          </article>
+          <article class="theme-card" id="card-bluemask" data-availability="download">
+            <a class="theme-preview" href="#theme-bluemask" aria-label="Preview Bluemask 7.0"><img src="/images/krellix/themes/thumbs/bluemask-v7.jpg" width="144" height="144" alt="Bluemask 7.0 theme preview" loading="lazy" decoding="async" /></a>
+            <div class="theme-card-heading"><h4>Bluemask 7.0</h4><span class="theme-availability">Download-only</span></div>
+            <p>Thin side borders, dusty blue charts, and a larger silver mail icon with an updated unread animation.</p>
+            <div class="theme-card-actions"><a class="theme-download" href="https://repo.cerberix.org/macos/themes/bluemask-7.0.tar.gz" aria-label="Bluemask 7.0: Download tar.gz">tar.gz</a> <a class="theme-signature" href="https://repo.cerberix.org/macos/themes/bluemask-7.0.tar.gz.sig" aria-label="Bluemask 7.0: tar.gz signature">tar.gz signature</a></div>
+          </article>
+          <article class="theme-card" id="card-catppuccin-mocha" data-availability="bundled">
+            <a class="theme-preview" href="#theme-catppuccin-mocha" aria-label="Preview Catppuccin Mocha"><img src="/images/krellix/themes/thumbs/catppuccin-mocha.jpg" alt="Catppuccin Mocha theme preview thumbnail" loading="lazy" /></a>
+            <div class="theme-card-heading"><h4>Catppuccin Mocha</h4><span class="theme-availability">Bundled</span></div>
+            <p>Soft dark Catppuccin colors for a clean desktop monitor.</p>
+            <div class="theme-card-actions"><a class="theme-download" href="/download/krellix/themes/catppuccin-mocha.tar.gz" aria-label="Catppuccin Mocha: Download tar.gz">tar.gz</a></div>
+          </article>
+          <article class="theme-card" id="card-cobalt2" data-availability="bundled">
+            <a class="theme-preview" href="#theme-cobalt2" aria-label="Preview Cobalt2"><img src="/images/krellix/themes/thumbs/cobolt2.jpg" alt="Cobalt2 theme preview thumbnail" loading="lazy" /></a>
+            <div class="theme-card-heading"><h4>Cobalt2</h4><span class="theme-availability">Bundled</span></div>
+            <p>Bright blue Cobalt-style colors with high contrast text.</p>
+            <div class="theme-card-actions"><a class="theme-download" href="/download/krellix/themes/colbalt2.tar.gz" aria-label="Cobalt2: Download tar.gz">tar.gz</a></div>
+          </article>
+          <article class="theme-card" id="card-cthulhain" data-availability="bundled">
+            <a class="theme-preview" href="#theme-cthulhain" aria-label="Preview Cthulhain"><img src="/images/krellix/themes/thumbs/cthulhain.jpg" alt="Cthulhain theme preview thumbnail" loading="lazy" /></a>
+            <div class="theme-card-heading"><h4>Cthulhain</h4><span class="theme-availability">Bundled</span></div>
+            <p>Dark green terminal colors with brighter readable text.</p>
+            <div class="theme-card-actions"><a class="theme-download" href="/download/krellix/themes/cthulhain.tar.gz" aria-label="Cthulhain: Download tar.gz">tar.gz</a></div>
+          </article>
+          <article class="theme-card" id="card-default" data-availability="bundled">
+            <a class="theme-preview" href="#theme-default" aria-label="Preview Default"><img src="/images/krellix/themes/thumbs/default.jpg" width="144" height="144" alt="Default theme preview" loading="lazy" decoding="async" /></a>
+            <div class="theme-card-heading"><h4>Default</h4><span class="theme-availability">Bundled</span></div>
+            <p>The baseline Krellix theme.</p>
+            <div class="theme-card-actions"><a class="theme-download" href="/download/krellix/themes/default.tar.gz" aria-label="Default: Download tar.gz">tar.gz</a></div>
+          </article>
+          <article class="theme-card" id="card-dracula" data-availability="bundled">
+            <a class="theme-preview" href="#theme-dracula" aria-label="Preview Dracula"><img src="/images/krellix/themes/thumbs/dracula.jpg" alt="Dracula theme preview thumbnail" loading="lazy" /></a>
+            <div class="theme-card-heading"><h4>Dracula</h4><span class="theme-availability">Bundled</span></div>
+            <p>Dracula-inspired dark purple and neon accent colors.</p>
+            <div class="theme-card-actions"><a class="theme-download" href="/download/krellix/themes/dracula.tar.gz" aria-label="Dracula: Download tar.gz">tar.gz</a></div>
+          </article>
+          <article class="theme-card" id="card-duskfox" data-availability="bundled">
+            <a class="theme-preview" href="#theme-duskfox" aria-label="Preview Duskfox"><img src="/images/krellix/themes/thumbs/duskfox.jpg" alt="Duskfox theme preview thumbnail" loading="lazy" /></a>
+            <div class="theme-card-heading"><h4>Duskfox</h4><span class="theme-availability">Bundled</span></div>
+            <p>Muted dusk colors for a low-glare desktop.</p>
+            <div class="theme-card-actions"><a class="theme-download" href="/download/krellix/themes/duskfox.tar.gz" aria-label="Duskfox: Download tar.gz">tar.gz</a></div>
+          </article>
+          <article class="theme-card" id="card-everforest" data-availability="bundled">
+            <a class="theme-preview" href="#theme-everforest" aria-label="Preview Everforest"><img src="/images/krellix/themes/thumbs/everforest.jpg" alt="Everforest theme preview thumbnail" loading="lazy" /></a>
+            <div class="theme-card-heading"><h4>Everforest</h4><span class="theme-availability">Bundled</span></div>
+            <p>Earthy Everforest-style greens and warm highlights.</p>
+            <div class="theme-card-actions"><a class="theme-download" href="/download/krellix/themes/everforest.tar.gz" aria-label="Everforest: Download tar.gz">tar.gz</a></div>
+          </article>
+          <article class="theme-card" id="card-gotham" data-availability="bundled">
+            <a class="theme-preview" href="#theme-gotham" aria-label="Preview Gotham"><img src="/images/krellix/themes/thumbs/gotham.jpg" width="144" height="144" alt="Gotham theme preview" loading="lazy" decoding="async" /></a>
+            <div class="theme-card-heading"><h4>Gotham</h4><span class="theme-availability">Bundled</span></div>
+            <p>Blue-black Gotham palette for a sharp monitoring layout.</p>
+            <div class="theme-card-actions"><a class="theme-download" href="/download/krellix/themes/gotham.tar.gz" aria-label="Gotham: Download tar.gz">tar.gz</a></div>
+          </article>
+          <article class="theme-card" id="card-gruvbox-dark" data-availability="bundled">
+            <a class="theme-preview" href="#theme-gruvbox-dark" aria-label="Preview Gruvbox Dark"><img src="/images/krellix/themes/thumbs/gruvbox-dark.jpg" width="144" height="144" alt="Gruvbox-dark theme preview" loading="lazy" decoding="async" /></a>
+            <div class="theme-card-heading"><h4>Gruvbox Dark</h4><span class="theme-availability">Bundled</span></div>
+            <p>Gruvbox dark colors with warm graph accents.</p>
+            <div class="theme-card-actions"><a class="theme-download" href="/download/krellix/themes/gruvbox-dark.tar.gz" aria-label="Gruvbox Dark: Download tar.gz">tar.gz</a></div>
+          </article>
+          <article class="theme-card" id="card-nightfox" data-availability="bundled">
+            <a class="theme-preview" href="#theme-nightfox" aria-label="Preview Nightfox"><img src="/images/krellix/themes/thumbs/nightfox.jpg" width="144" height="144" alt="Nightfox theme preview" loading="lazy" decoding="async" /></a>
+            <div class="theme-card-heading"><h4>Nightfox</h4><span class="theme-availability">Bundled</span></div>
+            <p>Nightfox dark theme colors for calm graph readability.</p>
+            <div class="theme-card-actions"><a class="theme-download" href="/download/krellix/themes/nightfox.tar.gz" aria-label="Nightfox: Download tar.gz">tar.gz</a></div>
+          </article>
+          <article class="theme-card" id="card-nord" data-availability="bundled">
+            <a class="theme-preview" href="#theme-nord" aria-label="Preview Nord"><img src="/images/krellix/themes/thumbs/nord.jpg" width="144" height="144" alt="Nord theme preview" loading="lazy" decoding="async" /></a>
+            <div class="theme-card-heading"><h4>Nord</h4><span class="theme-availability">Bundled</span></div>
+            <p>Cool Nord palette with icy blues and soft contrast.</p>
+            <div class="theme-card-actions"><a class="theme-download" href="/download/krellix/themes/nord.tar.gz" aria-label="Nord: Download tar.gz">tar.gz</a></div>
+          </article>
+          <article class="theme-card" id="card-obsidian" data-availability="download">
+            <a class="theme-preview" href="#theme-obsidian" aria-label="Preview Obsidian"><img src="/images/krellix/themes/thumbs/obsidian.jpg" width="144" height="144" alt="Obsidian theme preview" loading="lazy" decoding="async" /></a>
+            <div class="theme-card-heading"><h4>Obsidian</h4><span class="theme-availability">Download-only</span></div>
+            <p>Charcoal panels with warm gold accents and cool chart traces.</p>
+            <div class="theme-card-actions"><a class="theme-download" href="https://repo.cerberix.org/macos/themes/obsidian-1.0.tar.gz" aria-label="Obsidian: Download tar.gz">tar.gz</a> <a class="theme-signature" href="https://repo.cerberix.org/macos/themes/obsidian-1.0.tar.gz.sig" aria-label="Obsidian: tar.gz signature">tar.gz signature</a></div>
+          </article>
+          <article class="theme-card" id="card-onedark" data-availability="bundled">
+            <a class="theme-preview" href="#theme-onedark" aria-label="Preview One Dark"><img src="/images/krellix/themes/thumbs/onedark.jpg" width="144" height="144" alt="Onedark theme preview" loading="lazy" decoding="async" /></a>
+            <div class="theme-card-heading"><h4>One Dark</h4><span class="theme-availability">Bundled</span></div>
+            <p>One Dark colors for a familiar editor-style look.</p>
+            <div class="theme-card-actions"><a class="theme-download" href="/download/krellix/themes/onedark.tar.gz" aria-label="One Dark: Download tar.gz">tar.gz</a></div>
+          </article>
+          <article class="theme-card" id="card-solarized" data-availability="bundled">
+            <a class="theme-preview" href="#theme-solarized" aria-label="Preview Solarized"><img src="/images/krellix/themes/thumbs/solarized.jpg" width="144" height="144" alt="Solarized Dark theme preview" loading="lazy" decoding="async" /></a>
+            <div class="theme-card-heading"><h4>Solarized</h4><span class="theme-availability">Bundled</span></div>
+            <p>Deep teal panels with cyan and yellow accents.</p>
+            <div class="theme-card-actions"><a class="theme-download" href="/extras/krellix/#downloads" aria-label="Solarized: Get the Mac app">Get the Mac app</a></div>
+          </article>
+          <article class="theme-card" id="card-spectrum" data-availability="download">
+            <a class="theme-preview" href="#theme-spectrum" aria-label="Preview Spectrum"><img src="/images/krellix/themes/thumbs/spectrum.jpg" width="144" height="144" alt="Spectrum theme preview" loading="lazy" decoding="async" /></a>
+            <div class="theme-card-heading"><h4>Spectrum</h4><span class="theme-availability">Download-only</span></div>
+            <p>Indigo panels with bright, distinct colors for each chart.</p>
+            <div class="theme-card-actions"><a class="theme-download" href="https://repo.cerberix.org/macos/themes/spectrum-1.0.tar.gz" aria-label="Spectrum: Download tar.gz">tar.gz</a> <a class="theme-signature" href="https://repo.cerberix.org/macos/themes/spectrum-1.0.tar.gz.sig" aria-label="Spectrum: tar.gz signature">tar.gz signature</a></div>
+          </article>
+          <article class="theme-card" id="card-tokyo-night" data-availability="bundled">
+            <a class="theme-preview" href="#theme-tokyo-night" aria-label="Preview Tokyo Night"><img src="/images/krellix/themes/thumbs/tokyo-night.jpg" width="144" height="144" alt="Tokyo-night theme preview" loading="lazy" decoding="async" /></a>
+            <div class="theme-card-heading"><h4>Tokyo Night</h4><span class="theme-availability">Bundled</span></div>
+            <p>Tokyo Night base palette for a polished dark monitor.</p>
+            <div class="theme-card-actions"><a class="theme-download" href="/download/krellix/themes/tokyo-night.tar.gz" aria-label="Tokyo Night: Download tar.gz">tar.gz</a></div>
+          </article>
+          <article class="theme-card" id="card-tokyo-night-moon" data-availability="bundled">
+            <a class="theme-preview" href="#theme-tokyo-night-moon" aria-label="Preview Tokyo Night Moon"><img src="/images/krellix/themes/thumbs/tokyo-night-moon.jpg" alt="Tokyo Night Moon theme preview thumbnail" loading="lazy" /></a>
+            <div class="theme-card-heading"><h4>Tokyo Night Moon</h4><span class="theme-availability">Bundled</span></div>
+            <p>Moon variant with softer blues and purples.</p>
+            <div class="theme-card-actions"><a class="theme-download" href="/download/krellix/themes/tokyo-night-moon.tar.gz" aria-label="Tokyo Night Moon: Download tar.gz">tar.gz</a></div>
+          </article>
+          <article class="theme-card" id="card-tokyo-night-storm" data-availability="bundled">
+            <a class="theme-preview" href="#theme-tokyo-night-storm" aria-label="Preview Tokyo Night Storm"><img src="/images/krellix/themes/thumbs/tokyo-night-storm.jpg" width="144" height="144" alt="Tokyo-night-storm theme preview" loading="lazy" decoding="async" /></a>
+            <div class="theme-card-heading"><h4>Tokyo Night Storm</h4><span class="theme-availability">Bundled</span></div>
+            <p>Storm variant with deeper contrast and cooler tones.</p>
+            <div class="theme-card-actions"><a class="theme-download" href="/download/krellix/themes/tokyo-night-storm.tar.gz" aria-label="Tokyo Night Storm: Download tar.gz">tar.gz</a></div>
+          </article>
+        </div>
+      </section>
+
+      <section class="theme-collection" id="collection-preview" aria-labelledby="collection-title-preview">
+        <header class="theme-collection-head">
+          <h3 id="collection-title-preview">Preview only</h3>
+          <p>These themes do not have standalone downloads yet.</p>
+        </header>
+        <div class="theme-grid">
+          <article class="theme-card" id="card-alienverse" data-availability="preview">
+            <a class="theme-preview" href="#theme-alienverse" aria-label="Preview Alienverse"><img src="/images/krellix/themes/thumbs/alienverse.jpg" alt="Alienverse theme preview thumbnail" loading="lazy" /></a>
+            <div class="theme-card-heading"><h4>Alienverse</h4><span class="theme-availability">Preview only</span></div>
+          </article>
+          <article class="theme-card" id="card-blackrock" data-availability="preview">
+            <a class="theme-preview" href="#theme-blackrock" aria-label="Preview Blackrock"><img src="/images/krellix/themes/thumbs/blackrock.jpg" alt="Blackrock theme preview thumbnail" loading="lazy" /></a>
+            <div class="theme-card-heading"><h4>Blackrock</h4><span class="theme-availability">Preview only</span></div>
+          </article>
+          <article class="theme-card" id="card-default-hacker" data-availability="preview">
+            <a class="theme-preview" href="#theme-default-hacker" aria-label="Preview Default Hacker"><img src="/images/krellix/themes/thumbs/default-hacker.jpg" alt="Default Hacker theme preview thumbnail" loading="lazy" /></a>
+            <div class="theme-card-heading"><h4>Default Hacker</h4><span class="theme-availability">Preview only</span></div>
+          </article>
+        </div>
+      </section>
+    </section>
+
+    <section class="theme-install" id="install-a-theme" aria-labelledby="theme-install-title">
+      <h2 id="theme-install-title">Install a theme</h2>
+      <p>Extract the archive and move the theme folder (the one containing <code>theme.json</code>) into your user themes directory. Select it in <strong>Settings &gt; Appearance</strong>.</p>
+      <dl class="guide-pairs">
+        <dt>Linux</dt><dd><code>~/.config/krellix/themes/</code>, or <code>$XDG_CONFIG_HOME/krellix/themes/</code> if set.</dd>
+        <dt>macOS</dt><dd><code>~/.config/krellix/themes/</code></dd>
+        <dt>Windows</dt><dd><code>%LOCALAPPDATA%\krellix\themes\</code>, or a <code>themes</code> folder beside <code>krellix.exe</code> for portable installs.</dd>
+      </dl>
+      <a class="card-link" href="/extras/krellix/#downloads">Get Krellix</a>
     </section>
 
     <section class="author-guide" id="build-a-theme" aria-labelledby="theme-guide-title">
@@ -309,48 +561,48 @@
     </section>
   </main>
 
-  <div class="lightbox" id="theme-debian"><a class="lightbox-close" href="/extras/krellix/themes/" aria-label="Close preview"></a><figure><img src="/images/krellix/themes/debian-1.3.png" alt="Debian theme full preview with red charts and charcoal panels" loading="lazy" decoding="async" /><figcaption>Debian</figcaption></figure></div>
+  <div class="lightbox" id="theme-debian"><a class="lightbox-close" href="#card-debian" aria-label="Close preview"></a><figure><img src="/images/krellix/themes/debian-1.3.png" alt="Debian theme full preview with red charts and charcoal panels" loading="lazy" decoding="async" /><figcaption>Debian</figcaption></figure></div>
   <div class="lightbox" id="theme-debian-flat"><a class="lightbox-close" href="/extras/krellix/themes/" aria-label="Close preview"></a><figure><img src="/images/krellix/themes/debian-1.3.png" alt="Debian theme full preview with red charts and charcoal panels" loading="lazy" decoding="async" /><figcaption>Debian</figcaption></figure></div>
-  <div class="lightbox" id="theme-ubuntu-ember"><a class="lightbox-close" href="/extras/krellix/themes/" aria-label="Close preview"></a><figure><img src="/images/krellix/themes/ubuntu-ember-1.1.png" alt="Ubuntu-Ember rendered in Krellix with orange outlines and an Ubuntu health badge" loading="lazy" decoding="async" /><figcaption>Ubuntu-Ember, rendered in Krellix on macOS</figcaption></figure></div>
-  <div class="lightbox" id="theme-mmd3"><a class="lightbox-close" href="/extras/krellix/themes/" aria-label="Close preview"></a><figure><img src="/images/krellix/themes/mmd3-1.6-compact.png" alt="Actual MMD3 rendering with sculpted silver casing and recessed blue chart glass" loading="lazy" decoding="async" /><figcaption>MMD3 on macOS, shown at compact width with combined CPU traces and sample data</figcaption></figure></div>
-  <div class="lightbox" id="theme-reactor"><a class="lightbox-close" href="/extras/krellix/themes/" aria-label="Close preview"></a><figure><img src="/images/krellix/themes/reactor-preview.png" alt="Reactor theme full preview" loading="lazy" decoding="async" /><figcaption>Reactor</figcaption></figure></div>
-  <div class="lightbox" id="theme-solarized"><a class="lightbox-close" href="/extras/krellix/themes/" aria-label="Close preview"></a><figure><img src="/images/krellix/themes/solarized.png" alt="Solarized Dark theme full preview" loading="lazy" decoding="async" /><figcaption>Solarized</figcaption></figure></div>
-  <div class="lightbox" id="theme-bluemask"><a class="lightbox-close" href="/extras/krellix/themes/" aria-label="Close preview"></a><figure><img src="/images/krellix/themes/bluemask-v7.jpeg" alt="Bluemask 7.0 theme full preview" loading="lazy" decoding="async" /><figcaption>Bluemask 7.0</figcaption></figure></div>
-  <div class="lightbox" id="theme-obsidian"><a class="lightbox-close" href="/extras/krellix/themes/" aria-label="Close preview"></a><figure><img src="/images/krellix/themes/obsidian.jpeg" alt="Obsidian theme full preview" loading="lazy" decoding="async" /><figcaption>Obsidian</figcaption></figure></div>
-  <div class="lightbox" id="theme-arctic"><a class="lightbox-close" href="/extras/krellix/themes/" aria-label="Close preview"></a><figure><img src="/images/krellix/themes/arctic.jpeg" alt="Arctic theme full preview" loading="lazy" decoding="async" /><figcaption>Arctic</figcaption></figure></div>
-  <div class="lightbox" id="theme-spectrum"><a class="lightbox-close" href="/extras/krellix/themes/" aria-label="Close preview"></a><figure><img src="/images/krellix/themes/spectrum.jpeg" alt="Spectrum theme full preview" loading="lazy" decoding="async" /><figcaption>Spectrum</figcaption></figure></div>
-  <div class="lightbox" id="theme-nucleo"><a class="lightbox-close" href="/extras/krellix/themes/" aria-label="Close preview"></a><figure><img src="/images/krellix/themes/nucleo.jpeg" alt="Nucleo theme full preview" loading="lazy" decoding="async" /><figcaption>Nucleo</figcaption></figure></div>
-  <div class="lightbox" id="theme-anubis"><a class="lightbox-close" href="/extras/krellix/themes/" aria-label="Close preview"></a><figure><img src="/images/krellix/themes/anubis.jpeg" alt="Anubis theme full preview" loading="lazy" decoding="async" /><figcaption>Anubis</figcaption></figure></div>
-  <div class="lightbox" id="theme-leviathan"><a class="lightbox-close" href="/extras/krellix/themes/" aria-label="Close preview"></a><figure><img src="/images/krellix/themes/leviathan.jpeg" alt="Leviathan theme full preview" loading="lazy" decoding="async" /><figcaption>Leviathan</figcaption></figure></div>
-  <div class="lightbox" id="theme-fenrir"><a class="lightbox-close" href="/extras/krellix/themes/" aria-label="Close preview"></a><figure><img src="/images/krellix/themes/fenrir.jpeg" alt="Fenrir theme full preview" loading="lazy" decoding="async" /><figcaption>Fenrir</figcaption></figure></div>
-  <div class="lightbox" id="theme-default"><a class="lightbox-close" href="/extras/krellix/themes/" aria-label="Close preview"></a><figure><img src="/images/krellix/themes/default.jpeg" alt="Default theme full preview" loading="lazy" decoding="async" /><figcaption>Default</figcaption></figure></div>
-  <div class="lightbox" id="theme-egan"><a class="lightbox-close" href="/extras/krellix/themes/" aria-label="Close preview"></a><figure><img src="/images/krellix/themes/egan.jpeg" alt="Egan theme full preview" loading="lazy" decoding="async" /><figcaption>Egan</figcaption></figure></div>
-  <div class="lightbox" id="theme-gorilla"><a class="lightbox-close" href="/extras/krellix/themes/" aria-label="Close preview"></a><figure><img src="/images/krellix/themes/gorilla.jpeg" alt="Gorilla theme full preview" loading="lazy" decoding="async" /><figcaption>Gorilla</figcaption></figure></div>
-  <div class="lightbox" id="theme-gotham"><a class="lightbox-close" href="/extras/krellix/themes/" aria-label="Close preview"></a><figure><img src="/images/krellix/themes/gotham.jpeg" alt="Gotham theme full preview" loading="lazy" decoding="async" /><figcaption>Gotham</figcaption></figure></div>
-  <div class="lightbox" id="theme-gruvbox-dark"><a class="lightbox-close" href="/extras/krellix/themes/" aria-label="Close preview"></a><figure><img src="/images/krellix/themes/gruvbox-dark.jpeg" alt="Gruvbox-dark theme full preview" loading="lazy" decoding="async" /><figcaption>Gruvbox-dark</figcaption></figure></div>
-  <div class="lightbox" id="theme-lcars"><a class="lightbox-close" href="/extras/krellix/themes/" aria-label="Close preview"></a><figure><img src="/images/krellix/themes/lcars.jpeg" alt="Lcars theme full preview" loading="lazy" decoding="async" /><figcaption>Lcars</figcaption></figure></div>
-  <div class="lightbox" id="theme-lumon"><a class="lightbox-close" href="/extras/krellix/themes/" aria-label="Close preview"></a><figure><img src="/images/krellix/themes/lumon.jpeg" alt="Lumon theme full preview" loading="lazy" decoding="async" /><figcaption>Lumon</figcaption></figure></div>
-  <div class="lightbox" id="theme-nightfox"><a class="lightbox-close" href="/extras/krellix/themes/" aria-label="Close preview"></a><figure><img src="/images/krellix/themes/nightfox.jpeg" alt="Nightfox theme full preview" loading="lazy" decoding="async" /><figcaption>Nightfox</figcaption></figure></div>
-  <div class="lightbox" id="theme-nord"><a class="lightbox-close" href="/extras/krellix/themes/" aria-label="Close preview"></a><figure><img src="/images/krellix/themes/nord.jpeg" alt="Nord theme full preview" loading="lazy" decoding="async" /><figcaption>Nord</figcaption></figure></div>
-  <div class="lightbox" id="theme-onedark"><a class="lightbox-close" href="/extras/krellix/themes/" aria-label="Close preview"></a><figure><img src="/images/krellix/themes/onedark.jpeg" alt="Onedark theme full preview" loading="lazy" decoding="async" /><figcaption>Onedark</figcaption></figure></div>
-  <div class="lightbox" id="theme-prime23"><a class="lightbox-close" href="/extras/krellix/themes/" aria-label="Close preview"></a><figure><img src="/images/krellix/themes/prime23.jpeg" alt="Prime23 theme full preview" loading="lazy" decoding="async" /><figcaption>Prime23</figcaption></figure></div>
-  <div class="lightbox" id="theme-tokyo-night"><a class="lightbox-close" href="/extras/krellix/themes/" aria-label="Close preview"></a><figure><img src="/images/krellix/themes/tokyo-night.jpeg" alt="Tokyo-night theme full preview" loading="lazy" decoding="async" /><figcaption>Tokyo-night</figcaption></figure></div>
-  <div class="lightbox" id="theme-tokyo-night-storm"><a class="lightbox-close" href="/extras/krellix/themes/" aria-label="Close preview"></a><figure><img src="/images/krellix/themes/tokyo-night-storm.jpeg" alt="Tokyo-night-storm theme full preview" loading="lazy" decoding="async" /><figcaption>Tokyo-night-storm</figcaption></figure></div>
-  <div class="lightbox" id="theme-alienverse"><a class="lightbox-close" href="/extras/krellix/themes/" aria-label="Close preview"></a><figure><img src="/images/krellix/themes/alienverse.jpeg" alt="Alienverse theme full preview" loading="lazy" decoding="async" /><figcaption>alienverse</figcaption></figure></div>
-  <div class="lightbox" id="theme-aurora"><a class="lightbox-close" href="/extras/krellix/themes/" aria-label="Close preview"></a><figure><img src="/images/krellix/themes/aurora.jpeg" alt="Aurora theme full preview" loading="lazy" decoding="async" /><figcaption>aurora</figcaption></figure></div>
-  <div class="lightbox" id="theme-blackrock"><a class="lightbox-close" href="/extras/krellix/themes/" aria-label="Close preview"></a><figure><img src="/images/krellix/themes/blackrock.jpeg" alt="Blackrock theme full preview" loading="lazy" decoding="async" /><figcaption>blackrock</figcaption></figure></div>
-  <div class="lightbox" id="theme-bluesteel"><a class="lightbox-close" href="/extras/krellix/themes/" aria-label="Close preview"></a><figure><img src="/images/krellix/themes/bluesteel-v21.jpeg" alt="Bluesteel 2.1 theme full preview" loading="lazy" decoding="async" /><figcaption>Bluesteel 2.1</figcaption></figure></div>
-  <div class="lightbox" id="theme-catppuccin-mocha"><a class="lightbox-close" href="/extras/krellix/themes/" aria-label="Close preview"></a><figure><img src="/images/krellix/themes/catppuccin-mocha.jpeg" alt="Catppuccin Mocha theme full preview" loading="lazy" decoding="async" /><figcaption>catppuccin-mocha</figcaption></figure></div>
-  <div class="lightbox" id="theme-blueheart"><a class="lightbox-close" href="/extras/krellix/themes/" aria-label="Close preview"></a><figure><img src="/images/krellix/themes/blueheart.png" alt="BlueHeart theme full preview" loading="lazy" decoding="async" /><figcaption>BlueHeart</figcaption></figure></div>
-  <div class="lightbox" id="theme-cheese"><a class="lightbox-close" href="/extras/krellix/themes/" aria-label="Close preview"></a><figure><img src="/images/krellix/themes/cheese-v2.png" alt="Cheese 2.0 theme full preview" loading="lazy" decoding="async" /><figcaption>Cheese 2.0</figcaption></figure></div>
-  <div class="lightbox" id="theme-kronix"><a class="lightbox-close" href="/extras/krellix/themes/" aria-label="Close preview"></a><figure><img src="/images/krellix/themes/kronix.png" alt="Kronix theme full preview" loading="lazy" decoding="async" /><figcaption>Kronix</figcaption></figure></div>
-  <div class="lightbox" id="theme-cobalt2"><a class="lightbox-close" href="/extras/krellix/themes/" aria-label="Close preview"></a><figure><img src="/images/krellix/themes/cobolt2.jpeg" alt="Cobalt2 theme full preview" loading="lazy" decoding="async" /><figcaption>cobalt2</figcaption></figure></div>
-  <div class="lightbox" id="theme-cthulhain"><a class="lightbox-close" href="/extras/krellix/themes/" aria-label="Close preview"></a><figure><img src="/images/krellix/themes/cthulhain.jpeg" alt="Cthulhain theme full preview" loading="lazy" decoding="async" /><figcaption>cthulhain</figcaption></figure></div>
-  <div class="lightbox" id="theme-default-hacker"><a class="lightbox-close" href="/extras/krellix/themes/" aria-label="Close preview"></a><figure><img src="/images/krellix/themes/default-hacker.jpeg" alt="Default Hacker theme full preview" loading="lazy" decoding="async" /><figcaption>default-hacker</figcaption></figure></div>
-  <div class="lightbox" id="theme-dracula"><a class="lightbox-close" href="/extras/krellix/themes/" aria-label="Close preview"></a><figure><img src="/images/krellix/themes/dracula.jpeg" alt="Dracula theme full preview" loading="lazy" decoding="async" /><figcaption>dracula</figcaption></figure></div>
-  <div class="lightbox" id="theme-duskfox"><a class="lightbox-close" href="/extras/krellix/themes/" aria-label="Close preview"></a><figure><img src="/images/krellix/themes/duskfox.jpeg" alt="Duskfox theme full preview" loading="lazy" decoding="async" /><figcaption>duskfox</figcaption></figure></div>
-  <div class="lightbox" id="theme-everforest"><a class="lightbox-close" href="/extras/krellix/themes/" aria-label="Close preview"></a><figure><img src="/images/krellix/themes/everforest.jpeg" alt="Everforest theme full preview" loading="lazy" decoding="async" /><figcaption>everforest</figcaption></figure></div>
-  <div class="lightbox" id="theme-tokyo-night-moon"><a class="lightbox-close" href="/extras/krellix/themes/" aria-label="Close preview"></a><figure><img src="/images/krellix/themes/tokyo-night-moon.jpeg" alt="Tokyo Night Moon theme full preview" loading="lazy" decoding="async" /><figcaption>tokyo-night-moon</figcaption></figure></div>
+  <div class="lightbox" id="theme-ubuntu-ember"><a class="lightbox-close" href="#card-ubuntu-ember" aria-label="Close preview"></a><figure><img src="/images/krellix/themes/ubuntu-ember-1.1.png" alt="Ubuntu-Ember rendered in Krellix with orange outlines and an Ubuntu health badge" loading="lazy" decoding="async" /><figcaption>Ubuntu-Ember, rendered in Krellix on macOS</figcaption></figure></div>
+  <div class="lightbox" id="theme-mmd3"><a class="lightbox-close" href="#card-mmd3" aria-label="Close preview"></a><figure><img src="/images/krellix/themes/mmd3-1.6-compact.png" alt="Actual MMD3 rendering with sculpted silver casing and recessed blue chart glass" loading="lazy" decoding="async" /><figcaption>MMD3 on macOS, shown at compact width with combined CPU traces and sample data</figcaption></figure></div>
+  <div class="lightbox" id="theme-reactor"><a class="lightbox-close" href="#card-reactor" aria-label="Close preview"></a><figure><img src="/images/krellix/themes/reactor-preview.png" alt="Reactor theme full preview" loading="lazy" decoding="async" /><figcaption>Reactor</figcaption></figure></div>
+  <div class="lightbox" id="theme-solarized"><a class="lightbox-close" href="#card-solarized" aria-label="Close preview"></a><figure><img src="/images/krellix/themes/solarized.png" alt="Solarized Dark theme full preview" loading="lazy" decoding="async" /><figcaption>Solarized</figcaption></figure></div>
+  <div class="lightbox" id="theme-bluemask"><a class="lightbox-close" href="#card-bluemask" aria-label="Close preview"></a><figure><img src="/images/krellix/themes/bluemask-v7.jpeg" alt="Bluemask 7.0 theme full preview" loading="lazy" decoding="async" /><figcaption>Bluemask 7.0</figcaption></figure></div>
+  <div class="lightbox" id="theme-obsidian"><a class="lightbox-close" href="#card-obsidian" aria-label="Close preview"></a><figure><img src="/images/krellix/themes/obsidian.jpeg" alt="Obsidian theme full preview" loading="lazy" decoding="async" /><figcaption>Obsidian</figcaption></figure></div>
+  <div class="lightbox" id="theme-arctic"><a class="lightbox-close" href="#card-arctic" aria-label="Close preview"></a><figure><img src="/images/krellix/themes/arctic.jpeg" alt="Arctic theme full preview" loading="lazy" decoding="async" /><figcaption>Arctic</figcaption></figure></div>
+  <div class="lightbox" id="theme-spectrum"><a class="lightbox-close" href="#card-spectrum" aria-label="Close preview"></a><figure><img src="/images/krellix/themes/spectrum.jpeg" alt="Spectrum theme full preview" loading="lazy" decoding="async" /><figcaption>Spectrum</figcaption></figure></div>
+  <div class="lightbox" id="theme-nucleo"><a class="lightbox-close" href="#card-nucleo" aria-label="Close preview"></a><figure><img src="/images/krellix/themes/nucleo.jpeg" alt="Nucleo theme full preview" loading="lazy" decoding="async" /><figcaption>Nucleo</figcaption></figure></div>
+  <div class="lightbox" id="theme-anubis"><a class="lightbox-close" href="#card-anubis" aria-label="Close preview"></a><figure><img src="/images/krellix/themes/anubis.jpeg" alt="Anubis theme full preview" loading="lazy" decoding="async" /><figcaption>Anubis</figcaption></figure></div>
+  <div class="lightbox" id="theme-leviathan"><a class="lightbox-close" href="#card-leviathan" aria-label="Close preview"></a><figure><img src="/images/krellix/themes/leviathan.jpeg" alt="Leviathan theme full preview" loading="lazy" decoding="async" /><figcaption>Leviathan</figcaption></figure></div>
+  <div class="lightbox" id="theme-fenrir"><a class="lightbox-close" href="#card-fenrir" aria-label="Close preview"></a><figure><img src="/images/krellix/themes/fenrir.jpeg" alt="Fenrir theme full preview" loading="lazy" decoding="async" /><figcaption>Fenrir</figcaption></figure></div>
+  <div class="lightbox" id="theme-default"><a class="lightbox-close" href="#card-default" aria-label="Close preview"></a><figure><img src="/images/krellix/themes/default.jpeg" alt="Default theme full preview" loading="lazy" decoding="async" /><figcaption>Default</figcaption></figure></div>
+  <div class="lightbox" id="theme-egan"><a class="lightbox-close" href="#card-egan" aria-label="Close preview"></a><figure><img src="/images/krellix/themes/egan.jpeg" alt="Egan theme full preview" loading="lazy" decoding="async" /><figcaption>Egan</figcaption></figure></div>
+  <div class="lightbox" id="theme-gorilla"><a class="lightbox-close" href="#card-gorilla" aria-label="Close preview"></a><figure><img src="/images/krellix/themes/gorilla.jpeg" alt="Gorilla theme full preview" loading="lazy" decoding="async" /><figcaption>Gorilla</figcaption></figure></div>
+  <div class="lightbox" id="theme-gotham"><a class="lightbox-close" href="#card-gotham" aria-label="Close preview"></a><figure><img src="/images/krellix/themes/gotham.jpeg" alt="Gotham theme full preview" loading="lazy" decoding="async" /><figcaption>Gotham</figcaption></figure></div>
+  <div class="lightbox" id="theme-gruvbox-dark"><a class="lightbox-close" href="#card-gruvbox-dark" aria-label="Close preview"></a><figure><img src="/images/krellix/themes/gruvbox-dark.jpeg" alt="Gruvbox-dark theme full preview" loading="lazy" decoding="async" /><figcaption>Gruvbox-dark</figcaption></figure></div>
+  <div class="lightbox" id="theme-lcars"><a class="lightbox-close" href="#card-lcars" aria-label="Close preview"></a><figure><img src="/images/krellix/themes/lcars.jpeg" alt="Lcars theme full preview" loading="lazy" decoding="async" /><figcaption>Lcars</figcaption></figure></div>
+  <div class="lightbox" id="theme-lumon"><a class="lightbox-close" href="#card-lumon" aria-label="Close preview"></a><figure><img src="/images/krellix/themes/lumon.jpeg" alt="Lumon theme full preview" loading="lazy" decoding="async" /><figcaption>Lumon</figcaption></figure></div>
+  <div class="lightbox" id="theme-nightfox"><a class="lightbox-close" href="#card-nightfox" aria-label="Close preview"></a><figure><img src="/images/krellix/themes/nightfox.jpeg" alt="Nightfox theme full preview" loading="lazy" decoding="async" /><figcaption>Nightfox</figcaption></figure></div>
+  <div class="lightbox" id="theme-nord"><a class="lightbox-close" href="#card-nord" aria-label="Close preview"></a><figure><img src="/images/krellix/themes/nord.jpeg" alt="Nord theme full preview" loading="lazy" decoding="async" /><figcaption>Nord</figcaption></figure></div>
+  <div class="lightbox" id="theme-onedark"><a class="lightbox-close" href="#card-onedark" aria-label="Close preview"></a><figure><img src="/images/krellix/themes/onedark.jpeg" alt="Onedark theme full preview" loading="lazy" decoding="async" /><figcaption>Onedark</figcaption></figure></div>
+  <div class="lightbox" id="theme-prime23"><a class="lightbox-close" href="#card-prime23" aria-label="Close preview"></a><figure><img src="/images/krellix/themes/prime23.jpeg" alt="Prime23 theme full preview" loading="lazy" decoding="async" /><figcaption>Prime23</figcaption></figure></div>
+  <div class="lightbox" id="theme-tokyo-night"><a class="lightbox-close" href="#card-tokyo-night" aria-label="Close preview"></a><figure><img src="/images/krellix/themes/tokyo-night.jpeg" alt="Tokyo-night theme full preview" loading="lazy" decoding="async" /><figcaption>Tokyo-night</figcaption></figure></div>
+  <div class="lightbox" id="theme-tokyo-night-storm"><a class="lightbox-close" href="#card-tokyo-night-storm" aria-label="Close preview"></a><figure><img src="/images/krellix/themes/tokyo-night-storm.jpeg" alt="Tokyo-night-storm theme full preview" loading="lazy" decoding="async" /><figcaption>Tokyo-night-storm</figcaption></figure></div>
+  <div class="lightbox" id="theme-alienverse"><a class="lightbox-close" href="#card-alienverse" aria-label="Close preview"></a><figure><img src="/images/krellix/themes/alienverse.jpeg" alt="Alienverse theme full preview" loading="lazy" decoding="async" /><figcaption>alienverse</figcaption></figure></div>
+  <div class="lightbox" id="theme-aurora"><a class="lightbox-close" href="#card-aurora" aria-label="Close preview"></a><figure><img src="/images/krellix/themes/aurora.jpeg" alt="Aurora theme full preview" loading="lazy" decoding="async" /><figcaption>aurora</figcaption></figure></div>
+  <div class="lightbox" id="theme-blackrock"><a class="lightbox-close" href="#card-blackrock" aria-label="Close preview"></a><figure><img src="/images/krellix/themes/blackrock.jpeg" alt="Blackrock theme full preview" loading="lazy" decoding="async" /><figcaption>blackrock</figcaption></figure></div>
+  <div class="lightbox" id="theme-bluesteel"><a class="lightbox-close" href="#card-bluesteel" aria-label="Close preview"></a><figure><img src="/images/krellix/themes/bluesteel-v21.jpeg" alt="Bluesteel 2.1 theme full preview" loading="lazy" decoding="async" /><figcaption>Bluesteel 2.1</figcaption></figure></div>
+  <div class="lightbox" id="theme-catppuccin-mocha"><a class="lightbox-close" href="#card-catppuccin-mocha" aria-label="Close preview"></a><figure><img src="/images/krellix/themes/catppuccin-mocha.jpeg" alt="Catppuccin Mocha theme full preview" loading="lazy" decoding="async" /><figcaption>catppuccin-mocha</figcaption></figure></div>
+  <div class="lightbox" id="theme-blueheart"><a class="lightbox-close" href="#card-blueheart" aria-label="Close preview"></a><figure><img src="/images/krellix/themes/blueheart.png" alt="BlueHeart theme full preview" loading="lazy" decoding="async" /><figcaption>BlueHeart</figcaption></figure></div>
+  <div class="lightbox" id="theme-cheese"><a class="lightbox-close" href="#card-cheese" aria-label="Close preview"></a><figure><img src="/images/krellix/themes/cheese-v2.png" alt="Cheese 2.0 theme full preview" loading="lazy" decoding="async" /><figcaption>Cheese 2.0</figcaption></figure></div>
+  <div class="lightbox" id="theme-kronix"><a class="lightbox-close" href="#card-kronix" aria-label="Close preview"></a><figure><img src="/images/krellix/themes/kronix.png" alt="Kronix theme full preview" loading="lazy" decoding="async" /><figcaption>Kronix</figcaption></figure></div>
+  <div class="lightbox" id="theme-cobalt2"><a class="lightbox-close" href="#card-cobalt2" aria-label="Close preview"></a><figure><img src="/images/krellix/themes/cobolt2.jpeg" alt="Cobalt2 theme full preview" loading="lazy" decoding="async" /><figcaption>cobalt2</figcaption></figure></div>
+  <div class="lightbox" id="theme-cthulhain"><a class="lightbox-close" href="#card-cthulhain" aria-label="Close preview"></a><figure><img src="/images/krellix/themes/cthulhain.jpeg" alt="Cthulhain theme full preview" loading="lazy" decoding="async" /><figcaption>cthulhain</figcaption></figure></div>
+  <div class="lightbox" id="theme-default-hacker"><a class="lightbox-close" href="#card-default-hacker" aria-label="Close preview"></a><figure><img src="/images/krellix/themes/default-hacker.jpeg" alt="Default Hacker theme full preview" loading="lazy" decoding="async" /><figcaption>default-hacker</figcaption></figure></div>
+  <div class="lightbox" id="theme-dracula"><a class="lightbox-close" href="#card-dracula" aria-label="Close preview"></a><figure><img src="/images/krellix/themes/dracula.jpeg" alt="Dracula theme full preview" loading="lazy" decoding="async" /><figcaption>dracula</figcaption></figure></div>
+  <div class="lightbox" id="theme-duskfox"><a class="lightbox-close" href="#card-duskfox" aria-label="Close preview"></a><figure><img src="/images/krellix/themes/duskfox.jpeg" alt="Duskfox theme full preview" loading="lazy" decoding="async" /><figcaption>duskfox</figcaption></figure></div>
+  <div class="lightbox" id="theme-everforest"><a class="lightbox-close" href="#card-everforest" aria-label="Close preview"></a><figure><img src="/images/krellix/themes/everforest.jpeg" alt="Everforest theme full preview" loading="lazy" decoding="async" /><figcaption>everforest</figcaption></figure></div>
+  <div class="lightbox" id="theme-tokyo-night-moon"><a class="lightbox-close" href="#card-tokyo-night-moon" aria-label="Close preview"></a><figure><img src="/images/krellix/themes/tokyo-night-moon.jpeg" alt="Tokyo Night Moon theme full preview" loading="lazy" decoding="async" /><figcaption>tokyo-night-moon</figcaption></figure></div>
 
   <footer class="footer">
     <div class="foot-row">
