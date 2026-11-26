@@ -2,7 +2,7 @@
 pkgbase=krellix
 pkgname=('krellix' 'krellix-server' 'krellix-krellbluetooth')
 pkgver=0.1.2
-pkgrel=44
+pkgrel=45
 arch=('x86_64' 'aarch64')
 url='https://github.com/yodabytz/krellix'
 license=('GPL-3.0-or-later')
@@ -46,9 +46,9 @@ sha256sums+=('8fead942f55f9845c6dd27cacf81c3f53fcc4ab6133dd7c04dbfb8427ba1b6a3')
 
 # The desktop is built from the same revision as the Windows renderer build.
 # Keep the existing source/patch stack for the independently shipped daemon and plugin.
-_desktop_commit=208e07c1823b1ce40b338ff633a32743fca1067e
+_desktop_commit=c77323b8387919068f973edbb934e1973cf36509
 source+=("krellix-desktop-${_desktop_commit}.tar.gz::https://codeload.github.com/yodabytz/krellix/tar.gz/${_desktop_commit}")
-sha256sums+=('5332e89216c4df69e28fc428bb717941cc23031733184182fe6dc31d25a7d54a')
+sha256sums+=('33eca8ac924c7b62f57e84ef77ecb96a5073cbe2500bf3c7198f739dd9866b3d')
 
 prepare() {
     cd "$pkgbase-$pkgver"
