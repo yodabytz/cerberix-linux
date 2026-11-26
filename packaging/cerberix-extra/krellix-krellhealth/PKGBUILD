@@ -1,7 +1,7 @@
 # Maintainer: yodabytz <hello@cerberix.org>
 pkgname=krellix-krellhealth
 pkgver=0.1.2
-pkgrel=3
+pkgrel=4
 arch=('x86_64' 'aarch64')
 url='https://github.com/yodabytz/krellix'
 license=('GPL-3.0-or-later')
@@ -15,13 +15,16 @@ optdepends=('smartmontools: SMART disk health checks'
 makedepends=('cmake' 'ninja' 'qt6-tools' 'qt6-base')
 options=('!debug')
 source=("krellix-$pkgver.tar.gz"
-        "fix-kernel-module-match.patch")
+        "fix-kernel-module-match.patch"
+        "theme-heart-artwork.patch")
 sha256sums=('18bc7af94d5db7bec2d50c8cb09e14fb244f994152d1006669efa51792e1ba45'
-            '778e9770b4c15513b3ceb318df73c3861f3c57f3795bf1ca0732db278aab6058')
+            '778e9770b4c15513b3ceb318df73c3861f3c57f3795bf1ca0732db278aab6058'
+            '7b67d67d6aeb4a341eeedf7449ade93796bcf92a86e14edd7c828c92c16bd435')
 
 prepare() {
     cd "krellix-$pkgver"
     patch -Np1 -i "$srcdir/fix-kernel-module-match.patch"
+    patch --fuzz=0 -Np1 -i "$srcdir/theme-heart-artwork.patch"
 }
 
 build() {

@@ -128,7 +128,7 @@
             <li><a href="#theme-palette">Colors, type, and sizing</a></li>
             <li><a href="#theme-artwork">Artwork and scaling</a></li>
             <li><a href="#theme-animation">Animation</a></li>
-            <li><a href="#theme-plugin-artwork">Mail and weather artwork</a></li>
+            <li><a href="#theme-plugin-artwork">Mail, weather, and health artwork</a></li>
             <li><a href="#theme-release">Test, troubleshoot, and share</a></li>
           </ul>
         </nav>
@@ -261,11 +261,24 @@
           </section>
 
           <section id="theme-plugin-artwork">
-            <h3>5. Override mail and weather icons</h3>
+            <h3>5. Override mail, weather, and health icons</h3>
             <dl class="guide-pairs">
               <dt>KrellMail</dt><dd>Set <code>images.panel_icon_krellmail</code> for idle art and <code>images.panel_icon_krellmail_new</code> for unread art. Use transparent PNGs. The user must choose <strong>Follow Theme</strong> in the KrellMail settings; an explicit Envelope or Tux choice stays in effect. For unread animation, target <code>mail.new</code> with the <code>new_mail</code> trigger.</dd>
               <dt>KrellWeather</dt><dd>Use static keys such as <code>images.panel_icon_krellweather_clear</code>, <code>images.panel_icon_krellweather_clear_night</code>, or <code>images.panel_icon_krellweather_light_rain</code>. They apply only in Weather <strong>Theme</strong> mode and fit the existing icon slot. Missing artwork falls back to a vector icon. See the <a href="https://github.com/yodabytz/krellix/blob/main/plugins/krellweather/README.md#theme-artwork">weather suffix list</a>.</dd>
+              <dt>KrellHealth</dt><dd>Use <code>images.panel_icon_krellhealth_heart</code> to replace just the heart beside <strong>OK</strong>. Unlike the mail and weather overrides, this does not require a separate setting. <code>images.panel_icon_krellhealth</code> is separate: it decorates the <strong>Health</strong> panel title.</dd>
             </dl>
+            <h4 id="theme-health-heart">Make a custom KrellHealth heart</h4>
+            <ol>
+              <li>Export a static transparent PNG, ideally 32 or 64 pixels square. Use a clear silhouette and trim large transparent margins, since the art is drawn in the existing small heart slot.</li>
+              <li>Put it at <code>assets/health-heart.png</code> inside the theme folder. Merge the entry below into the existing <code>images</code> object in <code>theme.json</code>, rather than creating a second <code>images</code> object.</li>
+              <li>Save <code>theme.json</code> with the theme selected. When KrellHealth reports <strong>OK</strong>, the custom image replaces the glyph. It keeps its aspect ratio, and the OK label, row height, and detailed tooltip are unchanged. Save <code>theme.json</code> again or reselect the theme after replacing only the PNG.</li>
+            </ol>
+            <pre tabindex="0" aria-label="KrellHealth heart override example"><code>{
+  "images": {
+    "panel_icon_krellhealth_heart": "assets/health-heart.png"
+  }
+}</code></pre>
+            <p>A missing or unreadable image keeps the original heart. Checking, warning, informational, and critical states keep their own indicators. Hover over the panel to read the full findings. Use an <a href="/extras/krellix/plugins/#krellhealth">updated KrellHealth plugin</a> for this key.</p>
             <p>Dots in the examples describe where the key goes: <code>images.panel_icon_krellmail</code> means a <code>panel_icon_krellmail</code> entry inside the <code>images</code> object, not a dotted key in <code>theme.json</code>. Animation <code>target</code> values, by contrast, contain the dot.</p>
           </section>
 
