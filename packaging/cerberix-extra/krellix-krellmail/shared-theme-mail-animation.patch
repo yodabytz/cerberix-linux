@@ -1,0 +1,79 @@
+diff --git a/plugins/krellmail/KrellmailPlugin.cpp b/plugins/krellmail/KrellmailPlugin.cpp
+index ce4a075..20e14ef 100644
+--- a/plugins/krellmail/KrellmailPlugin.cpp
++++ b/plugins/krellmail/KrellmailPlugin.cpp
+@@ -183,5 +183,7 @@ bool KrellmailEnvelope::reloadIconStyle()
+ void KrellmailEnvelope::reloadArtwork()
+ {
++    if (m_theme) m_theme->stopAnimation(QStringLiteral("mail.new"), this);
+     m_idleIcon = {};
++    m_themeUnread = {};
+     m_unreadSprite = {};
+     m_tuxIcon = {};
+@@ -191,4 +193,5 @@ void KrellmailEnvelope::reloadArtwork()
+         const auto spriteKey = QStringLiteral("panel_icon_krellmail_unread");
+         m_idleIcon = m_theme->pixmap(QStringLiteral("panel_icon_krellmail"));
++        m_themeUnread = m_theme->pixmap(QStringLiteral("panel_icon_krellmail_new"));
+         m_unreadSprite = m_theme->pixmap(spriteKey);
+         const int frames = m_theme->imageInt(spriteKey + QStringLiteral(".frames"), 0);
+@@ -198,5 +201,5 @@ void KrellmailEnvelope::reloadArtwork()
+             m_unreadSprite = {};
+     }
+-    const bool themed = !m_idleIcon.isNull() || m_unreadFrames > 0;
++    const bool themed = !m_idleIcon.isNull() || !m_themeUnread.isNull() || m_unreadFrames > 0;
+     if (!themed) {
+         m_idleIcon.load(QStringLiteral(":/krellmail/art/closed-mail.png"));
+@@ -222,4 +225,5 @@ void KrellmailEnvelope::reloadArtwork()
+ int KrellmailEnvelope::animationFrames() const
+ {
++    if (!m_themeUnread.isNull()) return 1; // theme clock handles this artwork
+     if (m_unreadFrames > 0)
+         return m_unreadFrames;
+@@ -237,4 +241,6 @@ int KrellmailEnvelope::frameInterval() const
+ void KrellmailEnvelope::syncAnimation()
+ {
++    if (!m_count && m_theme && !m_themeUnread.isNull())
++        m_theme->stopAnimation(QStringLiteral("mail.new"), this);
+     if (m_count > 0 && animationFrames() > 1) {
+         if (!m_timer.isActive())
+@@ -249,4 +255,12 @@ void KrellmailEnvelope::paintEvent(QPaintEvent *)
+ {
+     QPainter p(this);
++    if (m_count > 0 && !m_themeUnread.isNull()) {
++        QRect target(QPoint(), m_themeUnread.size().scaled(size(), Qt::KeepAspectRatio));
++        target.moveCenter(rect().center());
++        const auto frame = m_theme->animationFrame(QStringLiteral("mail.new"), this, target, m_themeUnread.size());
++        p.setRenderHint(QPainter::SmoothPixmapTransform, true);
++        p.drawPixmap(target, frame.isNull() ? m_themeUnread : frame);
++        return;
++    }
+     const bool unreadArtwork = m_count > 0 && m_unreadFrames > 0;
+     const QPixmap &artwork = unreadArtwork ? m_unreadSprite : m_idleIcon;
+@@ -896,5 +896,5 @@ QString KrellmailPlugin::pluginVersion() const
+ QString KrellmailPlugin::pluginVersion() const
+ {
+-    return QStringLiteral("0.1.5");
++    return QStringLiteral("0.1.6");
+ }
+ 
+diff --git a/plugins/krellmail/KrellmailPlugin.h b/plugins/krellmail/KrellmailPlugin.h
+index 1524453..a935a9d 100644
+--- a/plugins/krellmail/KrellmailPlugin.h
++++ b/plugins/krellmail/KrellmailPlugin.h
+@@ -59,4 +59,5 @@ private:
+     Theme *m_theme = nullptr;
+     QPixmap m_idleIcon;
++    QPixmap m_themeUnread;
+     QPixmap m_unreadSprite;
+     QPixmap m_tuxIcon;
+diff --git a/src/theme/Theme.h b/src/theme/Theme.h
+--- a/src/theme/Theme.h
++++ b/src/theme/Theme.h
+@@ -188,5 +188,7 @@ class Theme : public QObject
+     // any path that would escape the theme directory. Empty on rejection.
+     QString assetPath(const QString &relativePath) const;
++    QPixmap animationFrame(const QString &target, class QWidget *widget, const QRect &region, QSize size) const;
++    void stopAnimation(const QString &target, class QWidget *widget) const;
+ 
+ signals:
+     void themeChanged();

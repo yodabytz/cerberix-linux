@@ -1,0 +1,582 @@
+diff --git a/src/krellix/MainWindow.cpp b/src/krellix/MainWindow.cpp
+index 69da85e..7634877 100644
+--- a/src/krellix/MainWindow.cpp
++++ b/src/krellix/MainWindow.cpp
+@@ -710,4 +710,5 @@ void MainWindow::applySettingsOverridesToTheme()
+ {
+     QSettings s;
++    m_theme->setMotion(Theme::motionFromKey(s.value(QStringLiteral("appearance/theme_motion")).toString()));
+     // Note: panel_width is NOT pushed into the theme — window width is
+     // controlled by applyFixedWidth() reading the setting directly.
+@@ -871,7 +872,7 @@ void MainWindow::paintEvent(QPaintEvent *)
+ 
+     const QPixmap topPix    = m_theme->pixmap(QStringLiteral("frame_top"));
+-    const QPixmap bottomPix = m_theme->pixmap(QStringLiteral("frame_bottom"));
+-    const QPixmap leftPix   = m_theme->pixmap(QStringLiteral("frame_left"));
+-    const QPixmap rightPix  = m_theme->pixmap(QStringLiteral("frame_right"));
++    QPixmap bottomPix = m_theme->pixmap(QStringLiteral("frame_bottom"));
++    QPixmap leftPix   = m_theme->pixmap(QStringLiteral("frame_left"));
++    QPixmap rightPix  = m_theme->pixmap(QStringLiteral("frame_right"));
+ 
+     const int topH    = topPix.isNull()    ? 0 : topPix.height();
+@@ -803,6 +804,13 @@ void MainWindow::paintEvent(QPaintEvent *)
+     if (!topPix.isNull())
+         p.drawTiledPixmap(QRect(0, 0, width(), topH), topPix);
++    const auto animate = [this](QPixmap &staticImage, const QString &target, const QRect &rect) {
++        const auto frame = m_theme->animationFrame(target, this, rect, staticImage.size());
++        if (!frame.isNull()) staticImage = frame;
++    };
+-    if (!bottomPix.isNull())
+-        p.drawTiledPixmap(QRect(0, height() - bottomH, width(), bottomH), bottomPix);
++    if (!bottomPix.isNull()) {
++        const QRect footer(0, height() - bottomH, width(), bottomH);
++        animate(bottomPix, QStringLiteral("images.frame_bottom"), footer);
++        p.drawTiledPixmap(footer, bottomPix);
++    }
+ 
+     const int sideTop    = topH;
+@@ -897,11 +906,12 @@ void MainWindow::paintEvent(QPaintEvent *)
+     if (sideBottom > sideTop) {
+         if (!leftPix.isNull()) {
+-            p.drawTiledPixmap(QRect(0, sideTop, leftW, sideBottom - sideTop),
+-                              leftPix);
++            const QRect left(0, sideTop, leftW, sideBottom - sideTop);
++            animate(leftPix, QStringLiteral("images.frame_left"), left);
++            p.drawTiledPixmap(left, leftPix);
+         }
+         if (!rightPix.isNull()) {
+-            p.drawTiledPixmap(QRect(width() - rightW, sideTop, rightW,
+-                                    sideBottom - sideTop),
+-                              rightPix);
++            const QRect right(width() - rightW, sideTop, rightW, sideBottom - sideTop);
++            animate(rightPix, QStringLiteral("images.frame_right"), right);
++            p.drawTiledPixmap(right, rightPix);
+         }
+     }
+diff --git a/src/krellix/SettingsDialog.cpp b/src/krellix/SettingsDialog.cpp
+index c3c0598..8e4bc01 100644
+--- a/src/krellix/SettingsDialog.cpp
++++ b/src/krellix/SettingsDialog.cpp
+@@ -299,4 +299,19 @@ SettingsDialog::SettingsDialog(Theme *theme, KrellmailOAuthBroker *krellmailOAut
+         form->addRow(QStringLiteral("Chart height:"), m_chartHeight);
+ 
++        auto *motion = new QComboBox(page);
++        motion->setObjectName(QStringLiteral("theme-motion"));
++        motion->addItem(QStringLiteral("Full"), QStringLiteral("full"));
++        motion->addItem(QStringLiteral("Reduced"), QStringLiteral("reduced"));
++        motion->addItem(QStringLiteral("Off"), QStringLiteral("off"));
++        sizeAppearanceSelector(motion, 12);
++        const auto saved = QSettings().value(QStringLiteral("appearance/theme_motion")).toString();
++        motion->setCurrentIndex(qMax(0, motion->findData(saved)));
++        connect(motion, &QComboBox::activated, this, [this, motion](int index) {
++            const auto key = motion->itemData(index).toString();
++            QSettings().setValue(QStringLiteral("appearance/theme_motion"), key);
++            m_theme->setMotion(Theme::motionFromKey(key));
++        });
++        form->addRow(QStringLiteral("Theme animation:"), motion);
++
+         addPage(QStringLiteral("Appearance"), page);
+     }
+diff --git a/src/monitors/CpuMonitor.cpp b/src/monitors/CpuMonitor.cpp
+index 4051935..7990d4f 100644
+--- a/src/monitors/CpuMonitor.cpp
++++ b/src/monitors/CpuMonitor.cpp
+@@ -1,4 +1,5 @@
+ #include "CpuMonitor.h"
+ 
++#include "theme/Theme.h"
+ #include "widgets/Chart.h"
+ #include "widgets/Decal.h"
+@@ -211,5 +212,15 @@ void CpuMonitor::tick()
+ {
+     const QList<CpuSample> samples = CpuStat::read();
+-    if (samples.isEmpty()) return;
++    if (samples.isEmpty()) {
++        theme()->setAnimationCpu(-1);
++        return;
++    }
++    if (m_havePrev && !m_prevSamples.isEmpty() && samples.first().index == -1
++        && m_prevSamples.first().index == -1
++        && samples.first().totalAll() > m_prevSamples.first().totalAll()) {
++        theme()->setAnimationCpu(CpuStat::utilization(m_prevSamples.first(), samples.first()));
++    } else {
++        theme()->setAnimationCpu(-1);
++    }
+ 
+     // First sample arrived after createWidget — build the real panels
+diff --git a/src/theme/Theme.cpp b/src/theme/Theme.cpp
+index d042823..394659b 100644
+--- a/src/theme/Theme.cpp
++++ b/src/theme/Theme.cpp
+@@ -1,3 +1,4 @@
+ #include "Theme.h"
++#include "ThemeAnimation.h"
+ 
+ #include <QDir>
+@@ -203,4 +204,5 @@ bool Theme::load(const QString &name)
+         m_rootDir  = canonicalize(candidateDir);
+         m_jsonPath = canonJson;
++        loadAnimation();
+         m_watcher->addPath(canonJson);
+         emit themeChanged();
+@@ -223,4 +225,5 @@ void Theme::onFileChanged(const QString &path)
+     loadDefaults();
+     parseJsonFile(path);
++    loadAnimation();
+     if (QFileInfo::exists(path) && !m_watcher->files().contains(path))
+         m_watcher->addPath(path);
+@@ -230,4 +233,6 @@ void Theme::onFileChanged(const QString &path)
+ void Theme::loadDefaults()
+ {
++    m_animation.reset();
++    m_surfaceImages.clear();
+     m_imagePaths.clear();
+     m_imageInts.clear();
+@@ -651,4 +656,69 @@ Theme::TextStyle Theme::textStyle(const QString &key,
+ Theme::Surface Theme::surface(const QString &key,
+                               const QString &fallbackKey) const
++{
++    return resolveSurface(key, fallbackKey, nullptr);
++}
++
++void Theme::loadAnimation()
++{
++    const auto path = assetPath(QStringLiteral("animation.json"));
++    if (path.isEmpty()) return;
++    auto animation = std::make_unique<ThemeAnimation>(*this);
++    if (!animation->load(path)) return;
++    animation->setMode(m_motion);
++    m_animation = std::move(animation);
++}
++
++void Theme::setMotion(Motion mode)
++{
++    m_motion = mode;
++    if (m_animation) m_animation->setMode(mode);
++}
++
++Theme::Motion Theme::motionFromKey(QStringView key)
++{
++    if (key == QLatin1String("off")) return Motion::Off;
++    if (key == QLatin1String("reduced")) return Motion::Reduced;
++    return Motion::Full;
++}
++
++void Theme::setAnimationCpu(double load)
++{
++    if (m_animation) m_animation->setCpu(load);
++}
++
++bool Theme::hasAnimation(const QString &target) const
++{
++    return m_animation && m_animation->hasTarget(target);
++}
++
++QPixmap Theme::animationFrame(const QString &target, QWidget *widget, const QRect &region, QSize size) const
++{
++    return m_animation ? m_animation->frame(target, widget, region, size) : QPixmap();
++}
++
++void Theme::stopAnimation(const QString &target, QWidget *widget) const
++{
++    if (m_animation) m_animation->unwatch(target, widget);
++}
++
++QPixmap Theme::surfaceImage(const QString &relativePath) const
++{
++    if (m_animation) {
++        const auto cached = m_surfaceImages.constFind(relativePath);
++        if (cached != m_surfaceImages.cend()) return cached.value();
++    }
++    const auto full = assetPath(relativePath);
++    const auto image = full.isEmpty() ? QPixmap() : loadBoundedPixmap(full);
++    if (m_animation) m_surfaceImages.insert(relativePath, image);
++    return image;
++}
++
++Theme::Surface Theme::paintedSurface(const QString &key, const QString &fallbackKey, QWidget *widget) const
++{
++    return resolveSurface(key, fallbackKey, widget);
++}
++
++Theme::Surface Theme::resolveSurface(const QString &key, const QString &fallbackKey, QWidget *widget) const
+ {
+     // Lookup chain: requested key, then caller-supplied fallback, then
+@@ -673,7 +743,5 @@ Theme::Surface Theme::surface(const QString &key,
+             out.tint    = sp.tint;
+             for (const QString &relOverlay : sp.relOverlays) {
+-                const QString full = assetPath(relOverlay);
+-                if (full.isEmpty()) continue;
+-                const QPixmap overlay = loadBoundedPixmap(full);
++                const auto overlay = surfaceImage(relOverlay);
+                 if (!overlay.isNull())
+                     out.overlays.append(overlay);
+@@ -683,8 +751,11 @@ Theme::Surface Theme::surface(const QString &key,
+                 // that pixmap() uses so the v2 entry doesn't bypass
+                 // sandboxing.
+-                const QString full = assetPath(sp.relImage);
+-                if (!full.isEmpty())
+-                    out.image = loadBoundedPixmap(full);
++                out.image = surfaceImage(sp.relImage);
+                 if (!out.image.isNull()) {
++                    if (widget && m_animation) {
++                        const auto frame = animationFrame(QStringLiteral("surfaces.") + k, widget,
++                                                          widget->rect(), out.image.size());
++                        if (!frame.isNull()) out.image = frame;
++                    }
+                     foundSpec = true;
+                     break;
+@@ -698,7 +769,5 @@ Theme::Surface Theme::surface(const QString &key,
+         const QString rel = m_imagePaths.value(k);
+         if (!rel.isEmpty()) {
+-            const QString full = assetPath(rel);
+-            if (!full.isEmpty())
+-                out.image = loadBoundedPixmap(full);
++            out.image = surfaceImage(rel);
+             if (!out.image.isNull()) {
+                 foundSpec = true;
+diff --git a/src/theme/Theme.h b/src/theme/Theme.h
+index fdb9b95..7ca92ff 100644
+--- a/src/theme/Theme.h
++++ b/src/theme/Theme.h
+@@ -12,6 +12,9 @@
+ #include <QString>
+ #include <QStringList>
++#include <memory>
+ 
+ class QFileSystemWatcher;
++class ThemeAnimation;
++class QWidget;
+ 
+ // Holds the visual configuration loaded from a theme directory's theme.json.
+@@ -168,4 +171,13 @@ public:
+                     const QString &fallbackKey = QString()) const;
+ 
++    enum class Motion { Full, Reduced, Off };
++    static Motion motionFromKey(QStringView key);
++    void setMotion(Motion mode);
++    void setAnimationCpu(double load);
++    bool hasAnimation(const QString &target) const;
++    QPixmap animationFrame(const QString &target, QWidget *widget, const QRect &region, QSize size) const;
++    void stopAnimation(const QString &target, QWidget *widget) const;
++    Surface paintedSurface(const QString &key, const QString &fallbackKey, QWidget *widget) const;
++
+     // Runtime override of a theme metric (e.g. user-set krell_height from
+     // SettingsDialog). Triggers themeChanged() so widgets refresh.
+@@ -199,4 +211,7 @@ private:
+     void loadDefaults();
+     bool parseJsonFile(const QString &path);
++    void loadAnimation();
++    QPixmap surfaceImage(const QString &relativePath) const;
++    Surface resolveSurface(const QString &key, const QString &fallbackKey, QWidget *widget) const;
+ 
+     // v2 parse helpers
+@@ -231,4 +246,7 @@ private:
+ 
+     QFileSystemWatcher *m_watcher = nullptr;  // child QObject; parent owns
++    std::unique_ptr<ThemeAnimation> m_animation;
++    mutable QHash<QString, QPixmap> m_surfaceImages;
++    Motion m_motion = Motion::Full;
+ 
+     Q_DISABLE_COPY_MOVE(Theme)
+diff --git a/src/theme/ThemeAnimation.h b/src/theme/ThemeAnimation.h
+new file mode 100644
+index 0000000..30bd320
+--- /dev/null
++++ b/src/theme/ThemeAnimation.h
+@@ -0,0 +1,266 @@
++#pragma once
++
++#include "Theme.h"
++
++#include <QElapsedTimer>
++#include <QFile>
++#include <QImageReader>
++#include <QJsonDocument>
++#include <QJsonObject>
++#include <QTimer>
++#include <QWidget>
++
++#include <cmath>
++
++// Integrate a smoothed speed, not the number of timer callbacks. Delayed
++// paints and changing load must not change the cycle length or jump frames.
++struct ThemePhase {
++    double position = 0;
++    double speed = 1;
++
++    int advance(double seconds, double fps, int frames, double target, double smoothing)
++    {
++        double distance = target * seconds;
++        if (smoothing > 0) {
++            const double decay = std::exp(-seconds / smoothing);
++            distance += (speed - target) * smoothing * (1 - decay);
++            speed = target + (speed - target) * decay;
++        } else {
++            speed = target;
++        }
++        position = std::fmod(position + fps * distance, frames);
++        return static_cast<int>(position);
++    }
++};
++
++// Owned by one Theme (one main window). Consumers register only their
++// painted regions; no widget needs its own clock.
++class ThemeAnimation
++{
++public:
++    explicit ThemeAnimation(Theme &theme) : m_theme(theme)
++    {
++        m_timer.setParent(&theme);
++        m_timer.setObjectName(QStringLiteral("theme-frame-clock"));
++        m_timer.setTimerType(Qt::PreciseTimer);
++        QObject::connect(&m_timer, &QTimer::timeout, &m_timer, [this] { tick(); });
++    }
++
++    bool load(const QString &path)
++    {
++        QFile file(path);
++        if (!file.open(QIODevice::ReadOnly) || file.size() <= 0 || file.size() > 32768) return false;
++        const auto document = QJsonDocument::fromJson(file.read(32769));
++        if (!document.isObject()) return false;
++        const auto root = document.object();
++        if (root.value(QStringLiteral("version")).toDouble(-1) != 1) return false;
++        const auto entries = root.value(QStringLiteral("animations")).toObject();
++        if (entries.isEmpty() || entries.size() > 16) return false;
++        // Bound total decoded pixels, including the unusually wide PNG strips.
++        qint64 budget = 8 * 1024 * 1024;
++        for (const auto &value : entries) {
++            const auto entry = value.toObject();
++            const auto target = entry.value(QStringLiteral("target")).toString();
++            if (!supportedTarget(target) || m_indices.contains(target)) continue;
++            const auto trigger = entry.value(QStringLiteral("trigger")).toString();
++            if (trigger != (target == QStringLiteral("mail.new") ? QStringLiteral("new_mail")
++                                                                 : QStringLiteral("continuous"))) continue;
++            if (entry.value(QStringLiteral("layout")).toString() != QLatin1String("horizontal")
++                || !entry.value(QStringLiteral("loop")).toBool()) continue;
++            const int width = integer(entry, QStringLiteral("frame_width"), 1, 1024);
++            const int height = integer(entry, QStringLiteral("frame_height"), 1, 1024);
++            const int count = integer(entry, QStringLiteral("frames"), 2, 120);
++            const auto fps = entry.value(QStringLiteral("fps")).toDouble(-1);
++            if (!width || !height || !count || !std::isfinite(fps) || fps < 1 || fps > 30) continue;
++            const QSize expected(width * count, height);
++            const qint64 pixels = qint64(expected.width()) * expected.height();
++            if (pixels > budget || expected.width() > 16384) continue;
++
++            const auto sheet = m_theme.assetPath(entry.value(QStringLiteral("sheet")).toString());
++            if (sheet.isEmpty() || m_theme.assetPath(entry.value(QStringLiteral("fallback")).toString()).isEmpty())
++                continue;
++            QFile compressed(sheet);
++            if (compressed.size() <= 0 || compressed.size() > 10 * 1024 * 1024) continue;
++            QImageReader reader(sheet, QByteArrayLiteral("png"));
++            if (reader.size() != expected) continue;
++            const QImage image = reader.read();
++            if (image.size() != expected) continue;
++
++            Effect effect;
++            effect.fps = fps;
++            const auto rate = entry.value(QStringLiteral("speed")).toObject();
++            if (target == QLatin1String("surfaces.panel_bg_top")
++                && rate.value(QStringLiteral("metric")).toString() == QLatin1String("cpu_total_percent")) {
++                const double low = rate.value(QStringLiteral("min_multiplier")).toDouble(-1);
++                const double high = rate.value(QStringLiteral("max_multiplier")).toDouble(-1);
++                const double seconds = rate.value(QStringLiteral("smoothing_seconds")).toDouble(-1);
++                if (low >= 0.25 && low <= 1 && high >= 1 && high <= 2 && seconds >= 0.25 && seconds <= 10) {
++                    effect.low = low;
++                    effect.high = high;
++                    effect.smoothing = seconds;
++                }
++            }
++            effect.frames.reserve(count);
++            bool valid = true;
++            for (int i = 0; i < count; ++i) {
++                auto frame = QPixmap::fromImage(image.copy(i * width, 0, width, height));
++                if (frame.isNull()) {
++                    valid = false;
++                    break;
++                }
++                effect.frames.append(std::move(frame));
++            }
++            if (!valid) continue;
++            m_indices.insert(target, int(m_effects.size()));
++            m_effects.append(std::move(effect));
++            budget -= pixels;
++        }
++        return !m_effects.isEmpty();
++    }
++
++    bool hasTarget(const QString &target) const { return m_indices.contains(target); }
++
++    void setMode(Theme::Motion mode)
++    {
++        if (m_mode == mode) return;
++        m_mode = mode;
++        m_timer.stop();
++        m_clock.invalidate();
++        for (auto it = m_bindings.cbegin(); it != m_bindings.cend(); ++it)
++            if (visible(it.key()))
++                for (const auto &binding : it.value()) it.key()->update(binding.region);
++        startIfNeeded();
++    }
++
++    void setCpu(double load)
++    {
++        if (!std::isfinite(load) || load < 0) {
++            m_cpuAge.invalidate();
++            return;
++        }
++        m_cpuLoad = qBound(0., load, 1.);
++        m_cpuAge.start();
++    }
++
++    QPixmap frame(const QString &target, QWidget *widget, const QRect &region, QSize size)
++    {
++        const int index = m_indices.value(target, -1);
++        if (index < 0 || !widget || region.isEmpty()) return {};
++        auto &effect = m_effects[index];
++        if (effect.frames.first().size() != size) return {};
++        auto it = m_bindings.find(widget);
++        if (it == m_bindings.end()) {
++            it = m_bindings.insert(widget, {});
++            QObject::connect(widget, &QObject::destroyed, &m_timer, [this, widget] {
++                m_bindings.remove(widget);
++            });
++        }
++        bool registered = false;
++        for (auto &binding : it.value())
++            if (binding.effect == index) {
++                binding.region = region;
++                registered = true;
++                break;
++            }
++        if (!registered) it.value().append(Binding{index, region});
++        if (m_mode == Theme::Motion::Off) return {};
++        if (visible(widget)) startIfNeeded();
++        return effect.frames.at(effect.frame);
++    }
++
++    void unwatch(const QString &target, QWidget *widget)
++    {
++        auto it = m_bindings.find(widget);
++        if (it == m_bindings.end()) return;
++        const auto index = m_indices.value(target, -1);
++        it.value().removeIf([index](const Binding &b) { return b.effect == index; });
++    }
++
++private:
++    struct Effect {
++        QList<QPixmap> frames;
++        ThemePhase phase;
++        double fps = 0;
++        double low = 1, high = 1, smoothing = 0;
++        int frame = 0;
++    };
++    struct Binding { int effect; QRect region; };
++
++    static int integer(const QJsonObject &entry, const QString &key, int low, int high)
++    {
++        const auto value = entry.value(key).toDouble(-1);
++        if (!(value >= low && value <= high) || value != std::floor(value)) return 0;
++        return static_cast<int>(value);
++    }
++
++    static bool supportedTarget(const QString &target)
++    {
++        return target == QLatin1String("surfaces.panel_bg_top") || target == QLatin1String("surfaces.panel_bg")
++            || target == QLatin1String("surfaces.panel_bg_host") || target == QLatin1String("images.frame_left")
++            || target == QLatin1String("images.frame_right") || target == QLatin1String("images.frame_bottom")
++            || target == QLatin1String("images.krell") || target == QLatin1String("mail.new");
++    }
++
++    static bool visible(const QWidget *widget)
++    {
++        return widget->isVisible() && !widget->window()->isMinimized();
++    }
++
++    quint32 activeEffects() const
++    {
++        quint32 mask = 0;
++        for (auto it = m_bindings.cbegin(); it != m_bindings.cend(); ++it)
++            if (visible(it.key()))
++                for (const auto &binding : it.value()) mask |= quint32(1) << binding.effect;
++        return mask;
++    }
++
++    void startIfNeeded()
++    {
++        if (m_mode != Theme::Motion::Off && !m_timer.isActive() && activeEffects()) {
++            m_clock.start();
++            m_timer.start(m_mode == Theme::Motion::Reduced ? 125 : 16);
++        }
++    }
++
++    void tick()
++    {
++        const auto active = activeEffects();
++        if (!active || m_mode == Theme::Motion::Off) {
++            m_timer.stop();
++            m_clock.invalidate();
++            return;
++        }
++        const double seconds = m_clock.nsecsElapsed() / 1e9;
++        m_clock.restart();
++        const bool reduced = m_mode == Theme::Motion::Reduced;
++        const bool haveCpu = m_cpuAge.isValid() && m_cpuAge.elapsed() <= 15000;
++        quint32 changed = 0;
++        for (int i = 0; i < m_effects.size(); ++i) {
++            const quint32 bit = quint32(1) << i;
++            if (!(active & bit)) continue;
++            auto &effect = m_effects[i];
++            const double rate = !reduced && haveCpu && effect.smoothing > 0
++                ? effect.low + (effect.high - effect.low) * m_cpuLoad : 1.;
++            const auto frameIndex = effect.phase.advance(seconds, reduced ? qMin(4., effect.fps) : effect.fps,
++                int(effect.frames.size()), rate, reduced ? 0. : effect.smoothing);
++            if (frameIndex == effect.frame) continue;
++            effect.frame = frameIndex;
++            changed |= bit;
++        }
++        if (!changed) return;
++        for (auto it = m_bindings.cbegin(); it != m_bindings.cend(); ++it)
++            if (visible(it.key()))
++                for (const auto &binding : it.value())
++                    if (changed & (quint32(1) << binding.effect)) it.key()->update(binding.region);
++    }
++
++    Theme &m_theme;
++    QTimer m_timer;
++    QElapsedTimer m_clock, m_cpuAge;
++    QHash<QString, int> m_indices;
++    QList<Effect> m_effects;
++    QHash<QWidget *, QList<Binding>> m_bindings;
++    Theme::Motion m_mode = Theme::Motion::Full;
++    double m_cpuLoad = 0;
++};
+diff --git a/src/widgets/Krell.cpp b/src/widgets/Krell.cpp
+index f20323a..471526b 100644
+--- a/src/widgets/Krell.cpp
++++ b/src/widgets/Krell.cpp
+@@ -122,5 +122,12 @@ void Krell::paintEvent(QPaintEvent *)
+             const int x    = static_cast<int>(m_value * xMax);
+             const int y    = r.y() + (r.height() - frameH) / 2;
+-            p.drawPixmap(QRect(x, y, frameW, frameH), krellPix, src);
++            const QRect indicator(x, y, frameW, frameH);
++            const auto animated = frames == 1
++                ? m_theme->animationFrame(QStringLiteral("images.krell"), this, indicator, indicator.size())
++                : QPixmap();
++            if (animated.isNull())
++                p.drawPixmap(indicator, krellPix, src);
++            else
++                p.drawPixmap(indicator, animated);
+             return;
+         }
+diff --git a/src/widgets/Panel.cpp b/src/widgets/Panel.cpp
+index 8f84642..5ef9f1c 100644
+--- a/src/widgets/Panel.cpp
++++ b/src/widgets/Panel.cpp
+@@ -204,5 +204,5 @@ void Panel::paintEvent(QPaintEvent *)
+     // there's no image, fall back to the panel_bg color.
+     const Theme::Surface surf =
+-        m_theme->surface(m_surfaceKey, QStringLiteral("panel_bg"));
++        m_theme->paintedSurface(m_surfaceKey, QStringLiteral("panel_bg"), this);
+     if (!surf.image.isNull() && r.width() > 0 && r.height() > 0) {
+         const qreal prevOpacity = p.opacity();

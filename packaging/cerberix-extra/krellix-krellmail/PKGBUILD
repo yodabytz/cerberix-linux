@@ -1,12 +1,12 @@
 # Maintainer: yodabytz <hello@cerberix.org>
 pkgname=krellix-krellmail
 pkgver=0.1.1
-pkgrel=5
+pkgrel=6
 arch=('x86_64' 'aarch64')
 url='https://github.com/yodabytz/krellix'
 license=('GPL-3.0-or-later')
 pkgdesc='Krellmail POP3/IMAP mail count plugin for Krellix'
-depends=('krellix>=0.1.2-34' 'qt6-base')
+depends=('krellix>=0.1.2-36' 'qt6-base')
 makedepends=('cmake' 'ninja' 'qt6-tools' 'qt6-base')
 options=('!debug')
 source=("krellix-$pkgver.tar.gz"
@@ -17,7 +17,8 @@ source=("krellix-$pkgver.tar.gz"
         "krellmail.qrc"
         "closed-mail.png"
         "envelope-strip.png"
-        "tux-mail.png")
+        "tux-mail.png"
+        "shared-theme-mail-animation.patch")
 sha256sums=('1c2d29205bb3749410e6288e8bb13d06b41ac3467687c80d14101d3c1073c3de'
             '67746e6e053d55a7be226f924b4fc7f9976b2fa00a9af52a9a520ee2a1b90989'
             '9a202f63631e1cc22c9b2d864484b490aaca8c26537322184596aeda8d0f91b9'
@@ -26,7 +27,8 @@ sha256sums=('1c2d29205bb3749410e6288e8bb13d06b41ac3467687c80d14101d3c1073c3de'
             'e08506ef2e5a47aa67c7b7aff5fd9d8de5e2993c2435c5eaa03230d73ac09d42'
             'c80591933791ee8c21bfc7cb215b07b343d420cace7060193df846334d7405a8'
             'cf0ec6cacc692dfcbbeeafb8a96f610ad2d804784e3d08afc4027b2db408bab3'
-            'f667ca972006982a15cfd3bd3ae0b4b8e4a8ec740c2f9ba956a180328d680f2f')
+            'f667ca972006982a15cfd3bd3ae0b4b8e4a8ec740c2f9ba956a180328d680f2f'
+            '85df571522e2ee12c639b9809d72b96ee644d2883b0f54d81f75e03cfe86db9b')
 
 prepare() {
     cd "krellix-$pkgver"
@@ -34,6 +36,7 @@ prepare() {
     patch --fuzz=0 -Np1 -i "$srcdir/theme-mail-icons.patch"
     patch --fuzz=0 -Np1 -i "$srcdir/theme-mail-icon-size.patch"
     patch --fuzz=0 -Np1 -i "$srcdir/mail-panel.patch"
+    patch --fuzz=0 -Np1 -i "$srcdir/shared-theme-mail-animation.patch"
     mkdir -p plugins/krellmail/assets
     local asset
     for asset in krellmail.qrc closed-mail.png envelope-strip.png tux-mail.png; do
