@@ -1,0 +1,42 @@
+diff --git a/plugins/krellmail/KrellmailPlugin.cpp b/plugins/krellmail/KrellmailPlugin.cpp
+index 1125c35..394ebaa 100644
+--- a/plugins/krellmail/KrellmailPlugin.cpp
++++ b/plugins/krellmail/KrellmailPlugin.cpp
+@@ -33,6 +33,8 @@ constexpr qsizetype kMaxMailBufferBytes = 256 * 1024;
+ constexpr qsizetype kMaxOAuthBytes = 512 * 1024;
+ constexpr int kEnvelopeFrames = 18;
+ constexpr int kMaxUnreadFrames = 128;
++constexpr int kDefaultIconWidth = 28;
++constexpr int kDefaultIconHeight = 20;
+
+ QString accountKey(int index, const QString &name)
+ {
+@@ -123,7 +125,6 @@ KrellmailEnvelope::KrellmailEnvelope(Theme *theme, QWidget *parent)
+     : QWidget(parent)
+     , m_theme(theme)
+ {
+-    setFixedSize(28, 20);
+     setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+     setObjectName(QStringLiteral("krellmail-icon"));
+     connect(&m_timer, &QTimer::timeout, this, [this]() {
+@@ -162,6 +163,11 @@ void KrellmailEnvelope::reloadArtwork()
+         if (m_unreadFrames == 0)
+             m_unreadSprite = {};
+     }
++    const bool themed = !m_idleIcon.isNull() || m_unreadFrames > 0;
++    const int iconHeight = themed
++        ? qBound(12, m_theme->metric(QStringLiteral("panel_icon_krellmail_size"), kDefaultIconHeight), 48)
++        : kDefaultIconHeight;
++    setFixedSize(qMax(kDefaultIconWidth, iconHeight), iconHeight);
+     m_phase = 0;
+     m_timer.setInterval(m_unreadFrames > 0 ? 50 : 120);
+     syncAnimation();
+@@ -795,7 +801,7 @@ QString KrellmailPlugin::pluginName() const
+
+ QString KrellmailPlugin::pluginVersion() const
+ {
+-    return QStringLiteral("0.1.0");
++    return QStringLiteral("0.1.2");
+ }
+
+ QList<MonitorBase *> KrellmailPlugin::createMonitors(Theme *theme, QObject *parent)
