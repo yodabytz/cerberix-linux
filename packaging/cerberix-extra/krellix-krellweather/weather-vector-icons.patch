@@ -1,0 +1,1199 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 925f1d6..a5f20a2 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -263,6 +263,8 @@ install(TARGETS krelldacious LIBRARY DESTINATION "${KRELLIX_PLUGIN_INSTALL_DIR}"
+ add_library(krellweather MODULE
+     plugins/krellweather/KrellweatherPlugin.cpp
+     plugins/krellweather/KrellweatherPlugin.h
++    plugins/krellweather/WeatherIcons.cpp
++    plugins/krellweather/WeatherConditions.cpp
+ )
+ target_include_directories(krellweather PRIVATE src)
+ target_link_libraries(krellweather PRIVATE
+diff --git a/plugins/krellweather/KrellweatherPlugin.cpp b/plugins/krellweather/KrellweatherPlugin.cpp
+index afc589c..ab3ac5d 100644
+--- a/plugins/krellweather/KrellweatherPlugin.cpp
++++ b/plugins/krellweather/KrellweatherPlugin.cpp
+@@ -1,8 +1,15 @@
+ #include "KrellweatherPlugin.h"
++#include "WeatherIcons.h"
+ 
+ #include "theme/Theme.h"
+ #include "widgets/Panel.h"
+ 
++#ifdef Q_OS_WIN
++#include "remote/RemoteSource.h"
++#include "windows/Metar.h"
++#include <QTimer>
++#endif
++
+ #include <QJsonArray>
+ #include <QJsonDocument>
+ #include <QJsonObject>
+@@ -13,7 +20,7 @@
+ #include <QNetworkReply>
+ #include <QNetworkRequest>
+ #include <QPainter>
+-#include <QPainterPath>
++#include <QPixmap>
+ #include <QSettings>
+ #include <QSizePolicy>
+ #include <QUrl>
+@@ -27,15 +34,6 @@ constexpr const char *kMetarUrl = "https://aviationweather.gov/api/data/metar";
+ constexpr int kFetchTimeoutMs = 15000;
+ constexpr qsizetype kMaxWeatherBytes = 256 * 1024;
+ 
+-enum class WeatherIconKind {
+-    Unknown,
+-    Sun,
+-    Moon,
+-    PartlySun,
+-    PartlyMoon,
+-    Cloud
+-};
+-
+ class WeatherIconWidget : public QWidget
+ {
+ public:
+@@ -45,103 +43,58 @@ public:
+     {
+         setFixedSize(30, 24);
+         setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
++        syncMode();
++    }
++
++    void setCondition(KrellWeather::Condition condition)
++    {
++        if (m_condition.kind == condition.kind && m_condition.night == condition.night
++            && m_condition.stormPrecipitation == condition.stormPrecipitation) return;
++        m_condition = condition;
++        invalidate();
++    }
++
++    bool syncMode()
++    {
++        const QString setting = QSettings().value(QStringLiteral("plugins/krellweather/icon_mode")).toString();
++        const auto mode = KrellWeather::modeFromKey(setting);
++        if (m_mode == mode) return false;
++        m_mode = mode;
++        invalidate();
++        return true;
+     }
+ 
+-    void setKind(WeatherIconKind kind)
++    void invalidate()
+     {
+-        if (m_kind == kind) return;
+-        m_kind = kind;
++        m_pixmap = {};
+         update();
+     }
+ 
+ protected:
+     void paintEvent(QPaintEvent *) override
+     {
+-        QPainter p(this);
+-        p.setRenderHint(QPainter::Antialiasing, true);
+-
+-        auto themed = [this](const QString &key, const QColor &fallback, int alpha = 255) {
+-            QColor color = themeColor(key, fallback);
+-            color.setAlpha(alpha);
+-            return color;
+-        };
+-
+-        const QColor primary = themed(QStringLiteral("text_primary"),
+-                                      QColor(235, 246, 252), 230);
+-        const QColor secondary = themed(QStringLiteral("text_secondary"),
+-                                        QColor(180, 210, 222), 235);
+-        const QColor accent = themed(QStringLiteral("text_accent"),
+-                                     QColor(255, 220, 88), 220);
+-        const QColor warning = themed(QStringLiteral("accent_warning"),
+-                                      QColor(255, 202, 55), 235);
+-        const QColor cutout = themed(QStringLiteral("chart_bg"),
+-                                     QColor(24, 42, 55), 240);
+-        const QColor border = themed(QStringLiteral("panel_border"),
+-                                     primary.darker(180), 210);
+-
+-        if (m_kind == WeatherIconKind::Unknown) {
+-            p.setPen(QPen(secondary, 1.4));
+-            p.drawEllipse(QRectF(8, 5, 14, 14));
+-            p.drawLine(QPointF(15, 11), QPointF(15, 15));
+-            p.drawPoint(QPointF(15, 18));
+-            return;
+-        }
+-
+-        const bool cloud =
+-            m_kind == WeatherIconKind::Cloud
+-            || m_kind == WeatherIconKind::PartlySun
+-            || m_kind == WeatherIconKind::PartlyMoon;
+-        const bool moon =
+-            m_kind == WeatherIconKind::Moon
+-            || m_kind == WeatherIconKind::PartlyMoon;
+-        const bool sun =
+-            m_kind == WeatherIconKind::Sun
+-            || m_kind == WeatherIconKind::PartlySun;
+-
+-        if (sun) {
+-            p.setPen(QPen(accent, 1.3));
+-            for (int i = 0; i < 8; ++i) {
+-                const double a = i * M_PI / 4.0;
+-                const QPointF c(11, 10);
+-                p.drawLine(c + QPointF(qCos(a) * 7.0, qSin(a) * 7.0),
+-                           c + QPointF(qCos(a) * 10.0, qSin(a) * 10.0));
++        const qreal dpr = devicePixelRatioF();
++        if (m_pixmap.isNull() || m_cachedSize != size() || m_pixmap.devicePixelRatio() != dpr) {
++            KrellWeather::Colors colors;
++            if (m_theme) {
++                colors.background = m_theme->color(QStringLiteral("panel_bg"), colors.background);
++                colors.primary = m_theme->color(QStringLiteral("text_primary"), colors.primary);
++                colors.secondary = m_theme->color(QStringLiteral("text_secondary"), colors.secondary);
++                colors.accent = m_theme->color(QStringLiteral("text_accent"), colors.accent);
+             }
+-            p.setPen(Qt::NoPen);
+-            p.setBrush(warning);
+-            p.drawEllipse(QRectF(5, 4, 12, 12));
+-        }
+-
+-        if (moon) {
+-            p.setPen(Qt::NoPen);
+-            p.setBrush(primary);
+-            p.drawEllipse(QRectF(5, 3, 14, 14));
+-            p.setBrush(cutout);
+-            p.drawEllipse(QRectF(10, 1, 13, 14));
+-        }
+-
+-        if (cloud) {
+-            const int y = m_kind == WeatherIconKind::Cloud ? 7 : 9;
+-            p.setPen(QPen(border, 1.0));
+-            p.setBrush(secondary);
+-            QPainterPath path;
+-            path.addEllipse(QRectF(6, y + 3, 9, 8));
+-            path.addEllipse(QRectF(12, y, 10, 11));
+-            path.addEllipse(QRectF(18, y + 4, 8, 7));
+-            path.addRoundedRect(QRectF(7, y + 7, 19, 7), 3, 3);
+-            p.drawPath(path.simplified());
++            m_pixmap = QPixmap::fromImage(KrellWeather::renderIcon(m_condition, m_mode, colors, size(), dpr));
++            m_cachedSize = size();
+         }
++        QPainter painter(this);
++        painter.drawPixmap(0, 0, m_pixmap);
+     }
+ 
+ private:
+-    QColor themeColor(const QString &key, const QColor &fallback) const
+-    {
+-        if (!m_theme) return fallback;
+-        const QColor color = m_theme->color(key, fallback);
+-        return color.isValid() ? color : fallback;
+-    }
+-
+-    Theme *m_theme = nullptr;
+-    WeatherIconKind m_kind = WeatherIconKind::Unknown;
++    Theme *m_theme;
++    QPixmap m_pixmap;
++    QSize m_cachedSize;
++    KrellWeather::Condition m_condition;
++    KrellWeather::Mode m_mode = KrellWeather::Mode::Color;
+ };
+ 
+ QString stationCode()
+@@ -187,58 +140,15 @@ QString weatherText(const QJsonObject &obj)
+ QString windText(const QJsonObject &obj)
+ {
+     const int wspd = obj.value(QStringLiteral("wspd")).toInt(-1);
++#ifdef Q_OS_WIN
++    if (wspd < 0) return QStringLiteral("Wind n/a");
++#endif
+     if (wspd <= 0) return QStringLiteral("Calm");
+     const int wdir = obj.value(QStringLiteral("wdir")).toInt(-1);
+     if (wdir < 0) return QStringLiteral("%1 kt").arg(wspd);
+     return QStringLiteral("%1 %2 kt").arg(wdir, 3, 10, QLatin1Char('0')).arg(wspd);
+ }
+ 
+-bool isStationDark(const QJsonObject &obj)
+-{
+-    QDateTime utc = QDateTime::fromString(
+-        obj.value(QStringLiteral("obsTime")).toString(), Qt::ISODate);
+-    if (!utc.isValid())
+-        utc = QDateTime::currentDateTimeUtc();
+-    utc = utc.toUTC();
+-
+-    const double lon = obj.value(QStringLiteral("lon")).toDouble(qQNaN());
+-    const int offsetSecs = qIsNaN(lon) ? 0 : qRound(lon / 15.0 * 3600.0);
+-    const QTime local = utc.addSecs(offsetSecs).time();
+-    return local.hour() < 6 || local.hour() >= 19;
+-}
+-
+-WeatherIconKind iconKindForWeather(const QJsonObject &obj)
+-{
+-    const bool dark = isStationDark(obj);
+-    const QString wx = obj.value(QStringLiteral("wxString")).toString().toUpper();
+-    const QString cover = obj.value(QStringLiteral("cover")).toString().toUpper();
+-    const QString combined = wx + QLatin1Char(' ') + cover;
+-
+-    if (combined.contains(QStringLiteral("OVC"))
+-        || combined.contains(QStringLiteral("BKN"))
+-        || combined.contains(QStringLiteral("CLOUD"))
+-        || combined.contains(QStringLiteral("RA"))
+-        || combined.contains(QStringLiteral("SN"))
+-        || combined.contains(QStringLiteral("TS"))
+-        || combined.contains(QStringLiteral("DZ"))) {
+-        return WeatherIconKind::Cloud;
+-    }
+-
+-    if (combined.contains(QStringLiteral("FEW"))
+-        || combined.contains(QStringLiteral("SCT"))
+-        || combined.contains(QStringLiteral("PART"))) {
+-        return dark ? WeatherIconKind::PartlyMoon : WeatherIconKind::PartlySun;
+-    }
+-
+-    if (combined.contains(QStringLiteral("CLR"))
+-        || combined.contains(QStringLiteral("SKC"))
+-        || combined.contains(QStringLiteral("CLEAR"))
+-        || combined.trimmed().isEmpty()) {
+-        return dark ? WeatherIconKind::Moon : WeatherIconKind::Sun;
+-    }
+-
+-    return dark ? WeatherIconKind::Moon : WeatherIconKind::Sun;
+-}
+ 
+ } // namespace
+ 
+@@ -273,14 +183,22 @@ QString KrellweatherMonitor::displayName() const
+ 
+ int KrellweatherMonitor::tickIntervalMs() const
+ {
++#ifdef Q_OS_WIN
++    // Check for due refreshes even when the host and request timers drift.
++    return 1000;
++#else
+     return QSettings().value(QStringLiteral("plugins/krellweather/interval_ms"),
+                              600000).toInt();
++#endif
+ }
+ 
+ QWidget *KrellweatherMonitor::createWidget(QWidget *parent)
+ {
+     auto *panel = new Panel(theme(), parent);
+     panel->setSurfaceKey(QStringLiteral("panel_bg_krellweather"));
++#ifdef Q_OS_WIN
++    panel->setAccessibleName(QStringLiteral("KrellWeather"));
++#endif
+ 
+     auto *body = new QWidget(panel);
+     auto *layout = new QVBoxLayout(body);
+@@ -306,11 +224,20 @@ QWidget *KrellweatherMonitor::createWidget(QWidget *parent)
+     m_detail->setAlignment(Qt::AlignCenter);
+     m_detail->setWordWrap(false);
+ 
++#ifdef Q_OS_WIN
++    for (auto *label : {m_location.data(), m_primary.data(), m_detail.data()})
++        label->setTextFormat(Qt::PlainText);
++    m_detail->setWordWrap(true);
++    updateTheme();
++    // Resolve the signal through the host object's metaobject across the DLL boundary.
++    connect(theme(), SIGNAL(themeChanged()), this, SLOT(updateTheme()));
++#else
+     applyThemeColors();
+     connect(theme(), &Theme::themeChanged, this, [this]() {
+         applyThemeColors();
+-        if (m_icon) m_icon->update();
++        if (auto *icon = static_cast<WeatherIconWidget *>(m_icon.data())) icon->invalidate();
+     });
++#endif
+ 
+     layout->addWidget(m_location);
+     layout->addLayout(tempRow);
+@@ -323,6 +250,10 @@ QWidget *KrellweatherMonitor::createWidget(QWidget *parent)
+ 
+ void KrellweatherMonitor::tick()
+ {
++    if (auto *icon = static_cast<WeatherIconWidget *>(m_icon.data())) {
++        // Changing the artwork should not trigger another provider request.
++        if (icon->syncMode()) return;
++    }
+     fetch();
+ }
+ 
+@@ -341,10 +272,31 @@ void KrellweatherMonitor::fetch()
+     if (m_tearingDown) return;
+ 
+     const QString code = stationCode();
++#ifdef Q_OS_WIN
++    if (m_requestedStation != code) {
++        cancelPendingReply();
++        m_observation = {};
++        m_requestedAt.invalidate();
++        m_requestedStation = code;
++    }
++    if (!KrellweatherWindows::isStationId(code)) {
++        setMessage(QStringLiteral("Weather"), code.isEmpty()
++            ? QStringLiteral("No station") : QStringLiteral("Enter an ICAO station"));
++        return;
++    }
++    if (!m_observation.isEmpty() && m_lastUnitsCelsius != useCelsius())
++        renderWeather(m_observation);
++    const int interval = qBound(KrellweatherWindows::kMinIntervalMs,
++        QSettings().value(QStringLiteral("plugins/krellweather/interval_ms"), 600000).toInt(),
++        KrellweatherWindows::kMaxIntervalMs);
++    if (m_requestedAt.isValid() && m_requestedAt.elapsed() < interval) return;
++    if (!m_requestedAt.isValid()) setMessage(code, QStringLiteral("Fetching weather"));
++#else
+     if (code.isEmpty()) {
+         setMessage(QStringLiteral("Weather"), QStringLiteral("No station"));
+         return;
+     }
++#endif
+     if (m_fetching) return;
+     m_fetching = true;
+ 
+@@ -357,15 +309,64 @@ void KrellweatherMonitor::fetch()
+     QNetworkRequest req(url);
+     req.setRawHeader("User-Agent", "krellix-krellweather/0.1");
+     req.setTransferTimeout(kFetchTimeoutMs);
++#ifdef Q_OS_WIN
++    req.setRawHeader("Accept", "application/json");
++    req.setAttribute(QNetworkRequest::RedirectPolicyAttribute, QNetworkRequest::ManualRedirectPolicy);
++    m_requestedAt.start();
++#endif
+     QNetworkReply *reply = m_net.get(req);
+     m_reply = reply;
+     connect(reply, &QNetworkReply::finished, this, [this, reply]() {
+         handleReply(reply);
+     });
++#ifdef Q_OS_WIN
++    reply->setReadBufferSize(KrellweatherWindows::kMaxBytes + 1);
++    connect(reply, &QIODevice::readyRead, this, [reply] {
++        if (reply->bytesAvailable() > KrellweatherWindows::kMaxBytes) {
++            reply->setProperty("responseTooLarge", true);
++            reply->abort();
++        }
++    });
++    QTimer::singleShot(kFetchTimeoutMs, reply, [reply] {
++        if (reply->isRunning()) reply->abort();
++    });
++#endif
+ }
+ 
+ void KrellweatherMonitor::handleReply(QNetworkReply *reply)
+ {
++#ifdef Q_OS_WIN
++    if (!reply) return;
++    reply->deleteLater();
++    if (m_tearingDown || m_reply != reply) return;
++    m_reply = nullptr;
++    m_fetching = false;
++    if (m_requestedStation != stationCode()) {
++        fetch();
++        return;
++    }
++    m_observation = {};
++    if (reply->bytesAvailable() > KrellweatherWindows::kMaxBytes
++        || reply->property("responseTooLarge").toBool()) {
++        setMessage(m_requestedStation, QStringLiteral("Weather response too large"));
++        return;
++    }
++    const int status = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
++    if (status == 204) {
++        setMessage(m_requestedStation, QStringLiteral("No recent METAR"));
++        return;
++    }
++    if (status != 200 || reply->error() != QNetworkReply::NoError) {
++        setMessage(m_requestedStation, QStringLiteral("Weather unavailable"));
++        return;
++    }
++    m_observation = KrellweatherWindows::selectObservation(reply->readAll(), m_requestedStation);
++    if (m_observation.isEmpty()) {
++        setMessage(m_requestedStation, QStringLiteral("No valid METAR"));
++        return;
++    }
++    renderWeather(m_observation);
++#else
+     if (m_tearingDown) {
+         if (reply) reply->deleteLater();
+         return;
+@@ -413,6 +414,7 @@ void KrellweatherMonitor::handleReply(QNetworkReply *reply)
+         return;
+     }
+     renderWeather(obj);
++#endif
+ }
+ 
+ void KrellweatherMonitor::cancelPendingReply()
+@@ -428,6 +430,14 @@ void KrellweatherMonitor::cancelPendingReply()
+     reply->deleteLater();
+ }
+ 
++#ifdef Q_OS_WIN
++void KrellweatherMonitor::updateTheme()
++{
++    applyThemeColors();
++    if (auto *icon = static_cast<WeatherIconWidget *>(m_icon.data())) icon->invalidate();
++}
++#endif
++
+ void KrellweatherMonitor::applyThemeColors()
+ {
+     const QColor primary = theme()->textStyle(
+@@ -458,6 +468,9 @@ void KrellweatherMonitor::applyThemeColors()
+ 
+ void KrellweatherMonitor::renderWeather(const QJsonObject &obj)
+ {
++#ifdef Q_OS_WIN
++    m_lastUnitsCelsius = useCelsius();
++#endif
+     const QString code = obj.value(QStringLiteral("icaoId")).toString(stationCode());
+     const double tempC = obj.value(QStringLiteral("temp")).toDouble(qQNaN());
+     const QString temp = qIsNaN(tempC) ? QStringLiteral("--") : tempText(tempC);
+@@ -466,7 +479,7 @@ void KrellweatherMonitor::renderWeather(const QJsonObject &obj)
+ 
+     if (m_location) m_location->setText(code);
+     if (auto *icon = static_cast<WeatherIconWidget *>(m_icon.data()))
+-        icon->setKind(iconKindForWeather(obj));
++        icon->setCondition(KrellWeather::classifyObservation(obj));
+     if (m_primary) m_primary->setText(temp);
+     if (m_detail) m_detail->setText(detail);
+ }
+@@ -475,14 +488,14 @@ void KrellweatherMonitor::setMessage(const QString &line1, const QString &line2)
+ {
+     if (m_location) m_location->setText(line1);
+     if (auto *icon = static_cast<WeatherIconWidget *>(m_icon.data()))
+-        icon->setKind(WeatherIconKind::Unknown);
++        icon->setCondition({});
+     if (m_primary) m_primary->setText(QStringLiteral("--"));
+     if (m_detail) m_detail->setText(line2);
+ }
+ 
+ QString KrellweatherPlugin::pluginId() const
+ {
+-    return QStringLiteral("io.krellix.krellweather");
++    return QStringLiteral("krellweather");
+ }
+ 
+ QString KrellweatherPlugin::pluginName() const
+@@ -492,11 +505,18 @@ QString KrellweatherPlugin::pluginName() const
+ 
+ QString KrellweatherPlugin::pluginVersion() const
+ {
+-    return QStringLiteral("0.1.0");
++#ifdef Q_OS_WIN
++    return QStringLiteral("0.1.1-windows.1");
++#else
++    return QStringLiteral("0.1.1");
++#endif
+ }
+ 
+ QList<MonitorBase *> KrellweatherPlugin::createMonitors(Theme *theme, QObject *parent)
+ {
++#ifdef Q_OS_WIN
++    if (RemoteSource::instance()) return {};
++#endif
+     if (!QSettings().value(QStringLiteral("plugins/krellweather/enabled"), false).toBool())
+         return {};
+     return {new KrellweatherMonitor(theme, parent)};
+diff --git a/plugins/krellweather/KrellweatherPlugin.h b/plugins/krellweather/KrellweatherPlugin.h
+index f1567ed..98946be 100644
+--- a/plugins/krellweather/KrellweatherPlugin.h
++++ b/plugins/krellweather/KrellweatherPlugin.h
+@@ -6,6 +6,11 @@
+ #include <QNetworkAccessManager>
+ #include <QPointer>
+ 
++#ifdef Q_OS_WIN
++#include <QElapsedTimer>
++#include <QJsonObject>
++#endif
++
+ class QLabel;
+ class QNetworkReply;
+ class QJsonObject;
+@@ -26,7 +31,13 @@ public:
+     void tick() override;
+     void shutdown() override;
+ 
++#ifdef Q_OS_WIN
++private slots:
++    void updateTheme();
++#endif
++
+ private:
++    friend class KrellweatherLayoutFixture;
+     void fetch();
+     void handleReply(QNetworkReply *reply);
+     void cancelPendingReply();
+@@ -42,6 +53,12 @@ private:
+     QNetworkAccessManager m_net;
+     bool m_fetching = false;
+     bool m_tearingDown = false;
++#ifdef Q_OS_WIN
++    QString m_requestedStation;
++    QElapsedTimer m_requestedAt;
++    QJsonObject m_observation;
++    bool m_lastUnitsCelsius = false;
++#endif
+ };
+ 
+ class KrellweatherPlugin : public QObject, public IKrellixPlugin
+diff --git a/plugins/krellweather/WeatherConditions.cpp b/plugins/krellweather/WeatherConditions.cpp
+new file mode 100644
+index 0000000..4215227
+--- /dev/null
++++ b/plugins/krellweather/WeatherConditions.cpp
+@@ -0,0 +1,132 @@
++#include "WeatherIcons.h"
++
++#include <QDateTime>
++#include <QJsonArray>
++#include <QJsonObject>
++#include <QRegularExpression>
++#include <QtMath>
++
++namespace KrellWeather {
++namespace {
++
++bool stationIsDark(const QJsonObject &observation)
++{
++    const auto value = observation.value(QStringLiteral("obsTime"));
++    QDateTime utc;
++    if (value.isDouble()) {
++        const double time = value.toDouble();
++        if (time > 0 && time < 253402300800000.0) {
++            const auto stamp = static_cast<qint64>(time);
++            utc = QDateTime::fromMSecsSinceEpoch(stamp > 253402300799LL ? stamp : 1000 * stamp);
++        }
++    } else {
++        utc = QDateTime::fromString(value.toString(), Qt::ISODate);
++    }
++    if (!utc.isValid())
++        utc = QDateTime::fromString(observation.value(QStringLiteral("reportTime")).toString(), Qt::ISODate);
++    if (!utc.isValid()) utc = QDateTime::currentDateTimeUtc();
++    const double longitude = observation.value(QStringLiteral("lon")).toDouble();
++    const int offset = qIsFinite(longitude) && qAbs(longitude) <= 180 ? qRound(longitude * 240) : 0;
++    const int hour = utc.toUTC().addSecs(offset).time().hour();
++    // Keep the existing local solar-time approximation; METAR has no day/night flag.
++    return hour < 6 || hour >= 19;
++}
++
++struct Group {
++    Kind kind = Kind::Unknown;
++    int priority = 0;
++    bool stormPrecipitation = false;
++};
++
++Group presentWeather(const QString &token)
++{
++    // AWC METAR present-weather groups: an optional qualifier, a descriptor,
++    // and whole two-letter phenomenon codes. Never match substrings of free text.
++    static const QRegularExpression pattern(QStringLiteral(
++        R"(^(VC|[+-])?(MI|PR|BC|DR|BL|SH|TS|FZ)?((?:DZ|RA|SN|SG|IC|PL|PE|GR|GS|UP|BR|FG|FU|VA|DU|SA|HZ|PY|PO|SQ|FC|SS|DS){0,3})$)"));
++    const auto match = pattern.match(token);
++    if (!match.hasMatch()) return {};
++    const auto qualifier = match.capturedView(1);
++    const auto descriptor = match.capturedView(2);
++    const auto phenomena = match.capturedView(3);
++    const auto has = [phenomena](QLatin1String code) {
++        for (qsizetype i = 0; i < phenomena.size(); i += 2)
++            if (phenomena.mid(i, 2) == code) return true;
++        return false;
++    };
++    const bool rain = has(QLatin1String("RA")) || has(QLatin1String("DZ"));
++    const bool snow = has(QLatin1String("SN")) || has(QLatin1String("SG"));
++    const bool hail = has(QLatin1String("GR")) || has(QLatin1String("GS"));
++    const bool ice = has(QLatin1String("PL")) || has(QLatin1String("PE")) || has(QLatin1String("IC"));
++    const bool light = qualifier == QLatin1String("-");
++    const bool heavy = qualifier == QLatin1String("+");
++
++    if (has(QLatin1String("FC"))) return {Kind::Tornado, 100};
++    // +TSRA is heavy precipitation, not a severe-thunderstorm designation.
++    if (descriptor == QLatin1String("TS")) return {Kind::Thunderstorm, 90, rain || snow || hail || ice};
++    if (descriptor == QLatin1String("FZ") && rain) return {Kind::FreezingRain, 84};
++    if (hail) return {Kind::Hail, 82};
++    if (ice) return {Kind::Sleet, 81};
++    if (rain && snow) return {Kind::Mixed, 80};
++    if (snow && (descriptor == QLatin1String("BL") || descriptor == QLatin1String("DR")))
++        return {Kind::BlowingSnow, 78};
++    if (descriptor == QLatin1String("SH")) {
++        if (snow) return {Kind::SnowShowers, 74};
++        if (rain || (qualifier == QLatin1String("VC") && phenomena.isEmpty()))
++            return {Kind::RainShowers, 74};
++    }
++    if (snow) return {light ? Kind::LightSnow : heavy ? Kind::HeavySnow : Kind::Snow, heavy ? 73 : light ? 65 : 70};
++    if (has(QLatin1String("RA"))) return {light ? Kind::LightRain : heavy ? Kind::HeavyRain : Kind::Rain,
++                                        heavy ? 73 : light ? 65 : 70};
++    if (rain) return {Kind::Drizzle, heavy ? 69 : 64};
++    if (has(QLatin1String("SQ"))) return {Kind::StrongWind, 60};
++    if (has(QLatin1String("FG"))) return {Kind::Fog, 55};
++    if (has(QLatin1String("BR"))) return {Kind::Mist, 54};
++    if (has(QLatin1String("FU")) || has(QLatin1String("VA"))) return {Kind::Smoke, 53};
++    if (has(QLatin1String("DU")) || has(QLatin1String("SA")) || has(QLatin1String("SS"))
++        || has(QLatin1String("DS")) || has(QLatin1String("PO"))) return {Kind::Dust, 52};
++    if (has(QLatin1String("HZ"))) return {Kind::Haze, 51};
++    if (has(QLatin1String("UP"))) return {Kind::Unknown, 50};
++    return {};
++}
++
++int coverRank(QStringView cover)
++{
++    if (cover == QLatin1String("CLR") || cover == QLatin1String("SKC")) return 0;
++    if (cover == QLatin1String("FEW") || cover == QLatin1String("CAVOK")) return 1;
++    if (cover == QLatin1String("SCT")) return 2;
++    if (cover == QLatin1String("BKN")) return 3;
++    if (cover == QLatin1String("OVC") || cover == QLatin1String("VV")) return 4;
++    return -1;
++}
++
++} // namespace
++
++Mode modeFromKey(QStringView key)
++{
++    if (key == QLatin1String("theme")) return Mode::Theme;
++    if (key == QLatin1String("mono")) return Mode::Monochrome;
++    return Mode::Color;
++}
++
++Condition classifyObservation(const QJsonObject &observation)
++{
++    const bool night = stationIsDark(observation);
++    const QString wx = observation.value(QStringLiteral("wxString")).toString().trimmed().toUpper();
++    static const QRegularExpression whitespace(QStringLiteral(R"(\s+)"));
++    Group strongest;
++    for (const auto &token : wx.split(whitespace, Qt::SkipEmptyParts)) {
++        const Group group = presentWeather(token);
++        if (group.priority > strongest.priority) strongest = group;
++    }
++    if (strongest.priority > 0) return {strongest.kind, night, strongest.stormPrecipitation};
++    if (!wx.isEmpty()) return {Kind::Unknown, night};
++
++    int rank = coverRank(observation.value(QStringLiteral("cover")).toString().trimmed().toUpper());
++    for (const auto &layer : observation.value(QStringLiteral("clouds")).toArray())
++        rank = qMax(rank, coverRank(layer.toObject().value(QStringLiteral("cover")).toString().trimmed().toUpper()));
++    constexpr Kind sky[] = {Kind::Clear, Kind::MostlyClear, Kind::PartlyCloudy, Kind::MostlyCloudy, Kind::Overcast};
++    return {rank < 0 ? Kind::Unknown : sky[rank], night};
++}
++
++} // namespace KrellWeather
+diff --git a/plugins/krellweather/WeatherIcons.cpp b/plugins/krellweather/WeatherIcons.cpp
+new file mode 100644
+index 0000000..a8203c1
+--- /dev/null
++++ b/plugins/krellweather/WeatherIcons.cpp
+@@ -0,0 +1,473 @@
++#include "WeatherIcons.h"
++
++#include <QPainter>
++#include <QPainterPath>
++#include <QTransform>
++#include <QtMath>
++
++#include <cmath>
++
++namespace KrellWeather {
++namespace {
++
++QColor rgb(unsigned int value)
++{
++    return QColor::fromRgb(value);
++}
++
++qreal luminance(const QColor &color)
++{
++    const auto linear = [](qreal value) {
++        return value <= 0.04045 ? value / 12.92 : std::pow((value + 0.055) / 1.055, 2.4);
++    };
++    return 0.2126 * linear(color.redF()) + 0.7152 * linear(color.greenF()) + 0.0722 * linear(color.blueF());
++}
++
++qreal contrast(const QColor &first, const QColor &second)
++{
++    const qreal a = luminance(first) + 0.05;
++    const qreal b = luminance(second) + 0.05;
++    return qMax(a, b) / qMin(a, b);
++}
++
++QColor readable(const QColor &foreground, const QColor &background)
++{
++    if (contrast(foreground, background) >= 3) return foreground;
++    const auto light = rgb(0xf0f4f8);
++    const auto dark = rgb(0x263238);
++    return contrast(light, background) > contrast(dark, background) ? light : dark;
++}
++
++QColor blend(const QColor &first, const QColor &second, qreal amount)
++{
++    return QColor::fromRgbF(first.redF() + (second.redF() - first.redF()) * amount,
++                           first.greenF() + (second.greenF() - first.greenF()) * amount,
++                           first.blueF() + (second.blueF() - first.blueF()) * amount);
++}
++
++struct Ink {
++    QColor edge, sun, moon, lightCloud, backCloud, overcast, storm, rain, rainEdge;
++    QColor snow, snowEdge, lightning, wind, fog, ice, severe;
++    bool mono;
++};
++
++Ink inks(Mode mode, const Colors &colors)
++{
++    const auto edge = readable(rgb(0x263238), colors.background);
++    if (mode == Mode::Color)
++        return {edge, rgb(0xffd02a), rgb(0xffd75a), rgb(0xf0f4f8), rgb(0xd5dde6),
++                rgb(0xa4afbd), rgb(0x788594), rgb(0x39bdf2), readable(rgb(0x087dae), colors.background),
++                rgb(0xf5faff), readable(rgb(0x397da6), colors.background), rgb(0xffd000),
++                rgb(0x62b9e8), rgb(0xaab7c4), rgb(0x9dddf5), rgb(0xe53935), false};
++    const auto primary = readable(colors.primary, colors.background);
++    const auto secondary = readable(colors.secondary, colors.background);
++    const auto accent = readable(colors.accent, colors.background);
++    if (mode == Mode::Monochrome)
++        return {primary, primary, primary, primary, primary, primary, primary, primary, primary,
++                primary, primary, primary, primary, primary, primary, primary, true};
++    return {edge, accent, blend(accent, primary, .3), primary, blend(primary, secondary, .45),
++            secondary, blend(secondary, colors.background, .32), accent, edge, primary, edge,
++            accent, accent, secondary, blend(primary, accent, .45), accent, false};
++}
++
++QPainterPath cloudPath()
++{
++    QPainterPath path;
++    path.moveTo(15, 47);
++    path.cubicTo(7, 47, 4, 41, 5, 35);
++    path.cubicTo(6, 29, 11, 25, 18, 26);
++    path.cubicTo(20, 17, 27, 12, 35, 13);
++    path.cubicTo(44, 13, 50, 20, 51, 27);
++    path.cubicTo(59, 27, 62, 32, 61, 38);
++    path.cubicTo(61, 44, 56, 47, 50, 47);
++    path.closeSubpath();
++    return path;
++}
++
++QPainterPath crescentPath()
++{
++    QPainterPath outer, cutout;
++    outer.addEllipse(QPointF(32, 32), 22, 22);
++    cutout.addEllipse(QPointF(20, 22), 19, 19);
++    return outer.subtracted(cutout);
++}
++
++QPainterPath at(const QPainterPath &path, QPointF center, qreal scale, QPointF anchor = QPointF(32, 32))
++{
++    QTransform transform;
++    transform.translate(center.x(), center.y());
++    transform.scale(scale, scale);
++    transform.translate(-anchor.x(), -anchor.y());
++    return transform.map(path);
++}
++
++class Drawing
++{
++public:
++    Drawing(QPainter &painter, Ink palette, bool compact) : p(painter), c(palette), small(compact) {}
++
++    void draw(Condition condition)
++    {
++        const auto kind = condition.kind;
++        const bool night = condition.night;
++        switch (kind) {
++        case Kind::Clear:
++            luminary(night, {32, 32}, 1);
++            break;
++        case Kind::MostlyClear:
++            luminary(night, {26, 27}, .77);
++            cloud({42, 51}, .60, c.lightCloud);
++            break;
++        case Kind::PartlyCloudy:
++            luminary(night, {23, 23}, .68);
++            cloud({37, 53}, .84, c.lightCloud);
++            break;
++        case Kind::MostlyCloudy:
++            luminary(night, {45, 18}, .51);
++            cloud({23, 39}, .66, c.backCloud);
++            cloud({33, 53}, .94, c.lightCloud);
++            break;
++        case Kind::Cloudy:
++            if (night) luminary(true, {43, 17}, .56);
++            cloud({24, 39}, .66, c.backCloud);
++            cloud({34, 51}, .92, c.lightCloud);
++            break;
++        case Kind::Overcast:
++            cloud({24, 39}, .66, c.storm);
++            cloud({34, 51}, .91, c.overcast);
++            break;
++        case Kind::Drizzle: case Kind::LightRain: case Kind::Rain: case Kind::HeavyRain: case Kind::RainShowers:
++            weatherCloud(night, kind == Kind::HeavyRain ? c.overcast : c.lightCloud);
++            rain(kind);
++            break;
++        case Kind::LightSnow: case Kind::Snow: case Kind::HeavySnow: case Kind::SnowShowers:
++            weatherCloud(night, c.lightCloud);
++            snow(kind);
++            break;
++        case Kind::Sleet: case Kind::Mixed: case Kind::FreezingRain:
++            weatherCloud(night, c.overcast);
++            drop({21, 49}, 1.03);
++            if (kind == Kind::FreezingRain) {
++                icicle({37, 43}, 1);
++                icicle({49, 46}, .8);
++            } else {
++                flake({45, 51}, kind == Kind::Sleet ? 6 : 9);
++                if (kind == Kind::Sleet && !small) pellet({32, 55}, 2.5);
++            }
++            break;
++        case Kind::Hail:
++            weatherCloud(night, c.storm);
++            for (int i = 0; i < (small ? 3 : 4); ++i)
++                pellet({14.0 + i * (small ? 17 : 12), i % 2 ? 54.0 : 47.0}, small ? 3.9 : 3.4);
++            break;
++        case Kind::BlowingSnow:
++            weatherCloud(night, c.overcast);
++            flake({19, 50}, 7);
++            air(33, 51, .49);
++            break;
++        case Kind::Fog: case Kind::Mist:
++            weatherCloud(night, c.backCloud);
++            for (int i = 0; i < (kind == Kind::Mist ? 2 : 3); ++i)
++                line({8.0 + 4 * i, 44.0 + 7 * i}, {56.0 - 4 * i, 44.0 + 7 * i}, c.fog, 3);
++            break;
++        case Kind::Haze:
++            luminary(night, {32, 26}, .73);
++            for (int i = 0; i < 2; ++i)
++                line({8.0 + 4 * i, 48.0 + 8 * i}, {56.0 - 4 * i, 48.0 + 8 * i}, c.fog, 3);
++            break;
++        case Kind::Smoke:
++            smoke();
++            break;
++        case Kind::Dust:
++            air(8, 29, .86);
++            pellet({16, 45}, 2.8);
++            pellet({29, 50}, 2.5);
++            if (!small) pellet({48, 43}, 2.2);
++            break;
++        case Kind::Wind: case Kind::StrongWind:
++            air(7, 31, 1, kind == Kind::StrongWind);
++            break;
++        case Kind::Thunderstorm: case Kind::SevereThunderstorm:
++            storm(night, condition.stormPrecipitation, kind == Kind::SevereThunderstorm);
++            break;
++        case Kind::Tornado:
++            tornado();
++            break;
++        case Kind::Hurricane: case Kind::TropicalStorm:
++            cyclone(kind == Kind::Hurricane);
++            break;
++        case Kind::Unknown:
++            unknown();
++            break;
++        }
++    }
++
++private:
++    void shape(const QPainterPath &path, const QColor &fill, const QColor &edge)
++    {
++        if (c.mono) {
++            p.save();
++            p.setCompositionMode(QPainter::CompositionMode_DestinationOut);
++            p.fillPath(path, Qt::black);
++            p.restore();
++        }
++        p.setBrush(c.mono ? QBrush(Qt::NoBrush) : QBrush(fill));
++        p.setPen(QPen(edge, 2.8, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
++        p.drawPath(path);
++    }
++
++    void stroke(const QPainterPath &path, const QColor &color, qreal width, const QColor &edge = {})
++    {
++        p.setBrush(Qt::NoBrush);
++        if (!c.mono && edge.isValid()) {
++            p.setPen(QPen(edge, width + 2.4, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
++            p.drawPath(path);
++        }
++        p.setPen(QPen(color, width, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
++        p.drawPath(path);
++    }
++
++    void line(QPointF first, QPointF second, const QColor &color, qreal width = 2.8)
++    {
++        QPainterPath path(first);
++        path.lineTo(second);
++        stroke(path, color, width, c.edge);
++    }
++
++    void luminary(bool moon, QPointF center, qreal scale)
++    {
++        if (moon) {
++            static const auto crescent = crescentPath();
++            shape(at(crescent, center, scale), c.moon, c.edge);
++            return;
++        }
++        QPainterPath rays;
++        for (int i = 0; i < 8; ++i) {
++            constexpr qreal eighthTurn = 0.7853981633974483;
++            const QPointF direction(qCos(i * eighthTurn), qSin(i * eighthTurn));
++            rays.moveTo(center + direction * (21 * scale));
++            rays.lineTo(center + direction * (27 * scale));
++        }
++        stroke(rays, c.sun, scale < .6 ? 2.4 : 3.2, c.edge);
++        QPainterPath solarDisk;
++        solarDisk.addEllipse(center, 15 * scale, 15 * scale);
++        shape(solarDisk, c.sun, c.edge);
++    }
++
++    void cloud(QPointF center, qreal scale, const QColor &color)
++    {
++        static const auto silhouette = cloudPath();
++        shape(at(silhouette, center, scale, {32, 47}), color, c.edge);
++    }
++
++    void weatherCloud(bool night, const QColor &color)
++    {
++        if (night) luminary(true, {45, 16}, .51);
++        cloud({32, 35}, .85, color);
++    }
++
++    void drop(QPointF center, qreal scale)
++    {
++        QPainterPath path;
++        path.moveTo(2, -7);
++        path.cubicTo(3, -2, 6, 1, 4, 4);
++        path.cubicTo(2, 8, -5, 7, -5, 2);
++        path.cubicTo(-5, -1, 0, -4, 2, -7);
++        path.closeSubpath();
++        shape(at(path, center, scale, {}), c.rain, c.rainEdge);
++    }
++
++    void rain(Kind kind)
++    {
++        if (kind == Kind::HeavyRain) {
++            const int count = small ? 3 : 5;
++            for (int i = 0; i < count; ++i) {
++                const qreal x = 12 + i * (count == 3 ? 18 : 10);
++                line({x + 4, 42}, {x - 1, 57}, c.rain, 3.2);
++            }
++        } else if (kind == Kind::Drizzle) {
++            for (int i = 0; i < 3; ++i) drop({17.0 + i * 15, 46.0 + (i % 2) * 6}, .52);
++        } else if (kind == Kind::LightRain) {
++            drop({23, 46}, .92);
++            drop({42, 54}, .92);
++        } else {
++            drop({17, 48}, 1);
++            drop({33, kind == Kind::RainShowers ? 55.0 : 50.0}, 1);
++            drop({49, 48}, 1);
++        }
++    }
++
++    void flake(QPointF center, qreal radius)
++    {
++        QPainterPath arms;
++        for (int i = 0; i < 6; ++i) {
++            constexpr qreal sixthTurn = 1.0471975511965976;
++            const QPointF d(qCos(i * sixthTurn), qSin(i * sixthTurn));
++            const QPointF normal(-d.y(), d.x());
++            const QPointF end = center + d * radius;
++            arms.moveTo(center);
++            arms.lineTo(end);
++            if (!small && radius >= 7) {
++                arms.moveTo(end - d * 4 + normal * 2.7);
++                arms.lineTo(end - d * 2);
++                arms.lineTo(end - d * 4 - normal * 2.7);
++            }
++        }
++        stroke(arms, c.snow, 2.65, c.snowEdge);
++    }
++
++    void snow(Kind kind)
++    {
++        if (kind == Kind::LightSnow) {
++            flake({32, 49}, 10);
++        } else if (kind == Kind::HeavySnow && !small) {
++            flake({15, 46}, 7.4);
++            flake({32, 53}, 7.4);
++            flake({49, 46}, 7.4);
++        } else {
++            flake({21, 49}, 8);
++            flake({44, kind == Kind::SnowShowers ? 53.0 : 49.0}, 8);
++        }
++    }
++
++    void pellet(QPointF center, qreal radius)
++    {
++        QPainterPath circle;
++        circle.addEllipse(center, radius, radius);
++        shape(circle, c.ice, c.snowEdge);
++    }
++
++    void icicle(QPointF position, qreal scale)
++    {
++        QPainterPath path;
++        path.moveTo(-4, 0);
++        path.lineTo(4, 0);
++        path.lineTo(0, 15);
++        path.closeSubpath();
++        shape(at(path, position, scale, {}), c.ice, c.snowEdge);
++    }
++
++    void air(qreal x, qreal y, qreal scale, bool strong = false)
++    {
++        QPainterPath path;
++        path.moveTo(0, -8);
++        path.lineTo(33, -8);
++        path.cubicTo(44, -8, 43, -22, 34, -20);
++        path.moveTo(3, 3);
++        path.lineTo(46, 3);
++        path.cubicTo(56, 3, 57, 17, 47, 17);
++        if (strong) {
++            path.moveTo(4, 14);
++            path.lineTo(30, 14);
++            path.cubicTo(38, 14, 39, 26, 31, 26);
++        }
++        stroke(at(path, {x, y}, scale, {}), c.wind, 3.8, c.edge);
++    }
++
++    void smoke()
++    {
++        QPainterPath path;
++        for (const qreal x : {17.0, 33.0, 49.0}) {
++            path.moveTo(x - 3, 57);
++            path.cubicTo(x + 13, 44, x - 11, 33, x, 24);
++            path.cubicTo(x + 8, 17, x + 5, 11, x + 1, 7);
++        }
++        stroke(path, c.fog, 3.5, c.edge);
++    }
++
++    void storm(bool night, bool precipitation, bool severe)
++    {
++        weatherCloud(night, c.storm);
++        if (precipitation) {
++            drop({13, 50}, .74);
++            drop({52, 50}, .74);
++        }
++        QPainterPath bolt;
++        bolt.moveTo(30, 28);
++        bolt.lineTo(43, 28);
++        bolt.lineTo(34, 40);
++        bolt.lineTo(44, 40);
++        bolt.lineTo(23, 61);
++        bolt.lineTo(29, 46);
++        bolt.lineTo(20, 46);
++        bolt.closeSubpath();
++        shape(bolt, c.lightning, severe ? c.severe : c.edge);
++    }
++
++    void tornado()
++    {
++        QPainterPath path;
++        path.moveTo(6, 14);
++        path.cubicTo(18, 7, 46, 7, 58, 14);
++        path.cubicTo(64, 20, 16, 28, 13, 31);
++        path.cubicTo(11, 35, 46, 35, 45, 40);
++        path.cubicTo(44, 44, 19, 45, 21, 49);
++        path.cubicTo(23, 52, 31, 51, 29, 57);
++        stroke(path, c.overcast, 4.6, c.edge);
++    }
++
++    void cyclone(bool hurricane)
++    {
++        QPainterPath arm;
++        arm.moveTo(56, 9);
++        arm.cubicTo(57, 24, 48, 44, 31, 43);
++        arm.cubicTo(14, 42, 16, 19, 31, 18);
++        arm.cubicTo(38, 17, 43, 21, 42, 28);
++        arm.cubicTo(37, 18, 24, 26, 28, 32);
++        arm.cubicTo(35, 42, 49, 27, 56, 9);
++        arm.closeSubpath();
++        QTransform rotate;
++        rotate.translate(32, 32);
++        rotate.rotate(180);
++        rotate.translate(-32, -32);
++        const auto symbol = arm.united(rotate.map(arm));
++        QPainterPath eye;
++        eye.addEllipse(QPointF(32, 32), 5.5, 5.5);
++        const auto cyclone = symbol.subtracted(eye);
++        if (hurricane) shape(cyclone, c.severe, c.edge);
++        else stroke(cyclone, c.severe, 3.0, c.edge);
++    }
++
++    void unknown()
++    {
++        QPainterPath ring;
++        ring.addEllipse(QPointF(32, 32), 20, 20);
++        stroke(ring, c.fog, 3.6, c.edge);
++        QPainterPath mark;
++        mark.moveTo(25, 25);
++        mark.cubicTo(26, 19, 39, 19, 39, 27);
++        mark.cubicTo(39, 32, 32, 32, 32, 38);
++        stroke(mark, c.fog, 3.6, c.edge);
++        pellet({32, 45}, 1.8);
++    }
++
++    QPainter &p;
++    Ink c;
++    bool small;
++};
++
++} // namespace
++
++QImage renderIcon(Condition condition, Mode mode, const Colors &colors, QSize logicalSize, qreal dpr)
++{
++    if (logicalSize.isEmpty() || !qIsFinite(dpr) || dpr <= 0) return {};
++    QImage image(QSize(qCeil(logicalSize.width() * dpr), qCeil(logicalSize.height() * dpr)),
++                 QImage::Format_ARGB32_Premultiplied);
++    if (image.isNull()) return image;
++    image.setDevicePixelRatio(dpr);
++    image.fill(Qt::transparent);
++    QPainter painter(&image);
++    painter.setRenderHint(QPainter::Antialiasing);
++    const int side = qMin(logicalSize.width(), logicalSize.height());
++    painter.translate((logicalSize.width() - side) / 2.0, (logicalSize.height() - side) / 2.0);
++    painter.scale(side / 64.0, side / 64.0);
++    // Leave room for rounded caps and antialiasing at 16 px.
++    painter.translate(2.5, 2.5);
++    painter.scale(59.0 / 64.0, 59.0 / 64.0);
++    Drawing drawing(painter, inks(mode, colors), side < 24);
++    drawing.draw(condition);
++    painter.end();
++    return image;
++}
++
++} // namespace KrellWeather
+diff --git a/plugins/krellweather/WeatherIcons.h b/plugins/krellweather/WeatherIcons.h
+new file mode 100644
+index 0000000..c268ad9
+--- /dev/null
++++ b/plugins/krellweather/WeatherIcons.h
+@@ -0,0 +1,39 @@
++#pragma once
++
++#include <QColor>
++#include <QImage>
++#include <QSize>
++#include <QStringView>
++
++class QJsonObject;
++
++namespace KrellWeather {
++
++enum class Kind {
++    Unknown, Clear, MostlyClear, PartlyCloudy, MostlyCloudy, Cloudy, Overcast,
++    Drizzle, LightRain, Rain, HeavyRain, RainShowers, FreezingRain,
++    LightSnow, Snow, HeavySnow, SnowShowers, Sleet, Mixed, Hail, BlowingSnow,
++    Fog, Mist, Haze, Smoke, Dust, Wind, StrongWind,
++    Thunderstorm, SevereThunderstorm, Tornado, Hurricane, TropicalStorm
++};
++
++enum class Mode { Color, Theme, Monochrome };
++
++struct Condition {
++    Kind kind = Kind::Unknown;
++    bool night = false;
++    bool stormPrecipitation = false;
++};
++
++struct Colors {
++    QColor background = QColor(24, 42, 55);
++    QColor primary = QColor(240, 244, 248);
++    QColor secondary = QColor(170, 183, 196);
++    QColor accent = QColor(98, 185, 232);
++};
++
++Mode modeFromKey(QStringView key);
++Condition classifyObservation(const QJsonObject &observation);
++QImage renderIcon(Condition condition, Mode mode, const Colors &colors, QSize logicalSize, qreal dpr = 1);
++
++} // namespace KrellWeather

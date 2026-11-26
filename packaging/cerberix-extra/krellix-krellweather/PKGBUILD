@@ -1,22 +1,25 @@
 # Maintainer: yodabytz <hello@cerberix.org>
 pkgname=krellix-krellweather
 pkgver=0.1.1
-pkgrel=2
+pkgrel=3
 arch=('x86_64' 'aarch64')
 url='https://github.com/yodabytz/krellix'
 license=('GPL-3.0-or-later')
 pkgdesc='Krellweather compact METAR weather station plugin for Krellix'
-depends=('krellix>=0.1.1' 'qt6-base')
+depends=('krellix>=0.1.2-35' 'qt6-base')
 makedepends=('cmake' 'ninja' 'qt6-tools' 'qt6-base')
 options=('!debug')
 source=("krellix-$pkgver.tar.gz"
-        "fix-plugin-id.patch")
+        "fix-plugin-id.patch"
+        "weather-vector-icons.patch")
 sha256sums=('1c2d29205bb3749410e6288e8bb13d06b41ac3467687c80d14101d3c1073c3de'
-            'SKIP')
+            '855a50269e823dd4078a7ad50424e6f2fe57bb7426141d499035d4460008a41c'
+            '2ca7fbc7e4bc58ceacd8d9cfac82bcea3f9a43279ab5a2bb95d36742c3293a7d')
 
 prepare() {
     cd "krellix-$pkgver"
     patch -p1 < "$srcdir/fix-plugin-id.patch"
+    patch --fuzz=0 -p1 < "$srcdir/weather-vector-icons.patch"
 }
 
 build() {
