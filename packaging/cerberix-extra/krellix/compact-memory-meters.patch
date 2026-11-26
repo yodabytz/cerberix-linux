@@ -1,0 +1,63 @@
+diff --git a/src/monitors/MemMonitor.cpp b/src/monitors/MemMonitor.cpp
+index 5b0e121..c695764 100644
+--- a/src/monitors/MemMonitor.cpp
++++ b/src/monitors/MemMonitor.cpp
+@@ -44,4 +44,5 @@ QWidget *MemMonitor::createWidget(QWidget *parent)
+     m_memText->setAlignment(Qt::AlignHCenter);
+     m_memMeter = p->addMeter(QStringLiteral("chart_line_mem"));
++    m_memMeter->setCompactHeight(true);
+ 
+     m_swapText  = p->addDecal(QStringLiteral("label"),
+@@ -49,4 +50,5 @@ QWidget *MemMonitor::createWidget(QWidget *parent)
+     m_swapText->setAlignment(Qt::AlignHCenter);
+     m_swapMeter = p->addMeter(QStringLiteral("chart_line_swap"));
++    m_swapMeter->setCompactHeight(true);
+ 
+     tick();
+diff --git a/src/widgets/Meter.cpp b/src/widgets/Meter.cpp
+index 4d29675..32b5fa6 100644
+--- a/src/widgets/Meter.cpp
++++ b/src/widgets/Meter.cpp
+@@ -5,6 +5,12 @@
+ #include <QPaintEvent>
+ #include <QPainter>
++#include <QVariant>
+ #include <QtGlobal>
+ 
++namespace {
++// Store the opt-in without changing the widget layout used by existing plugins.
++constexpr auto kCompactHeight = "_krellix_compact_meter_height";
++}
++
+ Meter::Meter(Theme *theme, const QString &colorKey, QWidget *parent)
+     : QWidget(parent)
+@@ -45,4 +51,11 @@ void Meter::setFillVisible(bool visible)
+ }
+ 
++void Meter::setCompactHeight(bool compact)
++{
++    if (compact == property(kCompactHeight).toBool()) return;
++    setProperty(kCompactHeight, compact);
++    updateGeometry();
++}
++
+ QSize Meter::sizeHint() const
+ {
+@@ -51,5 +64,6 @@ QSize Meter::sizeHint() const
+         : qMax(12, m_theme->metric(QStringLiteral("krell_height"), 8) + 6);
+     const int themed = m_theme->metric(QStringLiteral("meter_height"), fallback);
+-    return QSize(0, themed > 0 ? themed : fallback);
++    const int height = themed > 0 ? themed : fallback;
++    return QSize(0, property(kCompactHeight).toBool() ? qMax(1, qRound(height * (2.0 / 3.0))) : height);
+ }
+ 
+diff --git a/src/widgets/Meter.h b/src/widgets/Meter.h
+index 5c25028..351c749 100644
+--- a/src/widgets/Meter.h
++++ b/src/widgets/Meter.h
+@@ -22,4 +22,5 @@ public:
+     void setText(const QString &text);
+     void setFillVisible(bool visible);
++    void setCompactHeight(bool compact);
+ 
+     QSize sizeHint() const override;
