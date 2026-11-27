@@ -2,7 +2,7 @@
 pkgbase=krellix
 pkgname=('krellix' 'krellix-server' 'krellix-krellbluetooth')
 pkgver=0.1.2
-pkgrel=46
+pkgrel=47
 arch=('x86_64' 'aarch64')
 url='https://github.com/yodabytz/krellix'
 license=('GPL-3.0-or-later')
@@ -44,11 +44,11 @@ sha256sums+=('422d76df8c406d7f985950da3633e80207fd75efa68823648e4410244b45b79c')
 source+=("fix-cpu-chart-scale.patch")
 sha256sums+=('8fead942f55f9845c6dd27cacf81c3f53fcc4ab6133dd7c04dbfb8427ba1b6a3')
 
-# The desktop is built from the shared Linux/macOS client source.
+# The desktop is built from the shared client source.
 # Keep the existing source/patch stack for the independently shipped daemon and plugin.
-_desktop_commit=27842f67fb3003e36c8009a7cda8345f1b091d0d
+_desktop_commit=576c87773d06e6e2a84a6860f1ddc258dd9e1e01
 source+=("krellix-desktop-${_desktop_commit}.tar.gz::https://codeload.github.com/yodabytz/krellix/tar.gz/${_desktop_commit}")
-sha256sums+=('25acf34a354d1932eeb32283e372938173edde483d421f8a9716aaebaef5ad36')
+sha256sums+=('632711f7c878a7035bc40f82c18ab15d574cf8d4dfac72346e18a7e57f4bb470')
 
 prepare() {
     cd "$pkgbase-$pkgver"
